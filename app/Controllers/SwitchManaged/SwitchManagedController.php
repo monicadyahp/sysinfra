@@ -1012,5 +1012,255 @@ class SwitchManagedController extends BaseController
                 ->setJSON(['error' => true, 'message' => 'Could not retrieve VLAN data: ' . $e->getMessage()]);
         }
     }
+
+    /**
+     * Export a single switch managed record and its port details to Excel.
+     */
+    public function exportExcelById(int $sm_id)
+    {
+        if (!session()->get('login')) {
+            return redirect()->to('/login');
+        }
+
+        try {
+            // Fetch main switch record by sm_id
+            $mainSwitch = $this->db->table('public.tbmst_switch_managed')
+                                   ->select('sm_id, sm_id_switch, sm_asset_no, sm_asset_name,
+                                             sm_received_date, sm_age, sm_ip, sm_location,
+                                             sm_lastupdate, sm_lastuser')
+                                   ->where('sm_id', $sm_id)
+                                   ->get()
+                                   ->getRowArray();
+
+            if (!$mainSwitch) {
+                return $this->response->setStatusCode(404)
+                                     ->setJSON(['error' => true, 'message' => 'Switch Managed record not found for the given ID.']);
+            }
+
+            // Fetch detail ports for the current main switch
+            $detailPortsQuery = $this->db->table('public.tbmst_switch_managed_detail')
+                                         ->select('smd_id, smd_port, smd_type, smd_vlan_id, smd_vlan_name, smd_status, smd_lastupdate, smd_lastuser')
+                                         ->where('smd_header_id_switch', $mainSwitch['sm_id'])
+                                         ->orderBy('smd_port', 'ASC')
+                                         ->get();
+            $detailPorts = $detailPortsQuery->getResultArray();
+
+            // Prepare user and VLAN data for lookup
+            $dbCommon = \Config\Database::connect('jincommon');
+
+            // Collect all user IDs from main switch and detail ports
+            $allUserIds = [];
+            if (is_numeric($mainSwitch['sm_lastuser'])) {
+                $allUserIds[] = $mainSwitch['sm_lastuser'];
+            }
+            foreach ($detailPorts as $detail) {
+                if (is_numeric($detail['smd_lastuser'])) {
+                    $allUserIds[] = $detail['smd_lastuser'];
+                }
+            }
+            $allUserIds = array_unique(array_filter($allUserIds, 'is_numeric'));
+
+            $employeeNames = [];
+            $userAccessNames = [];
+            if (!empty($allUserIds)) {
+                $employeeQuery = $dbCommon->table('tbmst_employee')
+                                         ->select('em_emplname, em_emplcode')
+                                         ->whereIn('em_emplcode', $allUserIds)
+                                         ->get();
+                foreach ($employeeQuery->getResultArray() as $emp) {
+                    $employeeNames[$emp['em_emplcode']] = $emp['em_emplname'];
+                }
+
+                $userAccessIdsToFetch = array_diff($allUserIds, array_keys($employeeNames));
+                if (!empty($userAccessIdsToFetch)) {
+                    $userAccessQuery = $dbCommon->table('tbua_useraccess')
+                                                 ->select('ua_username, ua_userid')
+                                                 ->whereIn('ua_userid', $userAccessIdsToFetch)
+                                                 ->get();
+                    foreach ($userAccessQuery->getResultArray() as $user) {
+                        $userAccessNames[$user['ua_userid']] = $user['ua_username'];
+                    }
+                }
+            }
+
+            $vlanData = $this->db->table('public.tbmst_vlan')
+                                 ->select('tv_id_vlan, tv_name')
+                                 ->get()
+                                 ->getResultArray();
+            $vlanNames = array_column($vlanData, 'tv_name', 'tv_id_vlan');
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Switch Config - ID ' . $mainSwitch['sm_id_switch']);
+
+            // Header for the entire report
+            $sheet->setCellValue('A1', 'SWITCH MANAGED CONFIGURATION REPORT');
+            $sheet->mergeCells('A1:K1'); // Adjusted range for main data headers
+            $sheet->getStyle('A1')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 18],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $sheet->getRowDimension(1)->setRowHeight(30);
+
+            // Empty row for spacing
+            $sheet->getRowDimension(2)->setRowHeight(15);
+
+            // Main Switch Details Header
+            $sheet->setCellValue('A3', 'Main Switch Details');
+            $sheet->mergeCells('A3:K3');
+            $sheet->getStyle('A3')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 14],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE8F5E9']], // Light Green
+            ]);
+
+            // Main Switch Data Headers
+            $mainHeaders = [
+                'ID', 'ID Switch', 'Asset No', 'Asset Name', 'Received Date', 'Age (Years)',
+                'IP', 'Location', 'Last Update', 'Last User'
+            ];
+            $mainHeaderStartRow = 4;
+            $sheet->fromArray($mainHeaders, NULL, 'A' . $mainHeaderStartRow);
+
+            // Apply style to main header
+            $headerStyle = [
+                'font' => ['bold' => true, 'color' => ['argb' => 'FF000000']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFCDE8F3']], // Light Blue
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
+            ];
+            $sheet->getStyle('A' . $mainHeaderStartRow . ':J' . $mainHeaderStartRow)->applyFromArray($headerStyle); // J for main headers
+
+            // Populate main switch data
+            $mainSwitchUserId = $mainSwitch['sm_lastuser'];
+            $mainSwitch['last_user_display'] = $employeeNames[$mainSwitchUserId] ?? ($userAccessNames[$mainSwitchUserId] ?? $mainSwitchUserId);
+            $mainSwitch['sm_received_date'] = $mainSwitch['sm_received_date'] ? (new Time($mainSwitch['sm_received_date']))->toDateString() : '';
+            $mainSwitch['sm_lastupdate'] = $mainSwitch['sm_lastupdate'] ? (new Time($mainSwitch['sm_lastupdate']))->toDateTimeString() : '';
+
+            $mainRowData = [
+                $mainSwitch['sm_id'],
+                $mainSwitch['sm_id_switch'],
+                $mainSwitch['sm_asset_no'],
+                $mainSwitch['sm_asset_name'],
+                $mainSwitch['sm_received_date'],
+                $this->calculateAge($mainSwitch['sm_received_date']),
+                $mainSwitch['sm_ip'],
+                $mainSwitch['sm_location'],
+                $mainSwitch['sm_lastupdate'],
+                $mainSwitch['last_user_display'],
+            ];
+            $mainDataRowStart = $mainHeaderStartRow + 1;
+            $sheet->fromArray($mainRowData, NULL, 'A' . $mainDataRowStart);
+            $sheet->getStyle('A' . $mainDataRowStart . ':J' . $mainDataRowStart)->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
+            ]);
+
+
+            // Empty row for spacing between main and detail
+            $sheet->getRowDimension($mainDataRowStart + 1)->setRowHeight(15);
+
+
+            // Port Details Header
+            $portHeaderStartRow = $mainDataRowStart + 3;
+            $sheet->setCellValue('A' . $portHeaderStartRow, 'Port Configurations');
+            $sheet->mergeCells('A' . $portHeaderStartRow . ':G' . $portHeaderStartRow); // Adjusted range for port headers
+            $sheet->getStyle('A' . $portHeaderStartRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 14],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDAE5FF']], // Very Light Blue
+            ]);
+
+            // Port Data Headers
+            $portHeaders = [
+                'No.', 'ID Detail', 'Port', 'Type', 'VLAN ID', 'VLAN Name', 'Status', 'Last Update', 'Last User'
+            ];
+            $portDataHeaderRow = $portHeaderStartRow + 1;
+            $sheet->fromArray($portHeaders, NULL, 'A' . $portDataHeaderRow);
+
+            // Apply style to port header
+            $sheet->getStyle('A' . $portDataHeaderRow . ':I' . $portDataHeaderRow)->applyFromArray($headerStyle); // I for port headers
+
+            $rowNum = $portDataHeaderRow + 1;
+            $detailNo = 1;
+            $statusInactiveFill = ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFD9B3']]; // Light orange for Inactive status
+
+
+            if (empty($detailPorts)) {
+                // If no ports, add a single row indicating no data
+                $rowData = [
+                    '', '', '', '', '', '', 'No Ports Configured', '', ''
+                ];
+                $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
+                $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray([
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
+                    'font' => ['italic' => true, 'color' => ['argb' => 'FF808080']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                ]);
+                $sheet->mergeCells('A' . $rowNum . ':I' . $rowNum);
+                $rowNum++;
+            } else {
+                foreach ($detailPorts as $detail) {
+                    // Populate last_user display name for detail port
+                    $detailUserId = $detail['smd_lastuser'];
+                    $detail['last_user_display'] = $employeeNames[$detailUserId] ?? ($userAccessNames[$detailUserId] ?? $detailUserId);
+
+                    // Resolve VLAN Name from lookup if smd_vlan_name is empty or null
+                    $resolvedVlanName = $detail['smd_vlan_name'];
+                    if (empty($resolvedVlanName) && !empty($detail['smd_vlan_id'])) {
+                        $resolvedVlanName = $vlanNames[$detail['smd_vlan_id']] ?? '';
+                    }
+                    $detail['resolved_vlan_name'] = strtoupper($resolvedVlanName);
+
+                    // Format last update for detail
+                    $detail['smd_lastupdate'] = $detail['smd_lastupdate'] ? (new Time($detail['smd_lastupdate']))->toDateTimeString() : '';
+
+                    $rowData = [
+                        $detailNo++,
+                        $detail['smd_id'],
+                        $detail['smd_port'],
+                        $detail['smd_type'],
+                        $detail['smd_vlan_id'],
+                        $detail['resolved_vlan_name'],
+                        $detail['smd_status'] == 1 ? 'Active' : 'Inactive',
+                        $detail['smd_lastupdate'],
+                        $detail['last_user_display']
+                    ];
+                    $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
+
+                    $styleToApply = ($detailNo % 2 === 0) ? ['fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFF0F0F0']]] : ['fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFFFFF']]];
+                    $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray($styleToApply);
+                    $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray(['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]]]);
+
+                    // Apply special style for 'Inactive' status in detail
+                    if ($detail['smd_status'] == 0) {
+                        $sheet->getStyle('G' . $rowNum)->applyFromArray($statusInactiveFill);
+                    }
+
+                    $rowNum++;
+                }
+            }
+
+
+            // Set column widths
+            foreach (range('A', $sheet->getHighestColumn()) as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            $filename = 'Switch_Configuration_ID_' . $mainSwitch['sm_id_switch'] . '_' . date('Ymd_His') . '.xlsx';
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit();
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error exporting Switch Managed data to Excel by ID: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)
+                                 ->setJSON(['error' => true, 'message' => 'Could not export data to Excel: ' . $e->getMessage()]);
+        }
+    }
     
 }

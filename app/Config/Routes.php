@@ -282,7 +282,6 @@ $routes->post('/MstVlan/checkDuplicateVlanId', 'MstVlan\MstVlanController::check
 
 /////////////////////////////
 
-
 // --- Rute untuk Master Switch Managed (Aligned with usermenu "MstSwitchManaged") ---
 $routes->get('/MstSwitchManaged', 'SwitchManaged\SwitchManagedController::index'); // Main page route
 $routes->get('/MstSwitchManaged/getDataSwitchManaged', 'SwitchManaged\SwitchManagedController::getDataSwitchManaged'); // AJAX route for DataTable
@@ -293,7 +292,8 @@ $routes->post('/MstSwitchManaged/delete', 'SwitchManaged\SwitchManagedController
 $routes->post('/MstSwitchManaged/checkDuplicate', 'SwitchManaged\SwitchManagedController::checkDuplicate');
 
 // Rute baru untuk Export Excel
-$routes->get('/MstSwitchManaged/exportExcel', 'SwitchManaged\SwitchManagedController::exportExcel'); // New route for exporting Excel
+$routes->get('/MstSwitchManaged/exportExcel', 'SwitchManaged\SwitchManagedController::exportExcel'); // Existing route for exporting all to Excel
+$routes->get('/MstSwitchManaged/exportExcelById/(:num)', 'SwitchManaged\SwitchManagedController::exportExcelById/$1'); // New route for exporting Excel by ID
 
 // Rute untuk finder m_itequipment (if you want to use existing equipment data)
 $routes->get('/MstSwitchManaged/getEquipmentData', 'SwitchManaged\SwitchManagedController::getEquipmentData');

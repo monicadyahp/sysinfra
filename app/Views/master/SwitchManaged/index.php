@@ -154,7 +154,8 @@
             <thead class="table-light">
                 <tr>
                     <th style="width: 5%">No.</th>
-                    <th style="width: 15%">Action</th> <th>ID</th>
+                    <th style="width: 15%">Action</th> 
+                    <th>ID</th>
                     <th>ID Switch</th>
                     <th>Asset No</th>
                     <th>Asset Name</th>
@@ -623,6 +624,8 @@ $(document).ready(function() {
                     className: 'text-center',
                     orderable: false,
                     render: function(data, type, row) {
+                        // Using row.id which maps to sm_id from the database
+                        const switchManagedId = row.id;
                         return `
                             <div class="d-flex justify-content-center gap-2">
                                 <a href="javascript:;" class="btn btn-icon btn-outline-primary edit-btn" data-id="${row.id}" title="Edit Switch Managed">
@@ -630,6 +633,9 @@ $(document).ready(function() {
                                 </a>
                                 <a href="javascript:;" class="btn btn-icon btn-outline-info view-detail-btn" data-id_switch="${row.id_switch}" data-asset_no="${row.asset_no}" title="View Port Details">
                                     <i class="fa fa-network-wired"></i>
+                                </a>
+                                <a href="javascript:;" class="btn btn-icon btn-outline-success print-excel-by-id-btn" data-id="${switchManagedId}" title="Print Excel">
+                                    <i class="fa fa-file-excel"></i>
                                 </a>
                                 <a href="javascript:;" class="btn btn-icon btn-outline-danger delete-btn" data-id="${row.id}" title="Delete Switch Managed">
                                     <i class="fa fa-trash-can"></i>
@@ -1100,6 +1106,27 @@ $(document).ready(function() {
         } else {
             Swal.fire('Error', 'Switch ID (ID Utama) tidak ditemukan untuk entri ini. Detail Port tidak dapat ditampilkan.', 'error');
             $('.add-port-detail-btn').prop('disabled', true); // Pastikan tombol nonaktif
+        }
+    });
+
+    $('#tabelSwitchManaged').on('click', '.print-excel-by-id-btn', function() {
+        const id = $(this).data('id');
+        if (id) {
+            Swal.fire({
+                title: 'Generating Excel Report...',
+                text: 'Please wait, your report is being generated.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            window.location.href = base_url + '/exportExcelById/' + id;
+            // Close Swal after a short delay (give time for file download to initiate)
+            setTimeout(() => {
+                Swal.close();
+            }, 2000);
+        } else {
+            Swal.fire('Error', 'Switch ID (ID Utama) not found for this entry.', 'error');
         }
     });
 
