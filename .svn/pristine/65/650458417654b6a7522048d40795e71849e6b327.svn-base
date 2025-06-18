@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Controllers\oee_molding;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_molding\M_OEEDashboardMold;
+use App\Models\master_brazing\M_MstMachine;
+use Datetime;
+
+class OEEDashboardMold extends BaseController
+{
+    protected $M_OEEDashboardMold;
+    protected $M_MstMachine;
+
+    public function __construct()
+    {
+        $this->M_OEEDashboardMold   = new M_OEEDashboardMold();
+        $this->M_MstMachine         = new M_MstMachine();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEDashboardMold") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        // Get current month and year, and adjust to previous month
+        $currentDate = new DateTime();
+        $currentDate->modify('-1 month');
+        $previousMonth = $currentDate->format('m'); // Get the previous month (numeric)
+        $currentYear = $currentDate->format('Y');   // Get the year
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+        $data["machine_data"]       = $this->M_OEEDashboardMold->get_machine_data();
+
+        return view("oee_molding/dashboard/main_dashboard", $data);
+    }
+
+    public function get_period()
+    {
+        $month  = $this->request->getPost('month');
+        $year   = $this->request->getPost('year');
+
+        $period = $this->M_OEEDashboardMold->get_period($month, $year);
+
+        return $this->response->setJSON([
+            'previous_month' => $period['previous_month'],
+            'selected_month' => $period['selected_month']
+        ]);
+    }
+
+    public function get_product()
+    {
+        $machine_code = $this->request->getPost('machine_code');
+
+        $products = $this->M_OEEDashboardMold->get_product($machine_code);
+
+        return $this->response->setJSON($products);
+    }
+
+    public function get_filtered_result()
+    {
+        $filterBy       = $this->request->getPost('filterBy');
+        $filterValue    = $this->request->getPost('filterValue');
+        $month          = $this->request->getPost('month');
+        $year           = $this->request->getPost('year');
+        $start          = $this->request->getPost('start');
+        $end            = $this->request->getPost('end');
+
+        // Call the model method to get filtered result
+        // $result         = $this->M_OEEDashboardMold->get_filtered_result($filterBy, $filterValue, $start, $end, $month, $year);
+
+        // Get raw availability and performance data
+        $availData      = $this->M_OEEDashboardMold->get_availability_data($filterBy, $filterValue, $start, $end);
+        // var_dump($availDataPerDate);die();
+        $perfChart      = $this->M_OEEDashboardMold->get_perf_chart($filterBy, $filterValue, $start, $end);
+
+        $qualChart      = $this->M_OEEDashboardMold->get_qual_chart($filterBy, $filterValue, $start, $end, $month, $year);
+
+        $oeeChart = (($availData / 100) * ($perfChart / 100) * ($qualChart / 100)) *100;
+        
+        // var_dump($availData, $perfChart, $qualChart, $oeeChart);die();
+        $looseChart      = $this->M_OEEDashboardMold->get_loose_chart($filterBy, $filterValue, $start, $end, $month, $year);
+
+        $pdtChart      = $this->M_OEEDashboardMold->get_pdt_chart($filterBy, $filterValue, $start, $end);
+        
+        $breakdownChart      = $this->M_OEEDashboardMold->get_breakdown_chart($filterBy, $filterValue, $start, $end);
+        
+        $radialBarData  = $this->M_OEEDashboardMold->get_radial_bar_chart_data($filterBy, $filterValue, $start, $end);
+
+        $limitQtyData = $this->M_OEEDashboardMold->get_limit_data($filterBy, $filterValue, $month, $year);
+        // var_dump($filterBy, $filterValue, $start, $end);die();
+        $resultData     = $this->M_OEEDashboardMold->get_result_data($filterBy, $filterValue, $start, $end, $month, $year);
+
+
+        return $this->response->setJSON([
+            'status'        => 'success',
+            // 'result'        => $result,
+            // 'totalQty'      => $totalQty,
+            // 'plannedDTData' => $plannedDTData,
+            // 'breakDownData' => $breakDownData,
+            // 'defectQty'     => $defectQty,
+            'availability'  => $availData,
+            'quality'  => $qualChart,
+            'performance'   => $perfChart,
+            'resultoee'   => $oeeChart,
+            'loose'   => $looseChart,
+            'pdt'   => $pdtChart,
+            'breakdown'   => $breakdownChart,
+            'defectqty'   => $limitQtyData,
+            'resultqty'   => $resultData,
+            // 'quality'       => $quality,
+            // 'availData'     => $availability,
+            // 'activityData'  => $activityData,
+            'radialBarData' => $radialBarData,
+            // 'perfChart'     => $performance,
+            // 'planningData'  => $result->planPcs ?: '-',
+            // 'oeePercentage' => $oeePercentage,
+            // 'ttime'         => $looseChartData['ttime'] ?? 0,
+            // 'avgspm'        => $looseChartData['avgspm'] ?? 0,
+            // 'looseChart'    => $looseChartData,
+            // 'lineChart'     => $calculatedResults
+        ]);
+    }
+
+    public function get_filtered_result_date()
+    {
+        $filterBy       = $this->request->getPost('filterBy');
+        $filterValue    = $this->request->getPost('filterValue');
+        $start          = $this->request->getPost('start');
+        $end            = $this->request->getPost('end');
+
+        $interval = new \DateInterval('P1D');
+        $period = new \DatePeriod(new \DateTime($start), $interval, (new \DateTime($end))->modify('+1 day'));
+
+        $calculatedResults = [];
+
+        foreach ($period as $date) {
+            $formattedDate = $date->format('d');
+            $availData      = $this->M_OEEDashboardMold->get_availability_data_date($filterBy, $filterValue, $date);
+            $perfData      = $this->M_OEEDashboardMold->get_perf_chart_date($filterBy, $filterValue, $date);
+            $qualData      = $this->M_OEEDashboardMold->get_qual_chart_date($filterBy, $filterValue, $date);
+
+            $avail = ($availData ?? 0) / 100;
+            $perf  = ($perfData ?? 0) / 100;
+            $qual  = ($qualData ?? 0) / 100;
+
+            $oeeChart = ($avail * $perf * $qual) * 100;
+            // var_dump($avail, $perf, $qual, $oeeChart);die();
+
+            $calculatedResults[] = [
+                "date"  => $formattedDate,
+                "avail" => $availData,
+                "perf"  => $perfData,
+                "qual"  => $qualData,
+                "oee"   => $oeeChart,
+            ];
+        }
+
+        return $this->response->setJSON([
+            'lineChart'     => $calculatedResults
+        ]);
+
+    }
+}

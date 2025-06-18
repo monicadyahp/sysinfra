@@ -1,0 +1,668 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<!-- <?php var_dump(session()->get("user_info")) ?> -->
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 row-gap-2">
+    <div class="d-flex flex-column justify-content-center">
+        <h5 class="mb-0"><?= $txt_action ?></h5>
+        <!-- <p class="mb-0">Aug 17, <span id="orderYear">2024</span>, 5:48 (ET)</p> -->
+    </div>
+    <div class="d-flex align-content-center flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-label-secondary waves-effect" onclick="window.history.back()"><?= $btn_back ?></button>
+            <?php if (isset($header) && $header->prhprocessid == 1) : ?>
+                <button type="button" id="delete_header" class="btn btn-label-danger delete-customer waves-effect">Delete</button>
+            <?php endif ?>
+            <?php if (!isset($header) || (isset($header) && $header->prhprocessid == 1)) : ?>
+                <button type="button" id="save_header" class="btn btn-label-primary waves-effect">Save</button>
+            <?php endif ?>
+        </div>
+        <?php if (isset($header) && $header->prhprocessid == 1) : ?>
+            <button type="button" id="post_header" class="btn btn-primary waves-effect">Post</button>
+        <?php endif ?>
+    </div>
+</div>
+
+<div class="row flex-column flex-sm-row">
+    <div class="col-md-7 col-xl-8 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-0">Header Data</h5>
+            </div>
+            <div class="card-body">
+                <form id="f_reqheader" class="d-flex gap-2">
+                    <?php if (isset($reqtype)) : ?>
+                        <input type="hidden" name="prhreqtype" id="prhreqtype" value="<?= $reqtype ?>">
+                    <?php endif ?>
+                    <input type="hidden" name="prhid" id="prhid" value="<?= isset($header) ? $header->prhid : '' ?>">
+                    <input type="hidden" name="prhreqnumber" id="prhreqnumber" value="<?= isset($header) ? $header->prhreqnumber : '' ?>">
+                    <div class="w-100">
+                        <div class="mb-3">
+                            <label for="prhdept" class="form-label required">Department</label>
+                            <input type="text" class="form-control readonly" id="prhdept" name="prhdept" value="<?= isset($header) ? $header->prhdept : session()->get("user_info")["sec_department"] ?>" required readonly>
+                            <small id="err_prhdept" class="input-warning text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhissuedate" class="form-label required">Issue Date</label>
+                            <div class="position-relative d-flex align-items-center">
+                                <input type="text" class="flatpickr form-control" id="prhissuedate" name="prhissuedate" placeholder="Select date" value="<?= isset($header) ? $header->prhissuedate : date("Y-m-d") ?>" required>
+                                <span class="position-absolute mb-1 me-2 end-0">
+                                    <i class="ti ti-calendar"></i>
+                                </span>
+                            </div>
+                            <small id="err_prhissuedate" class="input-warning text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhreqfinishdate" class="form-label required">Request Finish Date</label>
+                            <div class="position-relative d-flex align-items-center">
+                                <input type="text" class="flatpickr form-control" id="prhreqfinishdate" name="prhreqfinishdate" placeholder="Select date" value="<?= isset($header) ? $header->prhreqfinishdate : '' ?>" required>
+                                <span class="position-absolute mb-1 me-2 end-0">
+                                    <i class="ti ti-calendar"></i>
+                                </span>
+                            </div>
+                            <small id="err_prhreqfinishdate" class="input-warning text-danger"></small>
+                        </div>
+                    </div>
+                    <div class="w-100">
+                        <div class="mb-3">
+                            <label for="prhequipmentno" class="form-label">Equipment No.</label>
+                            <input type="text" class="form-control" id="prhequipmentno" name="prhequipmentno" placeholder="Equipment No." value="<?= isset($header) ? $header->prhequipmentno : '' ?>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhequipmentname" class="form-label">Equipment Name</label>
+                            <input type="text" class="form-control" id="prhequipmentname" name="prhequipmentname" placeholder="Equipment name" value="<?= isset($header) ? $header->prhequipmentname : '' ?>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhringino" class="form-label">Ringisho No.</label>
+                            <input type="text" class="form-control" id="prhringino" name="prhringino" placeholder="Ringisho No." value="<?= isset($header) ? $header->prhringino : '' ?>">
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5 col-xl-4 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-0">Request activity</h5>
+            </div>
+            <div id="detail_activity" class="card-body pt-1" style="max-height: 260px; overflow: auto;">
+                <ul class="timeline pb-0 mb-0">
+                    <?php if (isset($req_activities)) :
+                        $total = count($req_activities);
+                        $current = 0;
+                    ?>
+                        <?php foreach ($req_activities as $activity):
+                            $current++;
+                            if ($current == $total - 1) { // if second last loop
+                                $border = "border-primary border-left-dashed";
+                                $point = "timeline-point-primary";
+                            } else if ($current == $total) { // if last loop
+                                if ($current == 1) { // if first and last loop (only one data)
+                                    $border = "border-transparent";
+                                    $point = "timeline-point-primary";
+                                } else {
+                                    $border = "border-transparent";
+                                    $point = "timeline-point-secondary";
+                                    // $activity["text_status"] = "Waiting " . $activity["text_status"];
+                                }
+                            } else {
+                                $border = "border-primary";
+                                $point = "timeline-point-primary";
+                            }
+                        ?>
+                            <li class="timeline-item timeline-item-transparent <?= $border ?>">
+                                <span class="timeline-point <?= $point ?>"></span>
+                                <div class="timeline-event pb-0">
+                                    <h6 class="mb-0"><?= $activity["text_status"] ?></h6>
+                                    <p class="m-0"><?= $activity["text_by"] ?></p>
+                                    <small class="text-muted"><?= $activity["date"] ?></small>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else : ?>
+                        <li class="timeline-item timeline-item-transparent border-transparent">
+                            <span class="timeline-point timeline-point-primary"></span>
+                            <div class="timeline-event pb-0">
+                                <h6 class="mb-0">New Create</h6>
+                                <small class="text-muted"><?= date('d M Y') ?></small>
+                            </div>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
+            <h5 class="card-title m-0">Detail Data</h5>
+            <?php if (!isset($header) || (isset($header) && $header->prhprocessid == 1)): ?>
+                <button type="button" id="add_detail" class="btn btn-success ms-auto"><i class="ti ti-plus me-1"></i>Add Detail</button>
+            <?php endif; ?>
+        </div>
+
+        <div class="card-datatable table-responsive pt-0">
+            <table id="table-detail" class="datatables-basic table table-hover">
+                <thead>
+                    <tr>
+                        <th class="text-nowrap text-center">Action</th>
+                        <th class="text-nowrap">No.</th>
+                        <th class="text-nowrap">Part Code</th>
+                        <th class="text-nowrap">Part Name</th>
+                        <th class="text-nowrap">Part No.</th>
+                        <th class="text-nowrap">Drawing No.</th>
+                        <th class="text-nowrap">QTY</th>
+                        <th class="text-nowrap">UoM</th>
+                        <th class="text-nowrap">Material Quality</th>
+                        <th class="text-nowrap">Type</th>
+                        <th class="text-nowrap">Remark</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for add request detail -->
+<div class="modal fade" id="m_reqdetail" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-simple modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center">
+                    <h3 class="modal-title">Add Detail Request</h3>
+                </div>
+                <form id="f_reqdetail" class="row g-3 mt-4 mb-4">
+                    <input type="hidden" name="prdid" id="prdid">
+                    <input type="hidden" name="prdhdid" id="prdhdid">
+                    <div class="col-lg-6 col-12 d-flex flex-column gap-2">
+                        <div>
+                            <label for="prdpartcode" class="form-label required">Part Code</label>
+                            <!-- <input type="number" name="prdpartcode" id="prdpartcode" class="form-control" placeholder="Part Code" required> -->
+                            <select name="prdpartcode" id="prdpartcode" class="form-select" style="width: 100%"></select>
+                            <small id="err_prdpartcode" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdpartname" class="form-label required">Part Name</label>
+                            <input type="text" name="prdpartname" id="prdpartname" class="form-control" placeholder="Part Name" required>
+                            <small id="err_prdpartname" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdpartno" class="form-label required">Part No.</label>
+                            <input type="text" name="prdpartno" id="prdpartno" class="form-control" placeholder="Part No." required>
+                            <small id="err_prdpartno" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prddrawingno" class="form-label required">Drawing No.</label>
+                            <input type="text" name="prddrawingno" id="prddrawingno" class="form-control" placeholder="Drawing No." required>
+                            <small id="err_prddrawingno" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdmatquality" class="form-label required">Material Quality</label>
+                            <input type="text" name="prdmatquality" id="prdmatquality" class="form-control" placeholder="Material Quality" required>
+                            <small id="err_prdmatquality" class="input-warning text-danger"></small>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-12 d-flex flex-column gap-2">
+                        <div>
+                            <label for="prdqty" class="form-label required">QTY</label>
+                            <input type="number" name="prdqty" id="prdqty" class="form-control" placeholder="QTY" required>
+                            <small id="err_prdqty" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prduom" class="form-label required">UOM</label>
+                            <select name="prduom" id="prduom" class="selectpicker w-100" data-style="btn-default" placeholder="Select UOM" required>
+                                <option value="PCS">PCS</option>
+                                <option value="SET">SET</option>
+                            </select>
+                            <small id="err_prduom" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdtype" class="form-label required">Type</label>
+                            <select name="prdtype" id="prdtype" class="selectpicker w-100" data-style="btn-default" placeholder="Select type" required>
+                                <option value="New">New</option>
+                                <option value="Regrinding">Regrinding</option>
+                                <option value="Redrawing">Redrawing</option>
+                                <option value="Repair">Repair</option>
+                                <option value="Modify">Modify</option>
+                            </select>
+                            <small id="err_prdtype" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdremark" class="form-label">Remark</label>
+                            <textarea name="prdremark" id="prdremark" class="form-control" rows="3" placeholder="Enter remark"></textarea>
+                        </div>
+                    </div>
+                </form>
+                <div class="col-12 text-center">
+                    <button type="button" id="save_detail" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const base_url = "<?= base_url() ?>";
+
+    $(document).ready(function() {
+        $('#detail_activity').scrollTop($('#detail_activity')[0].scrollHeight);
+        $(".selectpicker").selectpicker();
+        $('.flatpickr').flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+
+        // true or false value
+        let detail_edit = <?= (!isset($header) || (isset($header) && $header->prhprocessid == 1)) ? 'true' : 'false' ?>;
+        $('#f_reqheader').find('input.flatpickr').prop('disabled', !detail_edit);
+        $('#f_reqheader').find('input:not(.readonly), textarea').prop('readonly', !detail_edit);
+
+        let table_detail = $("#table-detail").DataTable({
+            "order": [],
+            "processing": true,
+            "serverSide": false,
+            "scrollX": true,
+            "ajax": {
+                "url": base_url + 'RequestPE/get_detail',
+                "data": function(d) {
+                    d.header_id = $('#prhid').val();
+                },
+                "type": "GET",
+                "dataSrc": ""
+            },
+            "drawCallback": function(settings) {},
+            "columns": [{
+                    data: "prdid",
+                    render: function(data, type, row, meta) {
+                        if (detail_edit) {
+                            return `<div class="d-flex justify-content-center gap-2">
+                                    <button type="button" class="btn btn-icon btn-info btn-edit">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-icon btn-danger btn-delete">
+                                        <i class="fa fa-trash-can"></i>
+                                    </button>
+                                </div>`;
+                        }
+                        return '';
+                    },
+                    visible: detail_edit
+                },
+                {
+                    data: null,
+                    render: function(data, type, row, meta) {
+                        return meta.row + 1;
+                    },
+                    visible: false
+                },
+                {
+                    data: "prdpartcode"
+                },
+                {
+                    data: "prdpartname"
+                },
+                {
+                    data: "prdpartno"
+                },
+                {
+                    data: "prddrawingno"
+                },
+                {
+                    data: "prdqty"
+                },
+                {
+                    data: "prduom"
+                },
+                {
+                    data: "prdmatquality"
+                },
+                {
+                    data: "prdtype"
+                },
+                {
+                    data: "prdremark"
+                }
+            ]
+        });
+
+        $("#delete_header").on('click', function() {
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to delete request No : <b>' + $('#prhreqnumber').val() + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'RequestPE/delete_header',
+                        data: {
+                            id: $('#prhid').val()
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: "success",
+                                title: 'Request has successfully been deleted!',
+                                showConfirmButton: false,
+                                timer: 1500,
+                            }).then((result) => {
+                                window.history.back()
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $("#save_header").on('click', function() {
+            save_header();
+        });
+
+        $("#post_header").on('click', function() {
+            if (table_detail.data().count() === 0) {
+                Swal.fire("There is no detail data!", "Add detail data first before posting request.", "error");
+                return false;
+            };
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to post request No : <b>' + $('#prhreqnumber').val() + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, post!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'RequestPE/post_header',
+                        data: {
+                            id: $('#prhid').val()
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: "success",
+                                title: 'Request has successfully been posted!',
+                                showConfirmButton: false,
+                                timer: 1500,
+                            }).then((result) => {
+                                window.location.reload();
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $('#table-detail tbody').on('click', '.btn-edit', function() {
+            let row = $(this).closest('tr');
+            let row_data = table_detail.row(row).data();
+            $('#m_reqdetail').data('row_data', row_data);
+            $('#m_reqdetail').data('action', 'edit');
+            $('#m_reqdetail').modal('show');
+        });
+
+        $('#table-detail tbody').on('click', '.btn-delete', function() {
+            let row = $(this).closest('tr');
+            let row_data = table_detail.row(row).data();
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to delete part code : <b>' + row_data.prdpartcode + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'RequestPE/delete_detail',
+                        data: {
+                            id: row_data.prdid
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: "success",
+                                title: 'Data has successfully been deleted!',
+                                showConfirmButton: false,
+                                timer: 1500,
+                            }).then((result) => {
+                                table_detail.ajax.reload();
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $("#add_detail").on('click', function() {
+            if ($('#prhid').val()) {
+                $('#m_reqdetail').data('action', 'add');
+                $('#m_reqdetail').modal('show');
+            } else {
+                Swal.fire({
+                    title: 'Header data save required',
+                    text: 'You must save Header Data first before proceeding to add Detail Data.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save header data',
+                    cancelButtonText: 'Cancel',
+                    buttonsStyling: false,
+                    customClass: {
+                        confirmButton: 'btn btn-success ms-auto waves-effect m-1',
+                        cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) save_header();
+                });
+            }
+        });
+
+        // modal detail request show and hide events
+        $('#m_reqdetail').on('hidden.bs.modal', function() {
+            // clear form inputs
+            $(this).find('input, select, textarea').val('');
+            $(this).find('input[type="checkbox"], input[type="radio"]').prop('checked', false);
+            $(this).find('.selectpicker').selectpicker('val', '');
+        });
+        $('#m_reqdetail').on('show.bs.modal', function(event) {
+            $(".selectpicker").selectpicker();
+            let action = $(this).data('action');
+            if (action == 'add') {
+                $(this).find('.modal-title').text('Add Detail Request');
+                $('#prdhdid').val($('#prhid').val());
+            } else {
+                let row_data = $(this).data('row_data');
+                for (let key in row_data) {
+                    if ($('#' + key).hasClass('selectpicker')) {
+                        $('#' + key).selectpicker('val', row_data[key]);
+                    } else {
+                        $('#' + key).val(row_data[key]);
+                    }
+                }
+            }
+        });
+        $('#m_reqdetail').on('shown.bs.modal', function(event) {
+            if ($('#prdpartcode').hasClass('select2-hidden-accessible')) {
+                $('#prdpartcode').select2('destroy');
+            }
+
+            $('#prdpartcode').select2({
+                dropdownParent: $('#m_reqdetail'),
+                placeholder: 'Search part',
+                language: {
+                    noResults: function() {
+                        return "Enter a valid part code.";
+                    }
+                },
+                ajax: {
+                    url: base_url + 'RequestPE/get_partdata',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            q: params.term
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data.results
+                        };
+                    },
+                    cache: true
+                },
+                templateResult: function(data) {
+                    // Customize the dropdown option display
+                    if (data.loading) {
+                        return 'Searching...';
+                    }
+
+                    // Custom layout for dropdown options
+                    let $result = $(
+                        '<div>' +
+                        '<strong>' + data.id + '</strong><br>' +
+                        '<small>Part Name : ' + data.prdpartname + '</small><br>' +
+                        '<small>Part No. : ' + (data.prdpartno ?? '-') + '</small><br>' +
+                        '<small>Drawing No. : ' + (data.prddrawingno ?? '-') + '</small>' +
+                        '</div>'
+                    );
+
+                    return $result; // Return the customized layout
+                }
+            });
+        });
+        $('#prdpartcode').on('select2:select', function(e) {
+            let data = e.params.data;
+            console.log(data);
+            $('#prdpartname').val(data.prdpartname);
+            $('#prdpartno').val(data.prdpartno);
+            $('#prddrawingno').val(data.prddrawingno);
+        });
+
+        $("#save_detail").on('click', function() {
+            if (!check_required_fields('f_reqdetail')) return false;
+
+            $('#wait_screen').show();
+            $.ajax({
+                type: 'POST',
+                url: base_url + 'RequestPE/save_detail',
+                data: $('#f_reqdetail').serialize()
+            }).done(function(response) {
+                if (response.status == 'success') {
+                    Swal.fire({
+                        icon: "success",
+                        title: 'Data has successfully been saved!',
+                        showConfirmButton: false,
+                        timer: 1500,
+                    }).then((result) => {
+                        $('#m_reqdetail').modal('hide');
+                        table_detail.ajax.reload();
+                    });
+                } else {
+                    Swal.fire("Error!", response.message, "error");
+                }
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                let message = JSON.parse(jqXHR.responseText);
+                Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+            }).always(function() {
+                $('#wait_screen').hide();
+            });
+        });
+    });
+
+    function save_header() {
+        if (!check_required_fields('f_reqheader')) return false;
+
+        $('#wait_screen').show();
+        $.ajax({
+            type: 'POST',
+            url: base_url + 'RequestPE/save_header',
+            data: $('#f_reqheader').serialize()
+        }).done(function(response) {
+            if (response.status == 'success') {
+                Swal.fire({
+                    icon: "success",
+                    title: 'Data has successfully been saved!',
+                    showConfirmButton: false,
+                    timer: 1500,
+                }).then((result) => {
+                    window.location.replace(base_url + "RequestPE?id=" + response.id);
+                });
+            } else {
+                Swal.fire("Error!", response.message, "error");
+            }
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            let message = JSON.parse(jqXHR.responseText);
+            Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+        }).always(function() {
+            $('#wait_screen').hide();
+        });
+    }
+
+    function check_required_fields(form_id) {
+        let check_fields = true;
+        $('.input-warning').text('');
+        $('#' + form_id).find('input[required], select[required]').each(function() {
+            if (!$(this).val()) {
+                let id = $(this).attr('id');
+                $('#err_' + id).text('This field is required.');
+                $('#' + id).focus();
+                check_fields = false;
+                return false;
+            }
+        });
+        return check_fields;
+    }
+</script>
+
+<?= $this->endSection() ?>

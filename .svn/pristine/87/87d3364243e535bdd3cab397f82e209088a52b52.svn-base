@@ -1,0 +1,236 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<style>
+    /* Styling for machine buttons */
+    #machine-container {
+        margin-top: 10px;
+    }
+
+    .btn-machine {
+        margin: 5px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .navPillsBordered {
+        border-bottom: 1px solid #CBD5E1;
+        padding-bottom: 10px;
+    }
+
+    .highlighted-row {
+        background-color: #EFF6FF !important;
+    }
+
+    .nav-link:hover,
+    .nav-link:focus {
+        color: #18181B !important;
+    }
+</style>
+
+<div class="card">
+    <div class="card-body">
+        <!-- Navbar pills -->
+        <div class="row">
+            <div class="col-md-12">
+                <ul class="nav nav-pills flex-column flex-sm-row mb-2 navPillsBordered" id="myTab" role="tablist">
+<!--                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="row-data-tab" data-bs-toggle="tab" href="#row-data" role="tab" aria-controls="row-data" aria-selected="true">
+                            <i class="ti-xs ti ti-layout-grid me-1"></i> Raw Data
+                        </a>
+                    </li>-->
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="proddata-tab" data-bs-toggle="tab" href="#proddata" role="tab" aria-controls="proddata" aria-selected="true">
+                            <i class="ti-xs ti ti-archive me-1"></i>Accomplishment
+                        </a>
+                    </li>
+                </ul>
+                <!-- Tab content -->
+                <div class="tab-content " id="myTabContent">
+                    
+                    <div class="tab-pane fade show active" id="proddata" role="tabpanel" aria-labelledby="proddata-tab">
+                            <div class="d-flex justify-content-start align-items-center mb-4">
+                                    <div>
+                                        <label for="start_date" class="form-label">Start Date</label>
+                                        <!-- Start Date Filter -->
+                                        <div style="width: 180px; margin-right: 15px">
+                                            <div class="position-relative d-flex align-items-center" >
+                                                <input type="text" id="start_date" class="form-control" placeholder="Start Date">
+                                                <span class="position-absolute me-3 end-0"><i class="fa fa-calendar"></i></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label for="end_date" class="form-label">End Date</label>
+                                        <!-- End Date Filter -->
+                                        <div style="width: 180px; margin-right: 15px">
+                                            <div class="position-relative d-flex align-items-center">
+                                                <input type="text" id="end_date" class="form-control" placeholder="End Date">
+                                                <span class="position-absolute me-3 end-0"><i class="fa fa-calendar"></i></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <!-- Refresh Button -->
+                                        <button type="button" class="btn btn-secondary refresh-btn mt-4">
+                                            <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                                        </button>
+                                    </div>
+                            </div>
+                        </div>
+                    
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatables-basic table table-striped table-bordered" id="grid-proddata">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Prod Date</th>
+                                        <th>Prod Code</th>
+                                        <th>Prod Name</th>
+                                        <th>Machine</th>
+                                        <th>Instruction No.</th>
+                                        <th>Lot No.</th>
+                                        <th>Total Qty</th>
+                                        <th>Split</th>
+                                        <th>Shift</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--/ Navbar pills -->
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+    // Function to get the current date and time in the format "Y-m-d H:i"
+        function getCurrentDate() {
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = ('0' + (now.getMonth() + 1)).slice(-2); // Adding leading zero if needed
+            var day = ('0' + now.getDate()).slice(-2); // Adding leading zero if needed
+
+            return `${year}-${month}-${day}`;
+        }
+        
+    // Set default values for start_date and end_date
+        var defaultDate = getCurrentDate();
+        $('#start_date').val(defaultDate);
+        $('#end_date').val(defaultDate);
+        $('#prod_date').val(defaultDate);
+
+        $('#start_date').flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+
+        $('#end_date').flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+        
+        // Initialize DataTable
+        var table = $("#grid-proddata").DataTable({
+            "processing": true,
+            "serverSide": false,
+            "ajax": {
+                "url": "<?= base_url('OEEDataAssy/show_prod_data') ?>",
+                "type": "POST",
+                "data": function(d) {
+                    d.start_date = $('#start_date').val();
+                    d.end_date = $('#end_date').val();
+                },
+                "dataSrc": function(json) {
+                    return json;
+                }
+            },
+            "columns": [    
+                {
+                    data: "pscandate",
+                    className: "text-center",
+                    render: function(data) {
+                        var date = new Date(data);
+                        var year = date.getFullYear();
+                        var month = ('0' + (date.getMonth() + 1)).slice(-2);
+                        var day = ('0' + date.getDate()).slice(-2);
+                        return `${year}-${month}-${day}`; // Format as yyyy-mm-dd
+                    }
+                },
+                {
+                    data: "prodcode",
+                    className: "text-center"
+                },
+                {
+                    data: "prodname",
+                    className: "text-start"
+                },
+                {
+                    data: "mname",
+                    className: "text-center"
+                },
+                {
+                    data: "ppino",
+                    className: "text-center"
+                },
+                {
+                    data: "plotnofrom",
+                    className: "text-center"
+                },
+                {
+                    data: "total",
+                    className: "text-center",  
+                    render: function(data, type, row) {
+                        // Format total with comma as thousand separator
+                        return parseFloat(data).toLocaleString('en-US');
+                    }
+                },
+                {
+                    data: "psplit1",
+                    className: "text-center"
+                },
+                {
+                    data: "pshift",
+                    className: "text-center"
+                }
+            ],
+            dom: 'Bfrtip',  // Enable Buttons
+            buttons: [
+                {
+                    extend: 'excel',
+                    text: '<i class="ti ti-file-spreadsheet me-sm-1"></i> Export XLS',
+                    className: 'btn btn-warning custom-export-btn',
+                    title: 'Production Data - ' + $('#start_date').val() + ' - ' +$('#end_date').val(),
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                }
+            ]
+        });
+        
+        $('<style>')
+            .prop('type', 'text/css')
+            .html(`
+                .custom-export-btn {
+                    height: 40px;
+                    margin-bottom: -20px;
+                }
+            `)
+            .appendTo('head');
+
+        // Refresh button click event
+        $(".refresh-btn").on("click", function() {
+            table.ajax.reload(); // Reload the DataTable
+        });
+        
+        
+    });
+</script> 
+
+<?= $this->endSection() ?>

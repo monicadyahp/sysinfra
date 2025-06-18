@@ -1,0 +1,116 @@
+<?php
+
+namespace App\Models\master_brazing;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_MstMachine extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_data()
+    {
+        $query = "  SELECT *
+                    FROM m_mchbraz_setting
+                    WHERE mbz_status = 1
+                    ORDER BY mbz_id DESC";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_machine_data()
+    {
+        $query = "  SELECT mchname
+                    FROM mmachine
+                    WHERE mchloccode    = 6
+                        AND mchgroup    = 'Machine'
+                        AND mchstatus   <> 25
+                    ORDER BY mchtype, mchname";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function cek_data($machine_code, $series, $shape, $screw_hole, $process_type, $spm)
+    {
+        // Query to check if the document exists
+        $query = "  SELECT mbz_mchcode, mbz_series, mbz_shape, mbz_subshape, mbz_processtype, mbz_spm
+                    FROM m_mchbraz_setting
+                    WHERE mbz_status 		= 1
+                        AND mbz_mchcode		= ? 
+                        AND mbz_series		= ? 
+                        AND mbz_shape		= ? 
+                        AND mbz_subshape	= ? 
+                        AND mbz_processtype	= ? 
+                        AND mbz_spm		    = ?";
+
+        // Executing the raw SQL query with a parameter binding
+        $result = $this->db->query($query, [$machine_code, $series, $shape, $screw_hole, $process_type, $spm])->getRow();
+
+        // Return true if any row is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function update_data($emplcode, $POST)
+    {
+        $machine_code   = $POST["machine_code"];
+        $series         = $POST["series"];
+        $shape          = $POST["shape"];
+        $screw_hole     = $POST["screw_hole"];
+        $process_type   = $POST["process_type"];
+        $spm            = $POST["spm"];
+        $tipe           = $POST["tipe"];
+
+        if ($tipe == "add") {
+            $query = "  INSERT INTO m_mchbraz_setting (mbz_mchcode, mbz_series, mbz_shape, mbz_subshape, mbz_processtype, mbz_spm, mbz_status, mbz_created_user, mbz_created_at, mbz_lastuser, mbz_lastupdate)
+                        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)";
+
+            $params = [$machine_code, $series, $shape, $screw_hole, $process_type, $spm, $emplcode, $this->currentDateTime, $emplcode, $this->currentDateTime];
+        } else if ($tipe == "edit") {
+            $mbz_id = $POST["mbz_id"];
+
+            $query = "  UPDATE m_mchbraz_setting
+                        SET mbz_mchcode     = ?, 
+                            mbz_series      = ?, 
+                            mbz_shape       = ?, 
+                            mbz_subshape    = ?, 
+                            mbz_processtype = ?, 
+                            mbz_spm         = ?, 
+                            mbz_lastuser    = ?, 
+                            mbz_lastupdate  = ?
+                        WHERE mbz_id        = ?";
+
+            $params = [$machine_code, $series, $shape, $screw_hole, $process_type, $spm, $emplcode, $this->currentDateTime, $mbz_id];
+        }
+
+        return $this->db->query($query, $params);
+    }
+
+    public function update_status_data($mbz_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE m_mchbraz_setting
+                    SET mbz_status      = ?,
+                        mbz_lastuser    = ?, 
+                        mbz_lastupdate  = ?
+                    WHERE mbz_id        = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $mbz_id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+}

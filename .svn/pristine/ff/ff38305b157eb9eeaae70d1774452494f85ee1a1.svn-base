@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Controllers\master_molding;
+
+use App\Controllers\BaseController;
+
+use App\Models\master_molding\M_MstMchMold;
+use App\Models\master_brazing\M_MstProdShape;
+
+class MstMchMold extends BaseController
+{
+    protected $M_MstMchMold;
+
+    public function __construct()
+    {
+        $this->M_MstMchMold = new M_MstMchMold();
+        $this->M_MstProdShape = new M_MstProdShape();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "MstMchMold") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        $data["machine_data"] = $this->M_MstMchMold->get_machine_data();
+        $data["molddies_data"] = $this->M_MstMchMold->get_molddies_data();
+        $data["product_data"] = $this->M_MstProdShape->get_product_data();
+
+        return view("master_molding/machine_molding/main", $data);
+    }
+
+    public function get_data()
+    {
+        $data = $this->M_MstMchMold->get_data();
+        return $this->response->setJSON($data);
+    }
+
+    public function cek_data()
+    {
+        // Check if it's an AJAX request
+        if ($this->request->isAJAX()) {
+            // Get the data from POST
+            $mmm_mchcode   = $this->request->getPost("mmm_mchcode");
+            $mmm_diesno         = $this->request->getPost("mmm_diesno");
+            $mmm_dies_cavid          = $this->request->getPost("mmm_dies_cavid");
+            $mmm_prodcode     = $this->request->getPost("mmm_prodcode");
+            $mmm_cyc_time     = $this->request->getPost("mmm_cyc_time");
+            $mmm_screw_size     = $this->request->getPost("mmm_screw_size");
+            $mmm_mch_type     = $this->request->getPost("mmm_mch_type");
+
+            // Call the model method to check if the data exists
+            $exists = $this->M_MstMchMold->cek_data($mmm_mchcode, $mmm_diesno, $mmm_dies_cavid, $mmm_prodcode, $mmm_cyc_time, $mmm_screw_size, $mmm_mch_type);
+
+            // Return JSON response
+            return $this->response->setJSON(["exists" => $exists]);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+
+    public function update_data()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+        
+        $update = $this->M_MstMchMold->update_data($emplcode, $this->request->getPost());
+        if ($update) {
+            return $this->response->setJSON([
+                "success" => true,
+                "message" => "Data successfully updated!",
+            ]);
+        } else {
+            return $this->response->setJSON([
+                "success" => false,
+                "error" => "Update data failed!"
+            ]);
+        }
+    }
+
+    public function update_status_data()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        // Check if it's a POST request
+        if ($this->request->isAJAX() && $this->request->getPost("mmm_id") && $this->request->getPost("new_status")) {
+            $mmm_id     = $this->request->getPost("mmm_id");
+            $new_status = $this->request->getPost("new_status");
+
+            // Call the model method to update status
+            $update = $this->M_MstMchMold->update_status_data($mmm_id, $new_status, $emplcode);
+
+            // Prepare response
+            if ($update) {
+                $response = [
+                    "success" => true,
+                    "message" => "Status updated successfully!"
+                ];
+            } else {
+                $response = [
+                    "success" => false,
+                    "message" => "Failed to update status."
+                ];
+            }
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+}

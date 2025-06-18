@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Controllers\master_molding;
+
+use App\Controllers\BaseController;
+
+use App\Models\master_molding\M_MstTroubleMold;
+
+class MstTroubleMold extends BaseController
+{
+    protected $M_MstTroubleMold;
+
+    public function __construct()
+    {
+        $this->M_MstTroubleMold = new M_MstTroubleMold();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "MstTroubleMold") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        return view("master_molding/trouble_molding/main", $data);
+    }
+
+    public function get_data()
+    {
+        $data = $this->M_MstTroubleMold->get_data();
+        return $this->response->setJSON($data);
+    }
+
+    public function cek_data()
+    {
+        // Check if it's an AJAX request
+        if ($this->request->isAJAX()) {
+            // Get the data from POST
+            $mtrb_code   = $this->request->getPost("mtrb_code");
+            $mtrb_desc         = $this->request->getPost("mtrb_desc");
+
+            // Call the model method to check if the data exists
+            $exists = $this->M_MstTroubleMold->cek_data($mtrb_code, $mtrb_desc);
+
+            // Return JSON response
+            return $this->response->setJSON(["exists" => $exists]);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+
+    public function update_data()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        $update = $this->M_MstTroubleMold->update_data($emplcode, $_POST);
+
+        if ($update) {
+            $response = [
+                "success" => true,
+                "message" => "Data successfully updated!",
+            ];
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            return $this->response->setJSON(["success" => false, "error" => "Update data failed!"]);
+        }
+    }
+
+    public function update_status_data()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        // Check if it's a POST request
+        if ($this->request->isAJAX() && $this->request->getPost("mtrb_id") && $this->request->getPost("new_status")) {
+            $mtrb_id     = $this->request->getPost("mtrb_id");
+            $new_status = $this->request->getPost("new_status");
+
+            // Call the model method to update status
+            $update = $this->M_MstTroubleMold->update_status_data($mtrb_id, $new_status, $emplcode);
+
+            // Prepare response
+            if ($update) {
+                $response = [
+                    "success" => true,
+                    "message" => "Status updated successfully!"
+                ];
+            } else {
+                $response = [
+                    "success" => false,
+                    "message" => "Failed to update status."
+                ];
+            }
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+}

@@ -1,0 +1,233 @@
+<?php
+
+namespace App\Controllers\prs_pe;
+
+use App\Controllers\BaseController;
+
+use App\Models\prs_pe\M_RequestPE;
+
+class RequestPE extends BaseController
+{
+    protected $M_RequestPE;
+
+    public function __construct()
+    {
+        $this->M_RequestPE = new M_RequestPE();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "RequestPE") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        $id = $this->request->getGet("id");
+        $new = $this->request->getGet("new");
+
+        // main view
+        if (empty($id) && empty($new)) {
+            $data["fiscal_year"] = $this->M_RequestPE->get_fiscalyear()->fy;
+            return view("prs_pe/request_pe/main", $data);
+        }
+
+        // detail view
+        $reqtype = $this->request->getGet("reqtype");
+        $data["part_status"] = $this->M_RequestPE->get_partstatus();
+        $data["rework_type"] = $this->M_RequestPE->get_reworktype();
+        if ($id) {
+            $data["header"] = $this->M_RequestPE->get_header($id);
+            $data["req_activities"] = $this->M_RequestPE->get_activities($id);
+            if ($data["header"]->prhprocessid >= 5) {
+                // untuk menampilkan progress design
+                $data["design_progress"] = $this->M_RequestPE->get_designprogress($id, $data["header"]->prhtype);
+            }
+            if ($data["header"]) {
+                $type_text = $data["header"]->prhreqtype == "PRS" ? "Parts" : "Equipment";
+                $data["txt_action"] = "$type_text Request No. #" . $data["header"]->prhreqnumber;
+                $data["btn_back"] = "Back";
+                return view("prs_pe/request_pe/detail", $data);
+            }
+            $data["message"] = "Forbidden!";
+            return view("errors/html/error_404", $data);
+        }
+        if ($new) {
+            $type_text = $reqtype == "PRS" ? "Parts" : "Equipment";
+            $data["reqtype"] = $reqtype;
+            $data["txt_action"] = "New $type_text Request";
+            $data["btn_back"] = "Discard";
+            return view("prs_pe/request_pe/detail", $data);
+        }
+    }
+
+    public function get_listheader()
+    {
+        $fiscal_year = $this->request->getGet("fiscal_year");
+        $request_type = $this->request->getGet("request_type");
+        $data = $this->M_RequestPE->get_listheader($fiscal_year, $request_type);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_detail()
+    {
+        $header_id = $this->request->getGet("header_id");
+        $data = $this->M_RequestPE->get_detail($header_id);
+        return $this->response->setJSON($data);
+    }
+
+    public function save_header()
+    {
+        $data = $this->request->getPost();
+        $attachment = $this->request->getFile('attachment1');
+        $result = $this->M_RequestPE->save_header($data, $attachment);
+        return $this->response->setJSON($result);
+    }
+
+    public function post_header()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_RequestPE->post_header($id);
+        return $this->response->setJSON($result);
+    }
+
+    public function delete_header()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_RequestPE->delete_header($id);
+        return $this->response->setJSON($result);
+    }
+
+    public function save_detail()
+    {
+        $data = $this->request->getPost();
+        $header = $this->M_RequestPE->get_header($data["prdhdid"]);
+        $attachment = $this->request->getFile('attachment2');
+
+        // Check if an attachment is present
+        if ($attachment && $attachment->isValid() && !$attachment->hasMoved()) {
+            // Check if the uploaded file is a PDF
+            if ($attachment->getClientMimeType() !== 'application/pdf') {
+                return $this->response->setJSON(['status' => '', 'message' => 'Only PDF files are allowed.']);
+            }
+
+            // Define the upload path dynamically            
+            $upload_path = '/mnt/data/attachment/' . $header->prhfy . '/' . $header->prhreqtype;
+
+            // Ensure the directory exists
+            if (!is_dir($upload_path)) {
+                if (!mkdir($upload_path, 0777, true) && !is_dir($upload_path)) {
+                    return $this->response->setJSON(['status' => '', 'message' => sprintf('Directory "%s" was not created', $upload_path)]);
+                }
+            }
+
+            $new_name = $header->prhreqnumber . '_' . $data["prdpartcode"] . '.' . $attachment->getClientExtension();
+            $file_path = $upload_path . '/' . $new_name;
+            if (file_exists($file_path)) {
+                // remove file if exists 
+                if (!unlink($file_path)) {
+                    return $this->response->setJSON(['status' => '', 'message' => 'Failed to remove existing file.']);
+                }
+            }
+
+            // upload file
+            if ($attachment->move($upload_path, $new_name)) {
+                $data['prdfilename'] = $new_name; // Store the filename
+            } else {
+                return $this->response->setJSON(['status' => '', 'message' => 'File upload failed.']);
+            }
+        }
+
+        // Save the details to the database
+        $result = $this->M_RequestPE->save_detail($data);
+        return $this->response->setJSON($result);
+    }
+
+    public function delete_detail()
+    {
+        $id = $this->request->getPost("id");
+        $hdr_id = $this->request->getPost("hdr_id");
+        $result = $this->M_RequestPE->delete_detail($id, $hdr_id);
+        return $this->response->setJSON($result);
+    }
+
+    public function get_partdata()
+    {
+        $param_search = $this->request->getVar("q");
+        $prhid = $this->request->getVar("prhid");
+        $prdid = $this->request->getVar("prdid");
+        $page = $this->request->getVar("page") ?: 1;
+        $limit = 5; // Number of items per page
+        $offset = ($page - 1) * $limit; // Calculate the offset
+
+        $data = $this->M_RequestPE->get_partdata($param_search, $prhid, $prdid, $limit, $offset);
+
+        $results = [];
+        foreach ($data['items'] as $row) {
+            $results[] = [
+                "id" => $row["mms_partcode"],
+                "text" => $row["mms_drawingnumber"],
+                "prddrawingno" => $row["mms_drawingnumber"],
+                "prdpartname" => $row["mms_partname"],
+                "prdpartcode" => $row["mms_partcode"],
+                "prdpartno" => $row["mms_partnumber"]
+            ];
+        }
+
+        return $this->response->setJSON([
+            "results" => $results,
+            "pagination" => [
+                "hasMore" => $data['hasMore'] // Return whether there are more results
+            ]
+        ]);
+    }
+
+    public function get_selectedpart()
+    {
+        $prdid = $this->request->getVar("prdid");
+        return $this->response->setJSON($this->M_RequestPE->get_selectedpart($prdid));
+    }
+
+    public function download($type, $id)
+    {
+        if ($type == 'header') {
+            $data = $this->M_RequestPE->get_header($id);
+            $filename = $data->prhfilename;
+        } else {
+            $data = $this->M_RequestPE->get_requestdetail($id);
+            $filename = $data->prdfilename;
+        }
+
+        $file_path = '/mnt/data/attachment/' . $data->prhfy . '/' . $data->prhreqtype . '/' . $filename;
+        // Check if the file exists
+        if (!file_exists($file_path)) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException("File not found: " . $filename);
+        }
+
+        // Serve the file for download
+        return $this->response->download($file_path, null);
+    }
+
+    public function get_activity()
+    {
+        $header_id = $this->request->getVar("header_id");
+        $detail_id = $this->request->getVar("detail_id");
+        return $this->response->setJSON($this->M_RequestPE->get_activity($header_id, $detail_id));
+    }
+
+    public function get_equipment()
+    {
+        return $this->response->setJSON($this->M_RequestPE->get_equipment());
+    }
+}

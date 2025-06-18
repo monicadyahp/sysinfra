@@ -1,0 +1,25 @@
+// Function to show loading indicator and disable buttons
+function showLoading() {
+    $('.submit .indicator-label').addClass('d-none');
+    $('.submit .loading').show();
+    $('.submit').attr('disabled', true);
+}
+
+// Function to hide loading indicator and enable buttons
+function hideLoading() {
+    $('.submit .indicator-label').removeClass('d-none');
+    $('.submit .loading').hide();
+    $('.submit').attr('disabled', false);
+}
+
+// Function to get the current date and time in the format "Y-m-d H:i"
+function getCurrentDateTime() {
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = ('0' + (now.getMonth() + 1)).slice(-2); // Adding leading zero if needed
+    var day = ('0' + now.getDate()).slice(-2); // Adding leading zero if needed
+    var hours = ('0' + now.getHours()).slice(-2); // Adding leading zero if needed
+    var minutes = ('0' + now.getMinutes()).slice(-2); // Adding leading zero if needed
+
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}

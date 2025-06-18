@@ -1,0 +1,625 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+        <!-- Title on the Left -->
+        <!-- <div class="head-label">
+            <h5 class="fw-bold">
+                <span class="text-muted fw-light"><?= htmlspecialchars($active_menu_group) ?> /</span> <?= htmlspecialchars($active_menu_name) ?>
+            </h5>
+        </div> -->
+        <!-- Buttons on the Right -->
+        <div class="dt-action-buttons d-flex pt-3 pt-md-0">
+            <div class="dt-buttons btn-group flex-wrap">
+                <!-- Add New Machine SPM -->
+                <button type="button" class="btn create-new btn-success" data-bs-toggle="modal" data-bs-target="#add_machine_mold">
+                    <span><i class="ti ti-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add Machine SPM</span></span>
+                </button>
+                <!-- Refresh Button -->
+                <button type="button" class="btn btn-secondary refresh-btn ms-2">
+                    <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-datatable table-responsive pt-0">
+        <table class="datatables-basic table table-striped table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Action</th>
+                    <th>ID</th>
+                    <th>Machine</th>
+                    <th>Machine Type</th> 
+                    <th>Mold Name</th>
+                    <th>Dies No</th>
+                    <th>Product Code</th>
+                    <th>Product Name</th>
+                    <th>Cavity Standard</th>
+                    <th>Cavity Actual</th>
+                    <th>Cycle Time</th>
+                    <th>Screw Size</th>
+                    <th>SPM</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Modal for add record -->
+    <div class="modal fade" id="add_machine_mold" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Add Machine SPM</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="add_machine_form" class="row g-3">
+                        <div class="col-12 col-md-12">
+                            <label for="mmm_mchcode_add" class="form-label">Machine<span style="color: red">*</span></label>
+                            <select id="mmm_mchcode_add" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="">Select Machine</option>
+                                <?php foreach ($machine_data as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_mch_type_add">Machine Type <span style="color: red">*</span></label>
+                            <input type="text" id="mmm_mch_type_add" name="mmm_mch_type_add" class="form-control" placeholder="Machine Type">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="molddiesDD_add">Mold / Dies No. <span style="color: red">*</span></label>
+                            <select id="molddiesDD_add" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="">Select Mold / Dies No.</option>
+                                <?php foreach ($molddies_data as $molddies) { ?>
+                                    <option value="<?= htmlspecialchars($molddies->dcavityindentity) ?>|<?= htmlspecialchars($molddies->dname) ?>"><?= htmlspecialchars($molddies->dcavityindentity) ?> | <?= htmlspecialchars($molddies->dname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input type="text" id="mmm_dies_cavid_add" name="mmm_dies_cavid_add" class="form-control" placeholder="Dies No." readOnly="true">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input type="text" id="mmm_diesno_add" name="mmm_diesno_add" class="form-control" placeholder="Mold Name" readOnly="true">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_prodcode_add">Product Code <span style="color: red">*</span></label>
+                            <select id="mmm_prodcode_add" class="selectpicker form-control" data-style="btn-default" data-live-search="true" data-width="100%">
+                                <option value="">Select Product Code</option>
+                                <?php foreach ($product_data as $product) { ?>
+                                    <option value="<?= htmlspecialchars($product->partbom_partcode) ?>"><?= htmlspecialchars($product->partbom_partcode) ?> | <?= htmlspecialchars($product->partbom_partname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="mmm_cav_std_add">Cavity Standard <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_cav_std_add" name="mmm_cav_std_add" class="form-control" placeholder="Cavity Standard">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="mmm_cav_act_add">Cavity Actual <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_cav_act_add" name="mmm_cav_act_add" class="form-control" placeholder="Cavity Actual">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_cyc_time_add">Cycle Time <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_cyc_time_add" name="mmm_cyc_time_add" class="form-control" placeholder="Cycle Time">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_screw_size_add">Screw Size <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_screw_size_add" name="mmm_screw_size_add" class="form-control" placeholder="Screw Size">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Save</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for edit record -->
+    <div class="modal fade" id="edit_machine_mold" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-enable-otp modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Edit Machine SPM</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="edit_machine_form" class="row g-3">
+                        <input type="hidden" id="mmm_id" name="mmm_id">
+                        <div class="col-12 col-md-12">
+                            <label for="mmm_mchcode_edit" class="form-label">Machine<span style="color: red">*</span></label>
+                            <select id="mmm_mchcode_edit" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="">Select Machine</option>
+                                <?php foreach ($machine_data as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_mch_type_edit">Machine Type <span style="color: red">*</span></label>
+                            <input type="text" id="mmm_mch_type_edit" name="mmm_mch_type_edit" class="form-control" placeholder="Machine Type">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="molddiesDD_edit">Mold / Dies No. <span style="color: red">*</span></label>
+                            <select id="molddiesDD_edit" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="">Select Mold / Dies No.</option>
+                                <?php foreach ($molddies_data as $molddies) { ?>
+                                    <option value="<?= htmlspecialchars($molddies->dcavityindentity) ?>|<?= htmlspecialchars($molddies->dname) ?>"><?= htmlspecialchars($molddies->dcavityindentity) ?> | <?= htmlspecialchars($molddies->dname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input type="text" id="mmm_dies_cavid_edit" name="mmm_dies_cavid_edit" class="form-control" placeholder="Dies No." readOnly="true">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input type="text" id="mmm_diesno_edit" name="mmm_diesno_edit" class="form-control" placeholder="Mold Name" readOnly="true">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_prodcode_edit">Product Code <span style="color: red">*</span></label>
+                            <select id="mmm_prodcode_edit" class="selectpicker form-control" data-style="btn-default" data-live-search="true" data-width="100%">
+                                <option value="">Select Product Code</option>
+                                <?php foreach ($product_data as $product) { ?>
+                                    <option value="<?= htmlspecialchars($product->partbom_partcode) ?>"><?= htmlspecialchars($product->partbom_partcode) ?> | <?= htmlspecialchars($product->partbom_partname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="mmm_cav_std_edit">Cavity Standard <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_cav_std_edit" name="mmm_cav_std_edit" class="form-control" placeholder="Cavity Standard">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="mmm_cav_act_edit">Cavity Actual <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_cav_act_edit" name="mmm_cav_act_edit" class="form-control" placeholder="Cavity Actual">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_cyc_time_edit">Cycle Time <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_cyc_time_edit" name="mmm_cyc_time_edit" class="form-control" placeholder="Cycle Time">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="mmm_screw_size_edit">Screw Size <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="mmm_screw_size_edit" name="mmm_screw_size_edit" class="form-control" placeholder="Screw Size">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Save</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        
+        const molddiesDD = document.getElementById('molddiesDD_add');
+        const mmm_diesno = document.getElementById('mmm_diesno_add');
+        const mmm_dies_cavid = document.getElementById('mmm_dies_cavid_add');
+
+        molddiesDD.addEventListener('change', function() {
+            const selectedValue = molddiesDD.value; // Get the selected option value
+
+            if (selectedValue) {
+                const [cavid, diesNo] = selectedValue.split('|'); // Split the value by "/"
+                mmm_dies_cavid.value = cavid.trim(); // Set the dies cavity ID
+                mmm_diesno.value = diesNo.trim(); // Set the dies number
+            } else {
+                // Clear the inputs if no option is selected
+                mmm_dies_cavid.value = '';
+                mmm_diesno.value = '';
+            }
+        });
+        
+        const molddiesDDE = document.getElementById('molddiesDD_edit');
+        const mmm_diesnoE = document.getElementById('mmm_diesno_edit');
+        const mmm_dies_cavidE = document.getElementById('mmm_dies_cavid_edit');
+
+        molddiesDDE.addEventListener('change', function() {
+            const selectedValueE = molddiesDDE.value; // Get the selected option value
+
+            if (selectedValueE) {
+                const [cavid, diesNo] = selectedValueE.split('|'); // Split the value by "/"
+                mmm_dies_cavidE.value = cavid.trim(); // Set the dies cavity ID
+                mmm_diesnoE.value = diesNo.trim(); // Set the dies number
+            } else {
+                // Clear the inputs if no option is selected
+                mmm_dies_cavidE.value = '';
+                mmm_diesnoE.value = '';
+            }
+        });
+
+
+        // Initialize DataTable
+        var table = $(".datatables-basic").DataTable({
+            "processing": true,
+            "serverSide": false,
+            "ajax": {
+                "url": "<?= base_url('MstMchMold/get_data') ?>",
+                "type": "GET",
+                "dataSrc": function(json) {
+                    return json;
+                }
+            },
+            "columns": [{
+                    "data": null,
+                    "render": function(data, type, row) {
+
+                        return `<div class="d-flex justify-content-center gap-2">
+                                    <a href="javascript:;" class="btn btn-icon btn-info btnEdit" data-id="${row.mmm_id}" data-mch="${row.mmm_mchcode}" data-diesdd="${row.mmm_dies_cavid}|${row.mmm_diesno}" data-mchtype="${row.mmm_mch_type}" 
+                                        data-dies="${row.mmm_diesno}" data-cavid="${row.mmm_dies_cavid}" data-prodcode="${row.mmm_prodcode}" data-cavstd="${row.mmm_cav_std}" 
+                                        data-cavact="${row.mmm_cav_act}" data-cyctime="${row.mmm_cyc_time}" data-screw="${row.mmm_screw_size}">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-danger btnDelete" data-id="${row.mmm_id}"><i class="fa fa-trash-can"></i></a>
+                                </div>`;
+                    },
+                    "className": "text-center"
+                },
+                {
+                    data: "mmm_id"
+                },
+                {
+                    data: "mmm_mchcode"
+                },
+                {
+                    data: "mmm_mch_type"
+                },
+                {
+                    data: "mmm_diesno"
+                },
+                {
+                    data: "mmm_dies_cavid"
+                },
+                {
+                    data: "mmm_prodcode"
+                },
+                {
+                    data: "partbom_partname"
+                },
+                {
+                    data: "mmm_cav_std"
+                },
+                {
+                    data: "mmm_cav_act"
+                },
+                {
+                    data: "mmm_cyc_time"
+                },
+                {
+                    data: "mmm_screw_size"
+                },
+                {
+                    data: "spm"
+                },
+            ]
+        });
+
+        $("#add_machine_form").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "mmm_mchcode_add",
+                    message: "Machine Code is required."
+                },
+                {
+                    id: "mmm_mch_type_add",
+                    message: "Machine Type is required."
+                },
+                {
+                    id: "mmm_diesno_add",
+                    message: "Mold Name is required."
+                },
+                {
+                    id: "mmm_dies_cavid_add",
+                    message: "Dies No is required."
+                },
+                {
+                    id: "mmm_prodcode_add",
+                    message: "Product Code is required."
+                },
+                {
+                    id: "mmm_cav_std_add",
+                    message: "Cavity Standard is required."
+                },
+                {
+                    id: "mmm_cav_act_add",
+                    message: "Cavity Actual is required."
+                },
+                {
+                    id: "mmm_cyc_time_add",
+                    message: "Cycle Time is required."
+                },
+                {
+                    id: "mmm_screw_size_add",
+                    message: "Screw Size is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                mmm_mchcode: $("#mmm_mchcode_add").val(),
+                mmm_mch_type: $("#mmm_mch_type_add").val(),
+                mmm_diesno: $("#mmm_diesno_add").val(),
+                mmm_dies_cavid: $("#mmm_dies_cavid_add").val(),
+                mmm_prodcode: $("#mmm_prodcode_add").val(),
+                mmm_cav_std: $("#mmm_cav_std_add").val(),
+                mmm_cav_act: $("#mmm_cav_act_add").val(),
+                mmm_cyc_time: $("#mmm_cyc_time_add").val(),
+                mmm_screw_size: $("#mmm_screw_size_add").val(),
+                tipe: "add"
+            };
+
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstMchMold/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        // Data already exists, show error message
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                        hideLoading();
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>/MstMchMold/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                $("#add_machine_mold").modal("hide");
+                                // Clear the form data
+                                $("#add_machine_form")[0].reset();
+                                // Reload DataTable
+                                $(".datatables-basic").DataTable().ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                    hideLoading();
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $("#edit_machine_form").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "mmm_mchcode_edit",
+                    message: "Machine Code is required."
+                },
+                {
+                    id: "mmm_mch_type_edit",
+                    message: "Machine Type is required."
+                },
+                {
+                    id: "mmm_diesno_edit",
+                    message: "Mold Name is required."
+                },
+                {
+                    id: "mmm_dies_cavid_edit",
+                    message: "Dies No is required."
+                },
+                {
+                    id: "mmm_prodcode_edit",
+                    message: "Product Code is required."
+                },
+                {
+                    id: "mmm_cav_std_edit",
+                    message: "Cavity Standard is required."
+                },
+                {
+                    id: "mmm_cav_act_edit",
+                    message: "Cavity Actual is required."
+                },
+                {
+                    id: "mmm_cyc_time_edit",
+                    message: "Cycle Time is required."
+                },
+                {
+                    id: "mmm_screw_size_edit",
+                    message: "Screw Size is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val().trim() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                mmm_id: $("#mmm_id").val(),
+                mmm_mchcode: $("#mmm_mchcode_edit").val(),
+                mmm_mch_type: $("#mmm_mch_type_edit").val(),
+                mmm_diesno: $("#mmm_diesno_edit").val(),
+                mmm_dies_cavid: $("#mmm_dies_cavid_edit").val(),
+                mmm_prodcode: $("#mmm_prodcode_edit").val(),
+                mmm_cav_std: $("#mmm_cav_std_edit").val(),
+                mmm_cav_act: $("#mmm_cav_act_edit").val(),
+                mmm_cyc_time: $("#mmm_cyc_time_edit").val(),
+                mmm_screw_size: $("#mmm_screw_size_edit").val(),
+                tipe: "edit"
+            };
+
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstMchMold/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>MstMchMold/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                }); 
+                                $("#edit_machine_mold").modal("hide");
+                                // Clear the form data
+                                $("#edit_machine_form")[0].reset();
+                                // Reload DataTable
+                                table.ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $(document).on("click", ".btnEdit", function() {
+        
+            var id = $(this).data("id");
+            var mchcode = $(this).data("mch");
+            var mchtype = $(this).data("mchtype");
+            var diesno = $(this).data("dies");
+            var cavid = $(this).data("cavid");
+            var prod = $(this).data("prodcode");
+            var cavstd = $(this).data("cavstd");
+            var cavact = $(this).data("cavact");
+            var cyct = $(this).data("cyctime");
+            var screw = $(this).data("screw");
+            var diesdd = $(this).data("diesdd");
+
+            // Populate the modal form with the data
+            $("#mmm_id").val(id);
+            $("#mmm_mchcode_edit").val(mchcode);
+            // Re-initialize selectpicker to update the display
+            $("#mmm_mchcode_edit").selectpicker("destroy").selectpicker();
+            $("#mmm_mch_type_edit").val(mchtype);
+            // Re-initialize selectpicker to update the display
+            $("#molddiesDD_edit").val(diesdd);
+            $("#molddiesDD_edit").selectpicker("destroy").selectpicker();
+            $("#mmm_diesno_edit").val(diesno);
+            $("#mmm_dies_cavid_edit").val(cavid);
+            $("#mmm_prodcode_edit").val(prod);
+            // Re-initialize selectpicker to update the display
+            $("#mmm_prodcode_edit").selectpicker("destroy").selectpicker();
+            $("#mmm_cav_std_edit").val(cavstd);
+            $("#mmm_cav_act_edit").val(cavact);
+            $("#mmm_cyc_time_edit").val(cyct);
+            $("#mmm_screw_size_edit").val(screw);
+
+                // Show the modal
+                $("#edit_machine_mold").modal('show');
+        });
+
+        // Handle Delete button click
+        $(document).on("click", ".btnDelete", function() {
+            var mmm_id = $(this).data("id");
+            updateStatus(mmm_id, 25); // Update status to 25 (Delete)
+        });
+
+        // Function to update status via AJAX
+        function updateStatus(mmm_id, newStatus) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You will delete the data. Do you want to proceed?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: "<?= base_url('MstMchMold/update_status_data') ?>",
+                        type: "POST",
+                        data: {
+                            mmm_id,
+                            new_status: newStatus
+                        },
+                        success: function(response) {
+                            if (!response.success) {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                            return response;
+                        }
+                    }).catch(() => Swal.fire("Error!", "An error occurred while updating status.", "error"));
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Status Updated",
+                        text: result.value.message,
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    table.ajax.reload(); // Reload DataTable
+                }
+            });
+        }
+
+        // Refresh button click event
+        $(".refresh-btn").on("click", function() {
+            table.ajax.reload(); // Reload the DataTable
+        });
+    });
+</script>
+
+<?= $this->endSection() ?>

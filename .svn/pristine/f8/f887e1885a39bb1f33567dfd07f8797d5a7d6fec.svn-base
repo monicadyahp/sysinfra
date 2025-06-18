@@ -1,0 +1,333 @@
+<?php
+
+namespace App\Models\oee_brazing;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEDataBraz extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_data($series, $end_date)
+    {
+        if (!empty($series)) {
+            $cond = "AND mchtype = '$series'";
+        } else {
+            $cond = "";
+        }
+
+        $q = "  SELECT mchid, mchname
+                FROM mmachine
+                WHERE mchloccode    = 6
+                    AND mchgroup    = 'Machine'
+                    $cond
+                ORDER BY mchname";
+
+        $q_res      = $this->db->query($q);
+        $machines   = $q_res->getResultArray();
+
+        // Loop through each machine to get the last activity and set the color
+        foreach ($machines as &$machine) {
+            $mchname = $machine["mchname"];
+
+            // Query to get the last activity's button color for the machine
+            $q2 = " SELECT *
+                    FROM t_modbraz_dt
+                    INNER JOIN m_modbraz_act
+                        ON mba_actcode      = tbzd_actcode
+                        AND mba_status      = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid        = tbzh_id
+                        AND tbzh_status     <> 25
+                    WHERE tbzd_status       <> 25
+                        AND tbzh_proddate   = '$end_date'
+                        AND tbzh_mchcode    = '$mchname'
+                    ORDER BY tbzd_id DESC
+                    LIMIT 1";
+
+            $activityQuery  = $this->db->query($q2);
+            $lastActivity   = $activityQuery->getRowArray();
+
+            // Set the color for the machine
+            $machine['color'] = !empty($lastActivity) ? $lastActivity['mba_btncolor'] : '#FFFFFF';
+            $machine['isFinish'] = (empty($lastActivity) || ($lastActivity['tbzd_finish'] !== null && $lastActivity['tbzd_finish'] !== '')) ? 1 : 0;
+        }
+
+        return $machines;
+    }
+
+    public function get_machine_header($machine, $start_date, $end_date)
+    {
+        if (!empty($machine)) {
+            $cond = "AND tbzh_mchcode = '$machine'";
+        } else {
+            $cond = "";
+        }
+
+        if (!empty($start_date) && !empty($end_date)) {
+            $cond2 = "AND tbzh_proddate BETWEEN '$start_date' AND '$end_date'";
+        } else {
+            $cond2 = "";
+        }
+
+        $query = "  SELECT tbzh_id, tbzh_mchcode, TO_CHAR(tbzh_proddate, 'YYYY-MM-DD') AS tbzh_proddate, tbzh_prodcode, tbzh_prodname, tbzh_instno, tbzh_lotno, tbzh_spm, tbzh_created_user, tbzh_created_at, tbzh_lastuser, tbzh_lastupdate, tbzh_status
+                    FROM t_modbraz_hd
+                    WHERE tbzh_status <> 25
+                        $cond
+                        $cond2
+                    ORDER BY tbzh_proddate DESC, tbzh_mchcode, tbzh_instno, tbzh_lotno";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_machine_detail($header_id)
+    {
+        $query = "  SELECT tbzd_id, tbzd_shift, tbzd_actcode, tbzd_start, tbzd_finish, tbzd_ttime_act, tbzd_ttime_calc, tbzd_emplname, tbzd_prodresult_qty, tbzd_scrapmaint_qty, tbzd_rework_qty, tbzd_remark, tbzd_trouble, tbzd_status, tbzd_isrolling
+                    FROM t_modbraz_dt
+                    WHERE tbzd_status   <> 25
+                        AND tbzd_hdid   = $header_id
+                    ORDER BY tbzd_start asc";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_total_times($header_id)
+    {
+        $query = "  SELECT SUM(tbzd_ttime_act) AS total_time_actual, SUM(tbzd_ttime_calc) AS total_time_calc
+                    FROM t_modbraz_dt
+                    WHERE tbzd_status <> 25
+                        AND tbzd_hdid = $header_id";
+
+        return $this->db->query($query)->getRow();
+    }
+
+    public function get_trouble()
+    {
+        $query = "  SELECT mtbz_code, mtbz_desc
+                    FROM m_troublebraz
+                    WHERE mtbz_status = 1
+                    ORDER BY mtbz_code ";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function update_detail($emplcode, $POST)
+    {
+        $tbzd_id                = $POST["tbzd_id"];
+        $tbzd_start             = $POST["tbzd_start"];
+        $tbzd_finish            = $POST["tbzd_finish"];
+        $tbzd_prodresult_qty    = $POST["tbzd_prodresult_qty"];
+        $tbzd_scrapmaint_qty    = $POST["tbzd_scrapmaint_qty"];
+        $tbzd_rework_qty        = $POST["tbzd_rework_qty"];
+        $tbzd_remark            = $POST["tbzd_remark"];
+        $tbzd_trouble           = $POST["tbzd_trouble"];
+        $tbzd_isrolling         = $POST["tbzd_isrolling"];
+
+        $query = "  UPDATE t_modbraz_dt
+                    SET tbzd_start          = ?,
+                        tbzd_finish         = ?,
+                        tbzd_prodresult_qty = ?,
+                        tbzd_scrapmaint_qty = ?,
+                        tbzd_rework_qty     = ?,
+                        tbzd_remark         = ?,
+                        tbzd_trouble        = ?,
+                        tbzd_lastuser       = ?,
+                        tbzd_lastupdate     = ?,
+                        tbzd_isrolling      = ?
+                    WHERE tbzd_id           = ?";
+
+        $params = [$tbzd_start, $tbzd_finish, $tbzd_prodresult_qty, $tbzd_scrapmaint_qty, $tbzd_rework_qty, $tbzd_remark, $tbzd_trouble, $emplcode, $this->currentDateTime, $tbzd_isrolling, $tbzd_id];
+
+        return $this->db->query($query, $params);
+    }
+    
+    public function update_qtyplan( $m, $y, $mch, $qty, $empl)
+        {
+            $query = "  UPDATE tmfg_prodplan
+                        SET pp_planqty = ?, pp_lastupdate = ?, pp_lastuser = ?
+                        WHERE pp_month = ? and pp_year = ? and pp_machinename = ? and pp_location ='Brazing'";
+
+            $params = [$qty, $this->currentDateTime, $empl, $m, $y, $mch];
+
+            return $this->db->query($query, $params);
+        }
+
+    public function get_data_excel($start_date, $end_date, $cond)
+    {
+        $query = "  SELECT  tbzd_id, tbzh_proddate::date AS tbzh_proddate, tbzd_shift, tbzh_mchcode, tbzh_spm, tbzh_instno, tbzh_lotno, tbzh_prodcode, tbzh_prodname,
+                            tbzd_emplname, tbzd_actcode, mba_actname, to_char(tbzd_start, 'HH24:MI') AS tbzd_start, to_char(tbzd_finish, 'HH24:MI') AS tbzd_finish,
+                            tbzd_ttime_calc, tbzd_ttime_act, tbzd_prodresult_qty, tbzd_scrapmaint_qty, tbzd_rework_qty, tbzd_remark, tbzd_trouble
+                    FROM t_modbraz_dt
+                    INNER JOIN m_modbraz_act
+                        ON mba_actcode      = tbzd_actcode
+                        AND mba_status      = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid        = tbzh_id
+                        AND tbzh_status     <> 25
+                    INNER JOIN mmachine
+                        ON tbzh_mchcode     = mchname
+                        AND mchstatus       = 1
+                    WHERE tbzd_status       <> 25
+                        AND tbzh_proddate BETWEEN ? AND ? AND tbzd_finish IS NOT NULL
+                        $cond
+                    ORDER BY tbzh_proddate DESC, tbzh_mchcode, tbzd_shift, tbzd_start";
+
+        return $this->db->query($query, [$start_date, $end_date])->getResultArray();
+    }
+
+    public function update_status_data($tbzd_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE t_modbraz_dt
+                    SET tbzd_status     = ?,
+                        tbzd_lastuser   = ?,
+                        tbzd_lastupdate = ?
+                    WHERE tbzd_id       = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $tbzd_id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+
+    public function get_data_others($prodcode)
+    {
+        if (!empty($prodcode)) {
+            $cond = "AND tbzo_proddate = '$prodcode'";
+        } else {
+            $cond = "";
+        }
+
+        $query = "  SELECT a.tbzo_id, a.tbzo_mchcode, a.tbzo_actcode, b.mba_actname, a.tbzo_start, a.tbzo_finish, a.tbzo_remark
+                    FROM t_modbraz_oth a
+                    INNER JOIN m_modbraz_act b
+                        ON a.tbzo_actcode   = b.mba_actcode
+                        AND b.mba_status    = 1
+                    WHERE a.tbzo_status     = 1
+                        $cond
+                    ORDER BY a.tbzo_id DESC";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_data_prodplan($m, $y)
+    {
+        $query = "select pp_year,pp_month,pp_location,pp_machinename,cast(pp_planqty as integer) as pp_planqty,pp_lastupdate,pp_lastuser from tmfg_prodplan "
+                . "where pp_month = $m and pp_year = $y and pp_location = 'Brazing' order by pp_machinename asc";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_activity()
+    {
+        $query = "  SELECT mba_id, mba_actcode, mba_actname, mba_btncolor
+                    FROM m_modbraz_act
+                    WHERE mba_actcode IN (2101,2102,2103,3101,3102,4101,5101,5102,6101,6201,6403,6404,7103,7205,7206)
+                        AND mba_status = 1
+                    ORDER BY mba_actcode";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function cek_data($tbzo_actcode, $tbzo_start, $tbzo_finish, $machine_code, $tbzo_remark)
+    {
+        // Query to check if there is an overlapping activity
+        $query = "  SELECT tbzo_actcode, tbzo_start, tbzo_finish, tbzo_mchcode, tbzo_remark
+                    FROM t_modbraz_oth
+                    WHERE tbzo_mchcode  = ?
+                        AND tbzo_start  <= ?
+                        AND tbzo_finish >= ?";
+
+        $result = $this->db->query($query, [$machine_code, $tbzo_finish, $tbzo_start])->getRow();
+
+        // Return true if any overlapping activity is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function insert_data($tbzo_actcode, $tbzo_start, $tbzo_finish, $machine_code, $tbzo_remark, $emplcode)
+    {
+        // Insert query for the new data
+        $query = "  INSERT INTO t_modbraz_oth (tbzo_actcode, tbzo_start, tbzo_finish, tbzo_mchcode, tbzo_remark, tbzo_status, tbzo_created_user, tbzo_created_at, tbzo_lastuser, tbzo_lastupdate)
+                    VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)";
+
+        // Execute the insert query
+        return $this->db->query($query, [$tbzo_actcode, $tbzo_start, $tbzo_finish, $machine_code, $tbzo_remark, $emplcode, $this->currentDateTime, $emplcode, $this->currentDateTime]);
+    }
+
+    public function cek_data_others($tbzo_mchcode, $tbzo_actcode, $tbzo_start, $tbzo_finish, $tbzo_remark)
+    {
+        if (!empty($tbzo_remark)) {
+            $cond = "AND tbzo_remark = '$tbzo_remark'";
+        } else {
+            $cond = "";
+        }
+
+        // Query to check if the document exists
+        $query = "  SELECT tbzo_mchcode, tbzo_actcode, tbzo_start, tbzo_finish
+                    FROM t_modbraz_oth
+                    WHERE tbzo_mchcode      = ?
+                        AND tbzo_actcode    = ?
+                        AND tbzo_start      = ?
+                        AND tbzo_finish     = ?
+                        $cond";
+
+        // Executing the raw SQL query with a parameter binding
+        $result = $this->db->query($query, [$tbzo_mchcode, $tbzo_actcode, $tbzo_start, $tbzo_finish])->getRow();
+
+        // Return true if any row is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function update_others($emplcode, $POST)
+    {
+        $tbzo_id        = $POST["tbzo_id"];
+        $tbzo_mchcode   = $POST["tbzo_mchcode"];
+        $tbzo_actcode   = $POST["tbzo_actcode"];
+        $tbzo_start     = $POST["tbzo_start"];
+        $tbzo_finish    = $POST["tbzo_finish"];
+        $tbzo_remark    = $POST["tbzo_remark"];
+
+        $query = "  UPDATE t_modbraz_oth
+                    SET tbzo_mchcode    = ?,
+                        tbzo_actcode    = ?,
+                        tbzo_start      = ?,
+                        tbzo_finish     = ?,
+                        tbzo_remark     = ?,
+                        tbzo_lastuser   = ?,
+                        tbzo_lastupdate = ?
+                    WHERE tbzo_id       = ?";
+
+        $params = [$tbzo_mchcode, $tbzo_actcode, $tbzo_start, $tbzo_finish, $tbzo_remark, $emplcode, $this->currentDateTime, $tbzo_id];
+
+        return $this->db->query($query, $params);
+    }
+
+    public function update_status_others($tbzo_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE t_modbraz_oth
+                    SET tbzo_status     = ?,
+                        tbzo_lastuser   = ?,
+                        tbzo_lastupdate = ?
+                    WHERE tbzo_id       = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $tbzo_id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+}

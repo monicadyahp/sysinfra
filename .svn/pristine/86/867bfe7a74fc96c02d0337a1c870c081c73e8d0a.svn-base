@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Models\master_molding;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_MstMchMold extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');        
+    }
+
+    public function get_data()
+    {
+        $query = " select mmm_id, mmm_mchcode, mmm_diesno, mmm_dies_cavid, mmm_prodcode, partbom_partname, mmm_cav_std, mmm_cav_act, mmm_cyc_time, 
+                        mmm_mch_type, mmm_screw_size, mmm_status, mmm_created_by, mmm_created_at, ROUND((60/mmm_cyc_time), 1) as spm
+                        from m_mchmold_setting
+                        left join m_partbom on mmm_prodcode = partbom_partcode
+                        where mmm_status = 1 
+                        order by mmm_id desc";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_machine_data()
+    {
+        $query = "SELECT mcode as mchid, mname as mchname FROM m_machine 
+            where mlocation in ('Molding 1', 'Molding 2', 'Vertikal')
+            ORDER BY substring(mname FROM '^[^-]+'), CAST(substring(mname FROM '[^-]+$') AS INTEGER)";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_molddies_data()
+    {
+        $query = "select dname, dcavityindentity from m_dies 
+	       where dloc in ('Molding', 'Molding 2', 'Vertikal') 
+	       order by dname";
+
+        // Use the 'mssql_common' database connection
+//        $db = \Config\Database::connect('db_pps');
+        
+        return $this->db->query($query)->getResult();
+    }
+
+    public function cek_data($mmm_mchcode, $mmm_diesno, $mmm_dies_cavid, $mmm_prodcode)
+    {
+        // Query to check if the document exists
+        $query = "  SELECT mmm_mchcode, mmm_diesno, mmm_dies_cavid, mmm_prodcode
+                    FROM m_mchmold_setting
+                    WHERE mmm_status 		= 1
+                        AND mmm_mchcode		= ? 
+                        AND mmm_diesno		= ? 
+                        AND mmm_dies_cavid		= ? 
+                        AND mmm_prodcode	= ? ";
+
+        // Executing the raw SQL query with a parameter binding
+        $result = $this->db->query($query, [$mmm_mchcode, $mmm_diesno, $mmm_dies_cavid, $mmm_prodcode])->getRow();
+
+        // Return true if any row is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function update_data($emplcode, $POST)
+    {
+        $mmm_mchcode   = $POST["mmm_mchcode"];
+        $mmm_diesno        = $POST["mmm_diesno"];
+        $mmm_dies_cavid         = $POST["mmm_dies_cavid"];
+        $mmm_prodcode    = $POST["mmm_prodcode"];
+        $mmm_cav_std   = $POST["mmm_cav_std"];
+        $mmm_cav_act            = $POST["mmm_cav_act"];
+        $mmm_cyc_time           = $POST["mmm_cyc_time"];
+        $mmm_mch_type            = $POST["mmm_mch_type"];
+        $mmm_screw_size           = $POST["mmm_screw_size"];
+        $tipe           = $POST["tipe"];
+
+        if ($tipe == "add") {
+            $query = "  INSERT INTO m_mchmold_setting (mmm_mchcode, mmm_diesno, mmm_dies_cavid, mmm_prodcode, mmm_cav_std, mmm_cav_act, mmm_cyc_time, 
+mmm_mch_type, mmm_screw_size,  mmm_created_by, mmm_created_at)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+
+            $params = [$mmm_mchcode, $mmm_diesno, $mmm_dies_cavid, $mmm_prodcode, $mmm_cav_std, $mmm_cav_act, $mmm_cyc_time, $mmm_mch_type, 
+                                $mmm_screw_size, $emplcode, $this->currentDateTime];
+        } else if ($tipe == "edit") {
+            $mmm_id = $POST["mmm_id"];
+
+            $query = "  UPDATE m_mchmold_setting
+                        SET 
+                            mmm_mchcode      = ?, 
+                            mmm_diesno       = ?, 
+                            mmm_dies_cavid    = ?, 
+                            mmm_prodcode = ?, 
+                            mmm_cav_std         = ?, 
+                            mmm_cav_act    = ?, 
+                            mmm_cyc_time  = ?, 
+                            mmm_mch_type  = ?, 
+                            mmm_screw_size  = ?, 
+                            mmm_created_by  = ?, 
+                            mmm_created_at  = ?
+                        WHERE mmm_id        = ?";
+
+            $params = [$mmm_mchcode, $mmm_diesno, $mmm_dies_cavid, $mmm_prodcode, $mmm_cav_std, $mmm_cav_act, $mmm_cyc_time, $mmm_mch_type, 
+                                $mmm_screw_size, $emplcode, $this->currentDateTime, $mmm_id];
+        }
+
+        return $this->db->query($query, $params);
+    }
+
+    public function update_status_data($mmm_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE m_mchmold_setting
+                    SET mmm_status      = ?
+                    WHERE mmm_id        = ?";
+
+        $params = [$new_status, $mmm_id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+}

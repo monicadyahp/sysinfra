@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Controllers\oee_brazing;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_brazing\M_OEEReportBraz;
+use App\Models\master_brazing\M_MstMachine;
+use Datetime;
+
+class OEEReportBraz extends BaseController
+{
+    protected $M_OEEReportBraz;
+    protected $M_MstMachine;
+
+    public function __construct()
+    {
+        $this->M_OEEReportBraz   = new M_OEEReportBraz();
+        $this->M_MstMachine         = new M_MstMachine();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEReportBraz") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        // Get current month and year, and adjust to previous month
+        $currentDate = new DateTime();
+        $currentDate->modify('-1 month');
+        $previousMonth = $currentDate->format('m'); // Get the previous month (numeric)
+        $currentYear = $currentDate->format('Y');   // Get the year
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+        $data["machine_data"]       = $this->M_MstMachine->get_machine_data();
+
+        return view("oee_brazing/report/main_report", $data);
+    }
+
+    public function get_report_data()
+    {
+        $filter   = $this->request->getPost('filter');
+        $filterval   = $this->request->getPost('filterval');
+        $year   = $this->request->getPost('year');
+
+        $dataSumm = $this->M_OEEReportBraz->get_data_summ($filter, $filterval, $year);
+        
+        return $this->response->setJSON($dataSumm);
+    }
+    
+    
+}

@@ -1,0 +1,1325 @@
+<?php
+
+namespace App\Models\oee_brazing;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEDashboardBraz extends Model
+{
+    private $db_mrp;
+
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        $this->db_mrp = db_connect('db_mrp');
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_period($month, $year)
+    {
+        // Get the last date of the selected month
+        $lastDateOfMonth            = date("Y-m-t", strtotime("$year-$month-01"));
+
+        // Check if the last date is a Saturday or Sunday
+        $lastDateTimestamp          = strtotime($lastDateOfMonth);
+        $lastDateOfMonth            = date("Y-m-d", strtotime('-1 day', $lastDateTimestamp));
+
+        // Get the last date of the previous month
+        $lastDateOfPreviousMonth    = date("Y-m-t", strtotime("$year-$month-01 -1 month"));
+
+        // Check if the last date of the previous month is a Saturday or Sunday
+        $previousMonthTimestamp     = strtotime($lastDateOfPreviousMonth);
+        $previousMonthDayOfWeek     = date('N', $previousMonthTimestamp);
+
+        // If it's Saturday (6) or Sunday (7), adjust to the previous Friday
+        if ($previousMonthDayOfWeek == 6) { // Saturday
+            $lastDateOfPreviousMonth = date("Y-m-d", strtotime('-1 day', $previousMonthTimestamp)); // move to Friday
+        } elseif ($previousMonthDayOfWeek == 7) { // Sunday
+            $lastDateOfPreviousMonth = date("Y-m-d", strtotime('-2 days', $previousMonthTimestamp)); // move to Friday
+        }
+
+        // Return both dates
+        return [
+            'previous_month' => $lastDateOfPreviousMonth,
+            'selected_month' => $lastDateOfMonth,
+        ];
+    }
+
+    public function get_product($machine_code)
+    {
+        $query = "  SELECT tbzh_prodcode, tbzh_prodname
+                    FROM t_modbraz_hd
+                    WHERE tbzh_mchcode = '$machine_code'
+                    GROUP BY tbzh_prodcode, tbzh_prodname";
+
+        $result = $this->db->query($query, [$machine_code]);
+        return $result->getResultArray();
+    }
+
+    public function get_filtered_result($filterBy, $filterValue, $startDate, $endDate, $month = '', $year = '')
+    {
+
+        // Query to calculate actcounter, reworkqty, and maintqty
+        $query = "  SELECT SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_rework_qty) AS reworkqty, SUM(tbzd_scrapmaint_qty) AS maintqty
+                    FROM t_modbraz_dt
+                    INNER JOIN m_modbraz_act
+                        ON mba_actcode  = tbzd_actcode
+                        AND mba_status  = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid    = tbzh_id 
+                        AND tbzh_status <> 25";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $query .= " INNER JOIN mmachine
+                            ON mchname      = tbzh_mchcode
+                            AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $query .= " WHERE tbzd_status <> 25
+                        AND tbzh_proddate BETWEEN '$startDate' AND '$endDate'
+                        AND tbzd_finish IS NOT NULL";
+
+        // Append conditions based on filter
+        if ($filterBy == 'Machine') {
+            $query .= " AND tbzh_mchcode = '$filterValue'";
+        } else if ($filterBy == 'Series') {
+            $query .= " AND mchtype = '$filterValue'";
+        }
+
+        // Execute the first query
+        $result = $this->db->query($query)->getRow();
+
+        // Now, calculate rejectqty based on filterBy
+        $rejectQuery = "SELECT SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                        FROM t_rejectboxbraz_hd";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $rejectQuery .= "   INNER JOIN mmachine
+                                    ON mchname      = trbh_machine
+                                    AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $rejectQuery .= "   WHERE trbh_finish BETWEEN '$startDate' AND '$endDate'
+                                AND trbh_finish IS NOT NULL
+                                AND trbh_flag = 1";
+
+        // Append conditions based on filter
+        if ($filterBy == 'Machine') {
+            $rejectQuery .= "   AND trbh_machine = '$filterValue'
+                            GROUP BY trbh_machine";
+        } else if ($filterBy == 'Series') {
+            $rejectQuery .= "   AND mchtype = '$filterValue'
+                            GROUP BY mchtype";
+        }
+
+        // Execute the rejectqty query
+        $rejectResult = $this->db->query($rejectQuery)->getRow();
+
+        // Check if rejectResult is null
+        if ($rejectResult) {
+            $result->rejectqty  = $rejectResult->rejectqty;
+            $result->maintqty   += $rejectResult->rejectqty;
+        } else {
+            $result->rejectqty  = 0;
+            $result->maintqty   += 0;
+        }
+
+        // Calculate defectqty based on filterBy
+        $defectQuery = "SELECT SUM(sub.inv_quantity) AS defectqty
+                        FROM (
+                            SELECT DISTINCT inv_pino, inv_lotno, inv_quantity
+                            FROM tbta_investigation_hd tih
+                            INNER JOIN m_machine
+                                ON mcode        = inv_machineno
+                            WHERE inv_proddate BETWEEN '$startDate' AND '$endDate'
+                                AND inv_status  <> 25";
+
+        // Apply filter conditions
+        if ($filterBy == 'Machine') {
+            $defectQuery .= " AND mname = '$filterValue'";
+        } elseif ($filterBy == 'Series') {
+            $defectQuery .= " AND UPPER(mseries) = '$filterValue'";
+        }
+
+        $defectQuery .= ") AS sub";
+
+        // Execute the defectqty query
+        $defectResult       = $this->db->query($defectQuery)->getRow();
+        $result->defectqty  = $defectResult ? $defectResult->defectqty : 0;
+
+        // PlanPcs & Percentage Logic
+        if ($filterBy == 'Machine') {
+            $planQuery = " select pp_planqty as planqty from tmfg_prodplan 
+                                        where pp_month = $month and pp_year = $year and pp_machinename = '$filterValue'";           
+        } else if ($filterBy == 'All') {
+            $planQuery = " select sum(pp_planqty) as planqty from tmfg_prodplan where pp_month = $month and pp_year = $year";
+        } else {
+            $planQuery = " select sum(pp_planqty) as planqty from tmfg_prodplan 
+                                        inner join mmachine on  mchname = pp_machinename and mchstatus = 1
+                                        where pp_month = $month and pp_year = $year and mchtype = '$filterValue'";
+        } 
+
+        if (!empty($planQuery)) {
+            $planResult         = $this->db->query($planQuery)->getRow();
+            $result->planPcs    = $planResult ? $planResult->planqty : 0;
+            $result->percentage = ($planResult && $result->actcounter > 0) ? ($result->actcounter / $planResult->planqty) * 100 : 0;
+        } else {
+            $result->planPcs    = '-';
+            $result->percentage = '-';
+        }
+
+        return $result;
+    }
+    
+    public function get_filtered_result_per_date($filterBy, $filterValue, $startDate, $endDate, $month = '', $year = '')
+    {
+        $allResults = [];  // To store results per day
+
+        // Generate date range array
+        $currentDate = strtotime($startDate);
+        $endDate = strtotime($endDate);
+
+        while ($currentDate <= $endDate) {
+            $date = date("Y-m-d", $currentDate);
+
+            // Query to calculate actcounter, reworkqty, and maintqty
+            $query = "SELECT SUM(tbzd_prodresult_qty) AS actcounter, 
+                             SUM(tbzd_rework_qty) AS reworkqty, 
+                             SUM(tbzd_scrapmaint_qty) AS maintqty
+                      FROM t_modbraz_dt
+                      INNER JOIN m_modbraz_act ON mba_actcode = tbzd_actcode AND mba_status = 1
+                      INNER JOIN t_modbraz_hd ON tbzd_hdid = tbzh_id AND tbzh_status <> 25";
+
+            // Conditionally add INNER JOIN mmachine for Series filter
+            if ($filterBy == 'Series') {
+                $query .= " INNER JOIN mmachine ON mchname = tbzh_mchcode AND mchstatus = 1";
+            }
+
+            // Add WHERE clause with date filter
+            $query .= " WHERE tbzd_status <> 25
+                            AND tbzh_proddate = '$date'
+                            AND tbzd_finish IS NOT NULL";
+
+            // Append additional conditions based on filter
+            if ($filterBy == 'Machine') {
+                $query .= " AND tbzh_mchcode = '$filterValue'";
+            } elseif ($filterBy == 'Series') {
+                $query .= " AND mchtype = '$filterValue'";
+            }
+
+            // Execute query and get result for this date
+            $result = $this->db->query($query)->getRow();
+            $actCounterVal  = $result ? $result->actcounter : 0;
+            $reworkVal  = $result ? $result->reworkqty : 0;
+            $maintQtyVal  = $result ? $result->maintqty : 0;
+
+            // Calculate defectqty based on filterBy
+            $defectQuery = "SELECT SUM(sub.inv_quantity) AS defectqty
+                            FROM (
+                                SELECT DISTINCT inv_pino, inv_lotno, inv_quantity
+                                FROM tbta_investigation_hd tih
+                                INNER JOIN m_machine
+                                    ON mcode        = inv_machineno
+                                WHERE inv_proddate = '$date' 
+                                    AND inv_status  <> 25";
+
+            // Apply filter conditions
+            if ($filterBy == 'Machine') {
+                $defectQuery .= " AND mname = '$filterValue'";
+            } elseif ($filterBy == 'Series') {
+                $defectQuery .= " AND UPPER(mseries) = '$filterValue'";
+            }
+
+            $defectQuery .= ") AS sub";
+
+            // Execute the defectqty query
+            $defectResult       = $this->db->query($defectQuery)->getRow();
+            $defectVal  = $defectResult ? $defectResult->defectqty : 0;
+            
+            $dateAfter = new \DateTime($date);
+            $dateAfter->modify('+1 day');
+            $newEndDate = $dateAfter->format('Y-m-d') . ' 07:20';
+
+            $newStartDate = $date . ' 07:20';
+
+            $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                            from  t_rejectboxbraz_hd";
+
+            // Conditionally add INNER JOIN mmachine for Series filter
+            if ($filterBy == 'Series') {
+                $rejectQuery .= " INNER JOIN mmachine ON mchname = trbh_machine AND mchstatus = 1";
+            }
+
+            $rejectQuery .= " where trbh_finish between '$newStartDate' and '$newEndDate' AND trbh_flag = 1 ";
+            
+            // Append additional conditions based on filter
+            if ($filterBy == 'Machine') {
+                $rejectQuery .= "  AND trbh_machine = '$filterValue'";
+            } elseif ($filterBy == 'Series') {
+                $rejectQuery .= "  AND mchtype = '$filterValue'";
+            }
+
+            $rejectResults  = $this->db->query($rejectQuery)->getRow();
+
+            $rejectVal  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+            $allResults[$date] = [
+                'actcounter' => $actCounterVal,
+                'reworkqty'  => $reworkVal,
+                'maintqty'   => $maintQtyVal,
+                'defectqty'   => $defectVal,
+                'rejectqty'   => $rejectVal,
+                // Add additional fields as needed
+            ];
+            // Move to the next date
+            $currentDate = strtotime("+1 day", $currentDate);
+        }
+
+        return $allResults; // Return results array with data for each date
+    }
+
+
+    public function get_availability_data($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // Query for availability data
+        $query = "  SELECT  SUM(CASE WHEN tbzd_oee_code = 1000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_1000,
+                            SUM(CASE WHEN tbzd_oee_code = 4000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_4000,
+                            SUM(CASE WHEN tbzd_oee_code = 5000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_5000,
+                            SUM(CASE WHEN tbzd_oee_code = 6000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_6000,
+                            SUM(CASE WHEN tbzd_oee_code = 7000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_7000
+                    FROM t_modbraz_dt";
+
+        // Add WHERE clause
+        $query .= " INNER JOIN m_modbraz_act
+                        ON mba_actcode  = tbzd_actcode
+                        AND mba_status  = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid    = tbzh_id
+                        AND tbzh_status <> 25";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $query .= " INNER JOIN mmachine
+                            ON mchname      = tbzh_mchcode
+                            AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $query .= " WHERE tbzd_status <> 25
+                        AND tbzh_proddate BETWEEN :startDate: AND :endDate:
+                        AND tbzd_finish IS NOT NULL";
+
+        if ($filterBy == 'Machine') {
+            $query .= " AND tbzh_mchcode = :filterValue:";
+        } else if ($filterBy == 'Series') {
+            $query .= " AND mchtype = :filterValue:";
+        }
+
+        // Execute the query and get results
+        $results = $this->db->query($query, [
+            'filterValue' => $filterValue,
+            'startDate'   => $startDate,
+            'endDate'     => $endDate
+        ])->getRowArray();
+
+        // Query for availability data
+        $queryOth = "select sum(tbzo_ttime_calc) as totalPDTOth from t_modbraz_oth 
+                            inner join m_modbraz_act on mba_actcode = tbzo_actcode and mba_status = 1
+                            inner join m_modbraz_group on mbg_groupcode = mba_actgroup and mbg_status = 1  ";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $queryOth .= " inner join mmachine
+                            ON mchname      = tbzo_mchcode
+                            AND mchstatus   = 1 ";
+        }
+        
+        $queryOth .= " where tbzo_proddate between '$startDate' AND '$endDate'
+                            and tbzo_status <> 25 ";
+        
+        if ($filterBy == 'Machine') {
+            $queryOth .= " and tbzo_mchcode = '$filterValue'";
+        } else if ($filterBy == 'Series') {
+            $queryOth .= " and mchtype = '$filterValue'";
+        }
+
+        // Execute the query and get results
+        $resultsOth = $this->db->query($queryOth)->getRowArray();
+        
+        $total_time_oth = (float) $resultsOth['totalpdtoth'];
+        
+        // Calculate availability
+        $total_time_oee_1000 = (float) $results['total_time_oee_1000'];
+        $total_time_oee_4000 = (float) $results['total_time_oee_4000'];
+        $total_time_oee_5000 = (float) $results['total_time_oee_5000'];
+        $total_time_oee_6000 = (float) $results['total_time_oee_6000'];
+        $total_time_oee_7000 = (float) $results['total_time_oee_7000'];
+        
+        // Calculate the total time for the denominator
+        $total_time = $total_time_oee_1000 + $total_time_oee_4000 + $total_time_oee_5000 + $total_time_oee_6000 + $total_time_oee_7000 + $total_time_oth;
+
+//        var_dump($total_time_oth);
+//        var_dump($total_time);
+//        var_dump($total_time_oee_1000);die();
+
+        // Return raw availability value (not percentage)
+        return $total_time > 0 ? $total_time_oee_1000 / $total_time : 0;  // This is the raw ratio, not converted to percentage
+    }
+
+    public function get_availability_data_per_date($filterBy, $filterValue, $startDate, $endDate)
+    {
+        $interval = new \DateInterval('P1D');
+        $period = new \DatePeriod(new \DateTime($startDate), $interval, (new \DateTime($endDate))->modify('+1 day'));
+
+        // Initialize an array to store the availability ratio per date
+        $availabilityByDate = [];
+
+        // Loop through each date in the range
+        foreach ($period as $date) {
+            $formattedDate = $date->format('Y-m-d');
+
+            // Query for availability data for each date
+            $query = "  SELECT  SUM(CASE WHEN tbzd_oee_code = 1000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_1000,
+                                SUM(CASE WHEN tbzd_oee_code = 4000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_4000,
+                                SUM(CASE WHEN tbzd_oee_code = 5000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_5000,
+                                SUM(CASE WHEN tbzd_oee_code = 6000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_6000,
+                                SUM(CASE WHEN tbzd_oee_code = 7000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_7000
+                        FROM t_modbraz_dt";
+
+            // Add necessary joins
+            $query .= " INNER JOIN m_modbraz_act ON mba_actcode = tbzd_actcode AND mba_status = 1
+                        INNER JOIN t_modbraz_hd ON tbzd_hdid = tbzh_id AND tbzh_status <> 25";
+
+            if ($filterBy == 'Series') {
+                $query .= " INNER JOIN mmachine ON mchname = tbzh_mchcode AND mchstatus = 1";
+            }
+
+            // Add WHERE clause with specific date filtering
+            $query .= " WHERE tbzd_status <> 25
+                        AND tbzh_proddate = :date:
+                        AND tbzd_finish IS NOT NULL";
+
+            if ($filterBy == 'Machine') {
+                $query .= " AND tbzh_mchcode = :filterValue:";
+            } elseif ($filterBy == 'Series') {
+                $query .= " AND mchtype = :filterValue:";
+            }
+
+            // Execute the query for the current date
+            $results = $this->db->query($query, [
+                'filterValue' => $filterValue,
+                'date'        => $formattedDate
+            ])->getRowArray();
+
+            // Query for availability data
+            $queryOth = " select sum(tbzo_ttime_calc) as totalPDTOth from t_modbraz_oth 
+                                inner join m_modbraz_act on mba_actcode = tbzo_actcode and mba_status = 1
+                                inner join m_modbraz_group on mbg_groupcode = mba_actgroup and mbg_status = 1  ";
+
+            // Conditionally add INNER JOIN mmachine for Series filter
+            if ($filterBy == 'Series') {
+                $queryOth .= " inner join mmachine
+                                ON mchname      = tbzo_mchcode
+                                AND mchstatus   = 1 ";
+            }
+
+            $queryOth .= " where tbzo_proddate = :date:
+                                and tbzo_status <> 25 ";
+
+            if ($filterBy == 'Machine') {
+                $queryOth .= " and tbzo_mchcode = :filterValue:";
+            } else if ($filterBy == 'Series') {
+                $queryOth .= " and mchtype = :filterValue:";
+            }
+
+            // Execute the query and get results
+            $resultsOth = $this->db->query($queryOth, [
+                'filterValue' => $filterValue,
+                'date'        => $formattedDate
+            ])->getRowArray();
+        
+            $total_time_oth = (float) $resultsOth['totalpdtoth'];
+
+            // Calculate the daily total times
+            $total_time_oee_1000 = (float) ($results['total_time_oee_1000'] ?? 0);
+            $total_time_oee_4000 = (float) ($results['total_time_oee_4000'] ?? 0);
+            $total_time_oee_5000 = (float) ($results['total_time_oee_5000'] ?? 0);
+            $total_time_oee_6000 = (float) ($results['total_time_oee_6000'] ?? 0);
+            $total_time_oee_7000 = (float) ($results['total_time_oee_7000'] ?? 0);
+
+            // Calculate the total time for the denominator
+            $total_time_all_codes = $total_time_oee_1000 + $total_time_oee_4000 + $total_time_oee_5000 + $total_time_oee_6000 + $total_time_oee_7000 + $total_time_oth;
+
+            // Calculate the availability ratio for the current date
+            $availabilityRatio = $total_time_all_codes > 0 ? $total_time_oee_1000 / $total_time_all_codes : 0;
+
+            // Only store non-zero availability ratios
+//            if ($availabilityRatio > 0) {
+                $availabilityByDate[$formattedDate] = $availabilityRatio;
+//            }
+        }
+
+        // Return the array of availability ratios per date, skipping dates with a ratio of 0
+        return $availabilityByDate;
+    }
+
+    
+    public function get_perf_chart($filterBy, $filterValue,  $startDate, $endDate)
+    {
+        $totalPerformance = 0;
+        $performanceCount = 0;
+
+        if ($filterBy == 'Series') {
+            // Get machines in the series
+            $machinesQuery = "  SELECT mchname
+                                FROM mmachine
+                                WHERE mchloccode    = 6
+                                    AND mchgroup    = 'Machine'
+                                    AND mchstatus   <> 25
+                                    AND mchtype     = :filterValue:
+                                ORDER BY mchtype, mchname";
+
+            $machines = $this->db->query($machinesQuery, ['filterValue' => $filterValue])->getResult();
+            
+            // Calculate performance for each machine-product code combination
+            foreach ($machines as $machine) {
+                // Query to get avgspm and ttime for the machine, grouped by product code and machine
+                $performanceQuery = "   SELECT  tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm, tbzh_prodcode, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                        FROM t_modbraz_hd
+                                        INNER JOIN t_modbraz_dt
+                                            ON tbzd_hdid        = tbzh_id
+                                        WHERE tbzh_status       <> 25
+                                            AND tbzd_status     <> 25
+                                            AND tbzh_proddate BETWEEN :startDate: AND :endDate:
+                                            AND tbzd_finish IS NOT NULL
+                                            AND tbzd_oee_code   = 1000
+                                            AND tbzh_mchcode    = :machineName:
+                                        GROUP BY tbzh_mchcode, tbzh_prodcode";
+
+                $performanceResults = $this->db->query($performanceQuery, [
+                    'startDate'   => $startDate,
+                    'endDate'     => $endDate,
+                    'machineName' => $machine->mchname
+                ])->getResult();
+                
+                foreach ($performanceResults as $result) {
+                    $avgspm     = $result->avgspm ?: 0;
+                    $ttime      = $result->ttime ?: 0;
+                    $actcounter = $result->actcounter ?: 0;
+                    $maintqty   = $result->maintqty ?: 0;
+                    
+                    $dateAfter = new \DateTime($endDate);
+                    $dateAfter->modify('+1 day');
+                    $newEndDate = $dateAfter->format('Y-m-d') . ' 07:20';
+                    
+                    $newStartDate = $startDate . ' 07:20';
+                    
+                    $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                    from T_REJECTBOXBRAZ_HD 
+                                    where trbh_machine = :machineName: and trbh_prod_code = :prodcode: AND trbh_finish BETWEEN :startDate: AND :endDate:
+                                    AND TRBH_FLAG = 1";
+
+                    $rejectResults = $this->db->query($rejectQuery, [
+                        'machineName' => $result->tbzh_mchcode,
+                        'prodcode' => $result->tbzh_prodcode,
+                        'startDate'   => $newStartDate,
+                        'endDate'     => $newEndDate
+                    ])->getRow();
+                    
+                    $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                    if ($avgspm > 0 && $ttime > 0) {
+                        $performanceCount++;
+                        $machinePerformance = (($actcounter + $rejectqty + $maintqty) / ($avgspm * $ttime)) * 100;
+                        $totalPerformance += $machinePerformance;
+                    }
+                }
+            }
+
+            return $performanceCount > 0 ? $totalPerformance / $performanceCount : 0;
+        }
+
+        if ($filterBy == 'Machine') {
+            // Query to get avgspm and ttime for the machine and grouped by product code and machine
+            $performanceQuery = "SELECT tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                    FROM t_modbraz_hd
+                                    INNER JOIN t_modbraz_dt
+                                        ON tbzd_hdid        = tbzh_id
+                                    WHERE tbzh_status       <> 25
+                                        AND tbzd_status     <> 25
+                                        AND tbzh_proddate BETWEEN :startDate: AND :endDate:
+                                        AND tbzd_finish IS NOT NULL
+                                        AND tbzd_oee_code   = 1000
+                                        AND tbzh_mchcode    = :filterValue:
+                                    GROUP BY tbzh_prodcode, tbzh_mchcode";
+
+            // Execute the query and fetch the results
+            $performanceResults = $this->db->query($performanceQuery, [
+                'startDate'   => $startDate,
+                'endDate'     => $endDate,
+                'filterValue' => $filterValue // This is the machine code
+            ])->getResult();
+            
+
+            // Iterate over each result (each product code) and calculate performance
+            foreach ($performanceResults as $result) {
+                $avgspm     = $result->avgspm ?: 0;
+                $ttime      = $result->ttime ?: 0;
+                $actcounter = $result->actcounter ?: 0;
+                $maintqty   = $result->maintqty ?: 0;
+                    
+                $dateAfter = new \DateTime($endDate);
+                $dateAfter->modify('+1 day');
+                $newEndDate = $dateAfter->format('Y-m-d') . ' 07:20';
+
+                $newStartDate = $startDate . ' 07:20';
+
+                $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                from T_REJECTBOXBRAZ_HD 
+                                where trbh_machine = :machineName: and trbh_prod_code = :prodcode: AND trbh_finish BETWEEN :startDate: AND :endDate:
+                                AND TRBH_FLAG = 1";
+
+                $rejectResults = $this->db->query($rejectQuery, [
+                    'machineName' => $result->tbzh_mchcode,
+                    'prodcode' => $result->tbzh_prodcode,
+                    'startDate'   => $newStartDate,
+                    'endDate'     => $newEndDate
+                ])->getRow();
+                    
+                $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                // Calculate performance for each product code on the machine
+                if ($avgspm > 0 && $ttime > 0) {
+//            var_dump($rejectqty);
+                    $performanceCount++;
+                    $machinePerformance = (($actcounter + $rejectqty + $maintqty) / ($avgspm * $ttime)) * 100;
+                    $totalPerformance += $machinePerformance;
+                }
+            }
+//            var_dump('done');die();
+
+            return $performanceCount > 0 ? $totalPerformance / $performanceCount : 0;
+        }
+
+        if ($filterBy == 'All') {
+            // Get all machines
+            $machinesQuery = "  SELECT mchname
+                                FROM mmachine
+                                WHERE mchloccode    = 6
+                                    AND mchgroup    = 'Machine'
+                                    AND mchstatus   <> 25
+                                ORDER BY mchtype, mchname";
+
+            $machines = $this->db->query($machinesQuery)->getResult();
+
+            // Calculate performance for each machine
+            foreach ($machines as $machine) {
+                // Query to get avgspm and ttime for each machine, grouped by product code
+                $performanceQuery = "   SELECT  tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                        FROM t_modbraz_hd
+                                        INNER JOIN t_modbraz_dt
+                                            ON tbzd_hdid    = tbzh_id
+                                        WHERE tbzh_status   <> 25
+                                        AND tbzd_status     <> 25
+                                        AND tbzh_proddate BETWEEN :startDate: AND :endDate:
+                                        AND tbzd_finish IS NOT NULL
+                                        AND tbzd_oee_code   = 1000
+                                        AND tbzh_mchcode    = :machineName:
+                                        GROUP BY tbzh_mchcode, tbzh_prodcode";
+
+                $performanceResults = $this->db->query($performanceQuery, [
+                    'startDate'   => $startDate,
+                    'endDate'     => $endDate,
+                    'machineName' => $machine->mchname
+                ])->getResult();
+
+                foreach ($performanceResults as $result) {
+                    $avgspm     = $result->avgspm ?: 0;
+                    $ttime      = $result->ttime ?: 0;
+                    $actcounter = $result->actcounter ?: 0;
+                    $maintqty   = $result->maintqty ?: 0;
+                    
+                    $dateAfter = new \DateTime($endDate);
+                    $dateAfter->modify('+1 day');
+                    $newEndDate = $dateAfter->format('Y-m-d') . ' 07:20';
+
+                    $newStartDate = $startDate . ' 07:20';
+
+                    $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                    from T_REJECTBOXBRAZ_HD 
+                                    where trbh_machine = :machineName: and trbh_prod_code = :prodcode: AND trbh_finish BETWEEN :startDate: AND :endDate:
+                                    AND TRBH_FLAG = 1";
+
+                    $rejectResults = $this->db->query($rejectQuery, [
+                        'machineName' => $result->tbzh_mchcode,
+                        'prodcode' => $result->tbzh_prodcode,
+                        'startDate'   => $newStartDate,
+                        'endDate'     => $newEndDate
+                    ])->getRow();
+
+                    $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                    if ($avgspm > 0 && $ttime > 0) {
+                        $performanceCount++;
+                        $machinePerformance = (($actcounter + $rejectqty + $maintqty) / ($avgspm * $ttime)) * 100;
+                        $totalPerformance += $machinePerformance;
+                    }
+                }
+            }
+
+            // Return average performance for all machines
+            return $performanceCount > 0 ? $totalPerformance / $performanceCount : 0;
+        }
+
+        // Return 0 if neither condition matches
+        return 0;
+    }
+
+    public function get_perf_chart_per_date($filterBy, $filterValue, $startDate, $endDate)
+    {
+        $performanceByDate = [];
+        $currentDate = new \DateTime($startDate);
+        $endLoopDate = new \DateTime($endDate);
+
+        // Iterate through each date in the range
+        while ($currentDate <= $endLoopDate) {
+
+            $dateKey = $currentDate->format('Y-m-d');  // Group by this date
+            
+            $startDateTime = $currentDate->format('Y-m-d') . ' 07:20';
+            $currentDate->modify('+1 day');
+            $endDateTime = $currentDate->format('Y-m-d') . ' 07:20';
+
+            $dailyPerformance = 0;
+            $dailyPerformanceCount = 0;
+
+            if ($filterBy == 'Series') {
+                // Get machines in the series
+                $machinesQuery = "SELECT mchname FROM mmachine
+                                  WHERE mchloccode = 6 AND mchgroup = 'Machine'
+                                  AND mchstatus <> 25 AND mchtype = :filterValue:
+                                  ORDER BY mchtype, mchname";
+                $machines = $this->db->query($machinesQuery, ['filterValue' => $filterValue])->getResult();
+
+                foreach ($machines as $machine) {
+                    $performanceQuery = "SELECT tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm,
+                                                SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter,
+                                                SUM(tbzd_scrapmaint_qty) AS maintqty
+                                         FROM t_modbraz_hd
+                                         INNER JOIN t_modbraz_dt ON tbzd_hdid = tbzh_id
+                                         WHERE tbzh_status <> 25 AND tbzd_status <> 25
+                                         AND tbzh_proddate = :datekey:
+                                         AND tbzd_finish IS NOT NULL AND tbzd_oee_code = 1000
+                                         AND tbzh_mchcode = :machineName:
+                                         GROUP BY tbzh_mchcode, tbzh_prodcode";
+                    $performanceResults = $this->db->query($performanceQuery, [
+                        'datekey'   => $dateKey,
+                        'machineName' => $machine->mchname
+                    ])->getResult();
+
+                    foreach ($performanceResults as $result) {
+                        $avgspm     = $result->avgspm ?: 0;
+                        $ttime      = $result->ttime ?: 0;
+                        $actcounter = $result->actcounter ?: 0;
+                        $maintqty   = $result->maintqty ?: 0;
+
+                        $rejectQuery = "SELECT SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt +
+                                                    trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl +
+                                                    trbh_others) AS rejectqty
+                                        FROM T_REJECTBOXBRAZ_HD
+                                        WHERE trbh_machine = :machineName: AND trbh_prod_code = :prodcode:
+                                        AND trbh_finish >= :startDate: AND trbh_finish < :endDate:
+                                        AND TRBH_FLAG = 1";
+                        $rejectResults = $this->db->query($rejectQuery, [
+                            'machineName' => $result->tbzh_mchcode,
+                            'prodcode'    => $result->tbzh_prodcode,
+                            'startDate'   => $startDateTime,
+                            'endDate'     => $endDateTime
+                        ])->getRow();
+
+                        $rejectqty = $rejectResults ? $rejectResults->rejectqty : 0;
+                    
+                        if ($avgspm > 0 && $ttime > 0) {
+                            $dailyPerformanceCount++;
+                            $machinePerformance = (($actcounter + $rejectqty + $maintqty) / ($avgspm * $ttime)) * 100;
+                            $dailyPerformance += $machinePerformance;
+                        }
+                    }
+                }
+            }
+            
+            if ($filterBy == 'Machine') {
+                // Query to get avgspm and ttime for the machine and grouped by product code and machine
+                $performanceQuery = "SELECT tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                        FROM t_modbraz_hd
+                                        INNER JOIN t_modbraz_dt
+                                            ON tbzd_hdid        = tbzh_id
+                                        WHERE tbzh_status       <> 25
+                                            AND tbzd_status     <> 25
+                                         AND tbzh_proddate = :datekey:
+                                            AND tbzd_finish IS NOT NULL
+                                            AND tbzd_oee_code   = 1000
+                                            AND tbzh_mchcode    = :filterValue:
+                                        GROUP BY tbzh_prodcode, tbzh_mchcode";
+
+                // Execute the query and fetch the results
+                $performanceResults = $this->db->query($performanceQuery, [
+                    'datekey'   => $dateKey,
+                    'filterValue' => $filterValue // This is the machine code
+                ])->getResult();
+
+
+                // Iterate over each result (each product code) and calculate performance
+                foreach ($performanceResults as $result) {
+                    $avgspm     = $result->avgspm ?: 0;
+                    $ttime      = $result->ttime ?: 0;
+                    $actcounter = $result->actcounter ?: 0;
+                    $maintqty   = $result->maintqty ?: 0;
+
+                    $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                    from T_REJECTBOXBRAZ_HD 
+                                    where trbh_machine = :machineName: and trbh_prod_code = :prodcode: 
+                                    AND trbh_finish >= :startDate: AND trbh_finish < :endDate:
+                                    AND TRBH_FLAG = 1";
+
+                    $rejectResults = $this->db->query($rejectQuery, [
+                        'machineName' => $result->tbzh_mchcode,
+                        'prodcode' => $result->tbzh_prodcode,
+                        'startDate'   => $startDateTime,
+                        'endDate'     => $endDateTime
+                    ])->getRow();
+
+                    $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                    if ($avgspm > 0 && $ttime > 0) {
+                        $dailyPerformanceCount++;
+                        $machinePerformance = (($actcounter + $rejectqty + $maintqty) / ($avgspm * $ttime)) * 100;
+                        $dailyPerformance += $machinePerformance;
+                    }
+                }
+            }
+
+            if ($filterBy == 'All') {
+                // Get all machines
+                $machinesQuery = "  SELECT mchname
+                                    FROM mmachine
+                                    WHERE mchloccode    = 6
+                                        AND mchgroup    = 'Machine'
+                                        AND mchstatus   <> 25
+                                    ORDER BY mchtype, mchname";
+
+                $machines = $this->db->query($machinesQuery)->getResult();
+
+                // Calculate performance for each machine
+                foreach ($machines as $machine) {
+                    // Query to get avgspm and ttime for each machine, grouped by product code
+                    $performanceQuery = "   SELECT  tbzh_mchcode, tbzh_prodcode,  AVG(tbzh_spm) AS avgspm, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                            FROM t_modbraz_hd
+                                            INNER JOIN t_modbraz_dt
+                                                ON tbzd_hdid    = tbzh_id
+                                            WHERE tbzh_status   <> 25
+                                            AND tbzd_status     <> 25
+                                            AND tbzh_proddate = :datekey:
+                                            AND tbzd_finish IS NOT NULL
+                                            AND tbzd_oee_code   = 1000
+                                            AND tbzh_mchcode    = :machineName:
+                                            GROUP BY tbzh_mchcode, tbzh_prodcode";
+
+                    $performanceResults = $this->db->query($performanceQuery, [
+                        'datekey'   => $dateKey,
+                        'machineName' => $machine->mchname
+                    ])->getResult();
+
+                    foreach ($performanceResults as $result) {
+                        $avgspm     = $result->avgspm ?: 0;
+                        $ttime      = $result->ttime ?: 0;
+                        $actcounter = $result->actcounter ?: 0;
+                        $maintqty   = $result->maintqty ?: 0;
+
+                        $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                        from T_REJECTBOXBRAZ_HD 
+                                        where trbh_machine = :machineName: and trbh_prod_code = :prodcode: 
+                                        AND trbh_finish >= :startDate: AND trbh_finish < :endDate:
+                                        AND TRBH_FLAG = 1";
+
+                        $rejectResults = $this->db->query($rejectQuery, [
+                            'machineName' => $result->tbzh_mchcode,
+                            'prodcode' => $result->tbzh_prodcode,
+                            'startDate'   => $startDateTime,
+                            'endDate'     => $endDateTime
+                        ])->getRow();
+
+                        $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                        if ($avgspm > 0 && $ttime > 0) {
+                            $dailyPerformanceCount++;
+                            $machinePerformance = (($actcounter + $rejectqty + $maintqty) / ($avgspm * $ttime)) * 100;
+                            $dailyPerformance += $machinePerformance;
+                        }
+                    }
+                }
+
+            }
+
+            // Calculate and store daily average performance if any data was collected for the day
+            if ($dailyPerformanceCount > 0) {
+                $performanceByDate[$dateKey] = $dailyPerformance / $dailyPerformanceCount;
+            } else {
+                $performanceByDate[$dateKey] = 0;
+            }
+        }
+
+        return $performanceByDate;  // Return performance grouped by date
+    }
+
+
+    public function get_loose_chart($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // Initialize variables for calculations
+        $actcounter     = 0;
+        $maintqty       = 0;
+        $rejectqty      = 0;
+        $avgspm         = 0;
+        $ttime          = 0;
+        $machineCount   = 0;
+
+        $totalLoose = 0;
+        $looseCount = 0;
+        
+        // Calculate avgspm based on filterBy
+        if ($filterBy == 'Machine') {
+            // Query to get avgspm and ttime for the specific machine
+            $machineQuery = "   SELECT  tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                    FROM t_modbraz_hd
+                                    INNER JOIN t_modbraz_dt
+                                        ON tbzd_hdid        = tbzh_id
+                                    WHERE tbzh_status       <> 25
+                                        AND tbzd_status     <> 25
+                                        AND tbzh_proddate BETWEEN '$startDate' AND '$endDate'
+                                        AND tbzd_finish IS NOT NULL
+                                        AND tbzd_oee_code   = 1000
+                                        AND tbzh_mchcode    = '$filterValue'
+                                    GROUP BY tbzh_mchcode, tbzh_prodcode";
+
+            $machineResult = $this->db->query($machineQuery, [
+                'startDate'   => $startDate,
+                'endDate'     => $endDate,
+                'filterValue' => $filterValue
+            ])->getResult();
+            
+            foreach ($machineResult as $result) {
+                    $avgspm     = $result->avgspm ?: 0;
+                    $ttime      = $result->ttime ?: 0;
+                    $actcounter = $result->actcounter ?: 0;
+                    $maintqty   = $result->maintqty ?: 0;
+
+                    $dateAfter = new \DateTime($endDate);
+                    $dateAfter->modify('+1 day');
+                    $newEndDate = $dateAfter->format('Y-m-d') . ' 07:20';
+
+                    $newStartDate = $startDate . ' 07:20';
+
+                    $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                    from T_REJECTBOXBRAZ_HD 
+                                    where trbh_machine = :machineName: and trbh_prod_code = :prodcode: AND trbh_finish BETWEEN :startDate: AND :endDate:
+                                    AND TRBH_FLAG = 1";
+
+                    $rejectResults = $this->db->query($rejectQuery, [
+                        'machineName' => $result->tbzh_mchcode,
+                        'prodcode' => $result->tbzh_prodcode,
+                        'startDate'   => $newStartDate,
+                        'endDate'     => $newEndDate
+                    ])->getRow();
+
+                    $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                    // Calculate performance for each product code on the machine
+                    if ($avgspm > 0 && $ttime > 0) {
+                        $looseCount++;
+                        // Check to avoid division by zero
+                        $timeLoose = $ttime - (($actcounter + $maintqty + $rejectqty) / $avgspm);
+                        
+                        if ($timeLoose == 0) { // Avoid division by zero for $a
+                            $final = 0;
+                        } else {
+                            $minutes = $ttime - $timeLoose;
+                            $final   = $minutes / $timeLoose;
+                        }
+                        $totalLoose += $final;
+                        
+                    } 
+                    
+            }
+            
+            $final = $looseCount > 0 ? $totalLoose / $looseCount : 0;
+
+        } else if ($filterBy == 'Series' || $filterBy == 'All') {
+            // Get machines based on the filter
+            $machinesQuery = $filterBy == 'Series' ?
+                "SELECT mchname FROM mmachine WHERE mchloccode = 6 AND mchgroup = 'Machine' AND mchstatus <> 25 AND mchtype = :filterValue:" :
+                "SELECT mchname FROM mmachine WHERE mchloccode = 6 AND mchgroup = 'Machine' AND mchstatus <> 25";
+
+            $machines = $this->db->query($machinesQuery, ['filterValue' => $filterValue])->getResult();
+            $machineCount = count($machines);
+
+            // Loop through each machine to calculate avgspm and ttime
+            foreach ($machines as $machine) {
+                $dataQuery = "   SELECT  tbzh_mchcode, tbzh_prodcode, AVG(tbzh_spm) AS avgspm, SUM(tbzd_ttime_calc) AS ttime, SUM(tbzd_prodresult_qty) AS actcounter, SUM(tbzd_scrapmaint_qty) AS maintqty
+                                        FROM t_modbraz_hd
+                                        INNER JOIN t_modbraz_dt
+                                            ON tbzd_hdid        = tbzh_id
+                                        WHERE tbzh_status       <> 25
+                                            AND tbzd_status     <> 25
+                                            AND tbzh_proddate BETWEEN :startDate: AND :endDate:
+                                            AND tbzd_finish IS NOT NULL
+                                            AND tbzd_oee_code   = 1000
+                                            AND tbzh_mchcode    = :machineName:
+                                    GROUP BY tbzh_mchcode, tbzh_prodcode";
+
+                $dataResult = $this->db->query($dataQuery, [
+                    'startDate'   => $startDate,
+                    'endDate'     => $endDate,
+                    'machineName' => $machine->mchname
+                ])->getResult();
+                
+                foreach ($dataResult as $resultD) {
+                        $avgspm     = $resultD->avgspm ?: 0;
+                        $ttime      = $resultD->ttime ?: 0;
+                        $actcounter = $resultD->actcounter ?: 0;
+                        $maintqty   = $resultD->maintqty ?: 0;
+
+                        $dateAfter = new \DateTime($endDate);
+                        $dateAfter->modify('+1 day');
+                        $newEndDate = $dateAfter->format('Y-m-d') . ' 07:20';
+
+                        $newStartDate = $startDate . ' 07:20';
+
+                        $rejectQuery = "select SUM(trbh_nb + trbh_nbnc + trbh_mt + trbh_bs + trbh_bt + trbh_nc + trbh_bo + trbh_fm + trbh_df + trbh_mtrl + trbh_others + trbh_qtyok) AS rejectqty
+                                        from T_REJECTBOXBRAZ_HD 
+                                        where trbh_machine = :machineName: and trbh_prod_code = :prodcode: AND trbh_finish BETWEEN :startDate: AND :endDate:
+                                        AND TRBH_FLAG = 1";
+
+                        $rejectResults = $this->db->query($rejectQuery, [
+                            'machineName' => $resultD->tbzh_mchcode,
+                            'prodcode' => $resultD->tbzh_prodcode,
+                            'startDate'   => $newStartDate,
+                            'endDate'     => $newEndDate
+                        ])->getRow();
+
+                        $rejectqty  = $rejectResults ? $rejectResults->rejectqty : 0;
+
+                        // Calculate performance for each product code on the machine
+                        if ($avgspm > 0 && $ttime > 0) {
+                            $looseCount++;
+                            // Check to avoid division by zero
+                            $timeLoose = $ttime - (($actcounter + $maintqty + $rejectqty) / $avgspm);
+
+                            if ($timeLoose == 0) { // Avoid division by zero for $a
+                                $final = 0;
+                            } else {
+                                $minutes = $ttime - $timeLoose;
+                                $final   = $minutes / $timeLoose;
+                            }
+                            $totalLoose += $final;
+
+                        } 
+
+                } 
+           }
+
+            $final = $looseCount > 0 ? $totalLoose / $looseCount : 0;
+        }
+
+        return $final;
+    }
+
+    public function get_line_chart($filterBy, $filterValue, $startPeriod, $endPeriod)
+    {
+        $oeeData = [];
+
+        // Prepare base query for OEE data
+        $query = "  SELECT  DATE(tbzh_proddate) AS production_date,
+                            SUM(CASE WHEN tbzd_oee_code = 1000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_1000,
+                            SUM(CASE WHEN tbzd_oee_code = 4000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_4000,
+                            SUM(CASE WHEN tbzd_oee_code = 5000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_5000,
+                            SUM(CASE WHEN tbzd_oee_code = 6000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_6000,
+                            SUM(CASE WHEN tbzd_oee_code = 7000 THEN tbzd_ttime_calc ELSE 0 END) AS total_time_oee_7000
+                    FROM t_modbraz_hd
+                    INNER JOIN t_modbraz_dt ON tbzd_hdid = tbzh_id";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $query .= " INNER JOIN mmachine ON mchname = tbzh_mchcode AND mchstatus = 1";
+        }
+
+        // Apply filtering based on the selected filter type
+        if ($filterBy == 'Machine') {
+            $query .= " AND tbzh_mchcode = :filterValue:";
+        } else if ($filterBy == 'Series') {
+            $query .= " AND mchtype = :filterValue:";
+        }
+
+        // Group results by date
+        $query .= " WHERE tbzh_status <> 25
+                        AND tbzd_status <> 25
+                        AND tbzh_proddate BETWEEN :startPeriod: AND :endPeriod:
+                        AND tbzd_finish IS NOT NULL 
+                        GROUP BY DATE(tbzh_proddate) ORDER BY production_date";
+
+        // Execute the query and get results
+        $results = $this->db->query($query, [
+            'filterValue' => $filterValue,
+            'startPeriod' => $startPeriod,
+            'endPeriod'   => $endPeriod
+        ])->getResult();
+
+        // Prepare the OEE data for each day
+        foreach ($results as $result) {
+            $total_time = (float) $result->total_time_oee_1000 +
+                (float) $result->total_time_oee_4000 +
+                (float) $result->total_time_oee_5000 +
+                (float) $result->total_time_oee_6000 +
+                (float) $result->total_time_oee_7000;
+
+            // Avoid division by zero and store the OEE ratio
+            $oeeRatio = $total_time > 0 ? (float) $result->total_time_oee_1000 / $total_time : 0;
+            $oeeData[] = [
+                'date' => $result->production_date,
+                'oee'  => $oeeRatio
+            ];
+        }
+
+        return $oeeData; // Return the array of OEE data per day
+    }
+
+    public function get_activity($filterBy, $filterValue, $startDate, $endDate)
+    {
+        $query = "  SELECT tbzd_actcode || '-' || mba_actname AS act, SUM(tbzd_ttime_calc) AS ttime
+                    FROM t_modbraz_dt
+                    INNER JOIN m_modbraz_act
+                        ON mba_actcode  = tbzd_actcode
+                        AND mba_status  = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid    = tbzh_id
+                        AND tbzh_status <> 25";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $query .= " INNER JOIN mmachine
+                            ON mchname      = tbzh_mchcode
+                            AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $query .= " WHERE tbzd_status <> 25
+                        AND tbzh_proddate BETWEEN :startDate: AND :endDate:
+                        AND tbzd_finish IS NOT NULL";
+
+        // Apply filter conditions
+        if ($filterBy == 'Machine') {
+            $query .= " AND tbzh_mchcode = :filterValue:";
+        } elseif ($filterBy == 'Series') {
+            $query .= " AND mchtype = :filterValue:";
+        }
+
+        $query .= " GROUP BY tbzd_actcode, mba_actname
+                    ORDER BY SUM(tbzd_ttime_calc) DESC";
+
+        return $this->db->query($query, [
+            'filterValue' => $filterValue,
+            'startDate'   => $startDate,
+            'endDate'     => $endDate
+        ])->getResult();
+    }
+
+    public function get_radial_bar_chart_data($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // Query to get total ttime for all codes within the specified date range
+        $totalTtimeQuery = "SELECT SUM(tbzd_ttime_calc) AS total_ttime
+                            FROM t_modbraz_dt
+                            INNER JOIN m_modbraz_act
+                                ON mba_actcode  = tbzd_actcode
+                                AND mba_status  = 1
+                            INNER JOIN t_modbraz_hd
+                                ON tbzd_hdid    = tbzh_id
+                                AND tbzh_status <> 25";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $totalTtimeQuery .= "   INNER JOIN mmachine
+                                        ON mchname      = tbzh_mchcode
+                                        AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $totalTtimeQuery .= " WHERE tbzd_status <> 25
+                                AND tbzh_proddate BETWEEN :startDate: AND :endDate:";
+
+        if ($filterBy == 'Machine') {
+            $totalTtimeQuery .= " AND tbzh_mchcode = :filterValue:";
+        } elseif ($filterBy == 'Series') {
+            $totalTtimeQuery .= " AND mchtype = :filterValue:";
+        }
+
+        $totalResult = $this->db->query($totalTtimeQuery, [
+            'filterValue' => $filterValue,
+            'startDate'   => $startDate,
+            'endDate'     => $endDate
+        ])->getRow();
+
+        $totalTtime = $totalResult->total_ttime;
+
+        // Initialize an array to hold the results
+        $activityData = [];
+
+        // Define the activity codes and names
+        $activityCodes = [
+            1000 => 'Running',
+            6000 => 'Planned Downtime',
+            7000 => 'Breakdown',
+            5000 => 'External',
+            4000 => 'Regular Maintenance'
+        ];
+
+        // Loop through each activity code to get the ttime and calculate percentages
+        foreach ($activityCodes as $code => $activity) {
+            $ttimeQuery = " SELECT SUM(tbzd_ttime_calc) AS ttime
+                            FROM t_modbraz_dt
+                            INNER JOIN m_modbraz_act
+                                ON mba_actcode = tbzd_actcode
+                                AND mba_status = 1
+                            INNER JOIN t_modbraz_hd
+                                ON tbzd_hdid = tbzh_id
+                                AND tbzh_status <> 25";
+
+            // Conditionally add INNER JOIN mmachine for Series filter
+            if ($filterBy == 'Series') {
+                $ttimeQuery .= " INNER JOIN mmachine
+                                    ON mchname      = tbzh_mchcode
+                                    AND mchstatus   = 1";
+            }
+
+            // Add WHERE clause
+            $ttimeQuery .= " WHERE tbzd_status <> 25
+                                AND tbzd_oee_code = :activityCode:
+                                AND tbzh_proddate BETWEEN :startDate: AND :endDate:";
+
+            if ($filterBy == 'Machine') {
+                $ttimeQuery .= " AND tbzh_mchcode = :filterValue:";
+            } elseif ($filterBy == 'Series') {
+                $ttimeQuery .= " AND mchtype = :filterValue:";
+            }
+
+            $ttimeResult = $this->db->query($ttimeQuery, [
+                'activityCode' => $code,
+                'filterValue'  => $filterValue,
+                'startDate'    => $startDate,
+                'endDate'      => $endDate
+            ])->getRow();
+
+            $ttime = $ttimeResult->ttime ?: 0;
+
+            // Calculate the percentage
+            $percentage = $totalTtime > 0 ? ($ttime / $totalTtime) * 100 : 0;
+
+            // Store the result
+            $activityData[$activity] = [
+                'ttime' => $ttime,
+                'percentage' => $percentage
+            ];
+        }
+
+        return $activityData;
+    }
+
+    public function get_planned_dt_chart_data($filterBy, $filterValue, $startDate, $endDate)
+    {
+        $query = "  SELECT tbzd_actcode || '-' || mba_actname AS act, SUM(tbzd_ttime_calc) AS ttime
+                    FROM t_modbraz_dt
+                    INNER JOIN m_modbraz_act
+                        ON mba_actcode      = tbzd_actcode
+                        AND mba_status      = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid        = tbzh_id
+                        AND tbzh_status     <> 25";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $query .= " INNER JOIN mmachine
+                            ON mchname      = tbzh_mchcode
+                            AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $query .= " WHERE tbzd_status       <> 25
+                        AND tbzh_proddate BETWEEN '$startDate' AND '$endDate'
+                        AND tbzd_finish IS NOT NULL
+                        AND tbzd_oee_code   = 6000";
+
+        // Apply filter conditions
+        if ($filterBy == 'Machine') {
+            $query .= " AND tbzh_mchcode = '$filterValue'";
+        } elseif ($filterBy == 'Series') {
+            $query .= " AND mchtype = '$filterValue'";
+        }
+
+        $query .= " GROUP BY tbzd_actcode, mba_actname
+                    ORDER BY SUM(tbzd_ttime_calc) DESC
+                    LIMIT 5";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_break_down_chart_data($filterBy, $filterValue, $startDate, $endDate)
+    {
+        $query = "  SELECT tbzd_actcode || '-' || mba_actname AS act, SUM(tbzd_ttime_calc) AS ttime
+                    FROM t_modbraz_dt
+                    INNER JOIN m_modbraz_act
+                        ON mba_actcode      = tbzd_actcode
+                        AND mba_status      = 1
+                    INNER JOIN t_modbraz_hd
+                        ON tbzd_hdid        = tbzh_id
+                        AND tbzh_status     <> 25";
+
+        // Conditionally add INNER JOIN mmachine for Series filter
+        if ($filterBy == 'Series') {
+            $query .= " INNER JOIN mmachine
+                            ON mchname      = tbzh_mchcode
+                            AND mchstatus   = 1";
+        }
+
+        // Add WHERE clause
+        $query .= " WHERE tbzd_status       <> 25
+                        AND tbzh_proddate BETWEEN '$startDate' AND '$endDate'
+                        AND tbzd_finish IS NOT NULL
+                        AND tbzd_oee_code   = 7000";
+
+        // Apply filter conditions
+        if ($filterBy == 'Machine') {
+            $query .= " AND tbzh_mchcode = '$filterValue'";
+        } elseif ($filterBy == 'Series') {
+            $query .= " AND mchtype = '$filterValue'";
+        }
+
+        $query .= " GROUP BY tbzd_actcode, mba_actname
+                    ORDER BY SUM(tbzd_ttime_calc) DESC
+                    LIMIT 5";
+
+        return $this->db->query($query)->getResult();
+    }
+}

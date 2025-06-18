@@ -1,0 +1,454 @@
+<?php
+
+namespace App\Controllers\oee_brazing;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_brazing\M_OEEDataBraz;
+use App\Models\master_brazing\M_MstMachine;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Ods;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+
+class OEEDataBraz extends BaseController
+{
+    protected $M_OEEDataBraz;
+    protected $M_MstMachine;
+
+    public function __construct()
+    {
+        $this->M_OEEDataBraz = new M_OEEDataBraz();
+        $this->M_MstMachine = new M_MstMachine();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEDataBraz") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        $data["trouble_data"]       = $this->M_OEEDataBraz->get_trouble();
+        $data["activity_data"]      = $this->M_OEEDataBraz->get_activity();
+        $data["machine_data"]       = $this->M_MstMachine->get_machine_data();
+
+        return view("oee_brazing/data/main", $data);
+    }
+
+    public function get_data()
+    {
+        $series     = $this->request->getPost("series");
+        $end_date   = $this->request->getPost("end_date");
+
+        $data = $this->M_OEEDataBraz->get_data($series, $end_date);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_machine_header()
+    {
+        $machine    = $this->request->getPost("machine");
+        $start_date = $this->request->getPost("start_date");
+        $end_date   = $this->request->getPost("end_date");
+
+        $data = $this->M_OEEDataBraz->get_machine_header($machine, $start_date, $end_date);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_machine_detail()
+    {
+        $header_id = $this->request->getPost("header_id");
+
+        // Get machine details
+        $details = $this->M_OEEDataBraz->get_machine_detail($header_id);
+
+        // Get total time calculations
+        $totals = $this->M_OEEDataBraz->get_total_times($header_id);
+
+        return $this->response->setJSON([
+            'details'           => $details,
+            'total_time_actual' => $totals->total_time_actual ?? 0, // Fallback to 0 if null
+            'total_time_calc'   => $totals->total_time_calc ?? 0    // Fallback to 0 if null
+        ]);
+    }
+
+    public function get_prod_qty()
+    {
+        $m    = $this->request->getPost("monthPeriod");
+        $y = $this->request->getPost("yearPeriod");
+
+        $data = $this->M_OEEDataBraz->get_data_prodplan($m, $y);
+        return $this->response->setJSON($data);
+    }
+
+        public function update_prod_qty()
+        {
+            $m    = $this->request->getPost("monthPeriod");
+            $y    = $this->request->getPost("yearPeriod");
+            $mch    = $this->request->getPost("machinename");
+            $qty    = $this->request->getPost("planqty");
+            $empl = session()->get("user_info")["EM_EmplName"];
+
+            $update = $this->M_OEEDataBraz->update_qtyplan($m, $y, $mch, $qty, $empl);
+
+            if ($update) {
+                return $this->response->setJSON(["success" => true, "error" => "Data successfully updated !"]);
+            } else {
+                return $this->response->setJSON(["success" => false, "error" => "Failed update quantity !"]);
+            }
+        }
+
+    public function update_detail()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        $update = $this->M_OEEDataBraz->update_detail($emplcode, $_POST);
+
+        if ($update) {
+            $response = [
+                "success" => true,
+                "message" => "Data successfully updated!",
+            ];
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            return $this->response->setJSON(["success" => false, "error" => "Update data failed!"]);
+        }
+    }
+
+    public function export_excel_fix()
+    {
+        $start_date = $this->request->getPost('start_date_excel');
+        $end_date   = $this->request->getPost('end_date_excel');
+        $series     = $this->request->getPost('series_excel');
+        $mch     = $this->request->getPost('mch_excel');
+        
+        $data = $this->M_OEEDataBraz->get_data_excel_fix($mch, $series, $start_date, $end_date);
+        
+        return $this->response->setJSON($data);
+    }
+
+    public function export_excel()
+    {
+        // Get the filter parameters
+        $start_date = $this->request->getPost('start_date_excel');
+        $end_date   = $this->request->getPost('end_date_excel');
+        $series     = $this->request->getPost('series_excel');
+
+        if (empty($series)) {
+            $series = "ALL";
+            $cond   = "";
+        } else {
+            $series = $series;
+            $cond   = "AND mchtype = '$series'";
+        }
+
+        // Fetch data based on filters
+        $data = $this->M_OEEDataBraz->get_data_excel($start_date, $end_date, $cond);
+
+        // Initialize Spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Set column headers
+        $sheet->setCellValue('A1', 'DETAIL ID');
+        $sheet->setCellValue('B1', 'PRODUCTION DATE');
+        $sheet->setCellValue('C1', 'SHIFT');
+        $sheet->setCellValue('D1', 'MACHINE');
+        $sheet->setCellValue('E1', 'SPM');
+        $sheet->setCellValue('F1', 'INSTRUCTION');
+        $sheet->setCellValue('G1', 'LOT NO.');
+        $sheet->setCellValue('H1', 'PRODUCT CODE');
+        $sheet->setCellValue('I1', 'PRODUCT NAME');
+        $sheet->setCellValue('J1', 'EMPLOYEE');
+        $sheet->setCellValue('K1', 'ACT CODE');
+        $sheet->setCellValue('L1', 'ACT NAME');
+        $sheet->setCellValue('M1', 'START');
+        $sheet->setCellValue('N1', 'FINISH');
+        $sheet->setCellValue('O1', 'TOTAL TIME');
+        // $sheet->setCellValue('P1', 'TOTAL ACTUAL');
+        $sheet->setCellValue('P1', 'ACTUAL COUNTER');
+        $sheet->setCellValue('Q1', 'SCRAP MAINTENANCE');
+        $sheet->setCellValue('R1', 'REWORK');
+        $sheet->setCellValue('S1', 'REMARK MOD');
+        $sheet->setCellValue('T1', 'TROUBLE');
+
+        // Apply styles to header rows
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'size' => 10,
+                'name' => 'Calibri'
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => [
+                    'argb' => 'FFF0F0F0'
+                ]
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                ],
+            ]
+        ];
+
+        $sheet->getStyle('A1:U1')->applyFromArray($headerStyle);
+
+        // Body style for content rows
+        $bodyStyle = [
+            'font' => [
+                'size' => 11,
+                'name' => 'Calibri'
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                ],
+            ]
+        ];
+
+        // Add data to cells\
+        $no     = 1;
+        $row    = 2;
+        foreach ($data as $item) {
+            $sheet->setCellValue('A' . $row, $item['tbzd_id']);
+            $sheet->setCellValue('B' . $row, $item['tbzh_proddate']);
+            $sheet->setCellValue('C' . $row, $item['tbzd_shift']);
+            $sheet->setCellValue('D' . $row, $item['tbzh_mchcode']);
+            $sheet->setCellValue('E' . $row, $item['tbzh_spm']);
+            $sheet->setCellValue('F' . $row, $item['tbzh_instno']);
+            $sheet->setCellValue('G' . $row, $item['tbzh_lotno']);
+            $sheet->setCellValue('H' . $row, $item['tbzh_prodcode']);
+            $sheet->setCellValue('I' . $row, $item['tbzh_prodname']);
+            $sheet->setCellValue('J' . $row, $item['tbzd_emplname']);
+            $sheet->setCellValue('K' . $row, $item['tbzd_actcode']);
+            $sheet->setCellValue('L' . $row, $item['mba_actname']);
+            $sheet->setCellValue('M' . $row, $item['tbzd_start']);
+            $sheet->setCellValue('N' . $row, $item['tbzd_finish']);
+            $sheet->setCellValue('O' . $row, $item['tbzd_ttime_calc']);
+            // $sheet->setCellValue('P' . $row, $item['tbzd_ttime_act']);
+            $sheet->setCellValue('P' . $row, $item['tbzd_prodresult_qty']);
+            $sheet->setCellValue('Q' . $row, $item['tbzd_scrapmaint_qty']);
+            $sheet->setCellValue('R' . $row, $item['tbzd_rework_qty']);
+            $sheet->setCellValue('S' . $row, $item['tbzd_remark']);
+            $sheet->setCellValue('T' . $row, $item['mtbz_desc']);
+            $no++;
+            $row++;
+        }
+
+        // Apply body style to the data rows
+        $sheet->getStyle('A2:U' . ($row - 1))->applyFromArray($bodyStyle);
+
+        // Adjust column widths to fit content
+        foreach (range('A', 'U') as $columnID) {
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
+
+        // Set the filename
+        $filename = 'MOD_Data_Export_' . $series . '_' . $start_date . '_' . $end_date . '.ods';
+
+        // Create the Xlsx writer and download the file
+        $writer = new Ods($spreadsheet);
+        // Set headers to prompt download
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer->save('php://output');
+        exit();
+    }
+
+    public function update_status_data()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        // Check if it's a POST request
+        if ($this->request->isAJAX() && $this->request->getPost("tbzd_id") && $this->request->getPost("new_status")) {
+            $tbzd_id     = $this->request->getPost("tbzd_id");
+            $new_status = $this->request->getPost("new_status");
+
+            // Call the model method to update status
+            $update = $this->M_OEEDataBraz->update_status_data($tbzd_id, $new_status, $emplcode);
+
+            // Prepare response
+            if ($update) {
+                $response = [
+                    "success" => true,
+                    "message" => "Status updated successfully!"
+                ];
+            } else {
+                $response = [
+                    "success" => false,
+                    "message" => "Failed to update status."
+                ];
+            }
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+
+    public function get_data_others()
+    {
+        $proddate = $this->request->getPost('proddate');
+        $data = $this->M_OEEDataBraz->get_data_others($proddate);
+        return $this->response->setJSON($data);
+    }
+
+    public function cek_data()
+    {
+        // Check if it's an AJAX request
+        if ($this->request->isAJAX()) {
+            // Get the data from POST
+            $emplcode       = session()->get("user_info")["EM_EmplCode"];
+            $tbzo_actcode   = $this->request->getPost("tbzo_actcode");
+            $tbzo_start     = $this->request->getPost("tbzo_start");
+            $tbzo_finish    = $this->request->getPost("tbzo_finish");
+            $machines       = $this->request->getPost("machines");
+            $machine_code   = $this->request->getPost("machine_code");
+            $tbzo_remark    = $this->request->getPost("tbzo_remark");
+
+            $machines_with_activity = []; // To store machines with activity
+
+            if ($machines === "all") {
+                // Fetch all machine data
+                $all_machines = $this->M_MstMachine->get_machine_data();
+
+                foreach ($all_machines as $machine) {
+                    $machine_code = $machine->mchname;
+
+                    // Check if data exists for the current machine in the time range
+                    $exists = $this->M_OEEDataBraz->cek_data($tbzo_actcode, $tbzo_start, $tbzo_finish, $machine_code, $tbzo_remark);
+
+                    if ($exists) {
+                        // If activity exists, store the machine name
+                        $machines_with_activity[] = $machine->mchname;
+                    } else {
+                        // Proceed with the insert logic for machines without activity
+                        $this->M_OEEDataBraz->insert_data($tbzo_actcode, $tbzo_start, $tbzo_finish, $machine_code, $tbzo_remark, $emplcode);
+                    }
+                }
+            } else if ($machines === "select") {
+                // Loop through selected machine codes
+                foreach ($machine_code as $code) {
+                    // Check if data exists for the selected machine
+                    $exists = $this->M_OEEDataBraz->cek_data($tbzo_actcode, $tbzo_start, $tbzo_finish, $code, $tbzo_remark);
+
+                    if ($exists) {
+                        // Store the machine name if activity exists
+                        $machines_with_activity[] = $code;
+                    } else {
+                        // Proceed with the insert logic for machines without activity
+                        $this->M_OEEDataBraz->insert_data($tbzo_actcode, $tbzo_start, $tbzo_finish, $code, $tbzo_remark, $emplcode);
+                    }
+                }
+            }
+
+            // Return JSON response with machines that have activity
+            return $this->response->setJSON([
+                "machines_with_activity" => $machines_with_activity
+            ]);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+
+    public function cek_data_others()
+    {
+        // Check if it's an AJAX request
+        if ($this->request->isAJAX()) {
+            // Get the data from POST
+            $tbzo_mchcode   = $this->request->getPost("tbzo_mchcode");
+            $tbzo_actcode   = $this->request->getPost("tbzo_actcode");
+            $tbzo_start     = $this->request->getPost("tbzo_start");
+            $tbzo_finish    = $this->request->getPost("tbzo_finish");
+            $tbzo_remark    = $this->request->getPost("tbzo_remark");
+
+            // Call the model method to check if the data exists
+            $exists = $this->M_OEEDataBraz->cek_data_others($tbzo_mchcode, $tbzo_actcode, $tbzo_start, $tbzo_finish, $tbzo_remark);
+
+            // Return JSON response
+            return $this->response->setJSON(["exists" => $exists]);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+
+    public function update_others()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        $update = $this->M_OEEDataBraz->update_others($emplcode, $_POST);
+
+        if ($update) {
+            $response = [
+                "success" => true,
+                "message" => "Data successfully updated!",
+            ];
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            return $this->response->setJSON(["success" => false, "error" => "Update data failed!"]);
+        }
+    }
+
+    public function update_status_others()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        // Check if it's a POST request
+        if ($this->request->isAJAX() && $this->request->getPost("tbzo_id") && $this->request->getPost("new_status")) {
+            $tbzo_id     = $this->request->getPost("tbzo_id");
+            $new_status = $this->request->getPost("new_status");
+
+            // Call the model method to update status
+            $update = $this->M_OEEDataBraz->update_status_others($tbzo_id, $new_status, $emplcode);
+
+            // Prepare response
+            if ($update) {
+                $response = [
+                    "success" => true,
+                    "message" => "Status updated successfully!"
+                ];
+            } else {
+                $response = [
+                    "success" => false,
+                    "message" => "Failed to update status."
+                ];
+            }
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+}

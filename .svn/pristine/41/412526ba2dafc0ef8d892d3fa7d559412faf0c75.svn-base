@@ -1,0 +1,70 @@
+CRITICAL - 2024-09-23 10:27:48 --> ErrorException: Undefined variable $hdid
+[Method: POST, Route: OEEDataBraz/get_machine_detail]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 63.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(63): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->get_machine_detail()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()
+CRITICAL - 2024-09-23 10:28:51 --> ErrorException: Undefined variable $hdid
+[Method: POST, Route: OEEDataBraz/get_machine_detail]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 63.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(63): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->get_machine_detail()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()
+CRITICAL - 2024-09-23 10:29:15 --> ErrorException: Undefined variable $hdid
+[Method: POST, Route: OEEDataBraz/get_machine_detail]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 63.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(63): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->get_machine_detail()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()
+CRITICAL - 2024-09-23 10:29:22 --> ErrorException: Undefined variable $hdid
+[Method: POST, Route: OEEDataBraz/get_machine_detail]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 63.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(63): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->get_machine_detail()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()
+CRITICAL - 2024-09-23 13:29:35 --> ErrorException: Undefined property: App\Controllers\oee_brazing\OEEDataBraz::$db
+[Method: GET, Route: OEEDataBraz/export/xls_data_oee]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 91.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(91): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->exportXls()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()
+CRITICAL - 2024-09-23 13:32:05 --> ErrorException: Undefined property: App\Controllers\oee_brazing\OEEDataBraz::$db
+[Method: GET, Route: OEEDataBraz/export/xls_data_oee]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 91.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(91): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->exportXls()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()
+CRITICAL - 2024-09-23 13:32:48 --> ErrorException: Undefined property: App\Controllers\oee_brazing\OEEDataBraz::$db
+[Method: GET, Route: OEEDataBraz/export/xls_data_oee]
+in APPPATH/Controllers/oee_brazing/OEEDataBraz.php on line 91.
+ 1 APPPATH/Controllers/oee_brazing/OEEDataBraz.php(91): CodeIgniter\Debug\Exceptions->errorHandler()
+ 2 SYSTEMPATH/CodeIgniter.php(933): App\Controllers\oee_brazing\OEEDataBraz->exportXls()
+ 3 SYSTEMPATH/CodeIgniter.php(509): CodeIgniter\CodeIgniter->runController()
+ 4 SYSTEMPATH/CodeIgniter.php(355): CodeIgniter\CodeIgniter->handleRequest()
+ 5 SYSTEMPATH/Boot.php(325): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter()
+ 7 FCPATH/index.php(56): CodeIgniter\Boot::bootWeb()

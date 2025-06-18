@@ -1,0 +1,969 @@
+<?php
+
+namespace App\Models\oee_molding;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEDashboardMold extends Model
+{
+    private $db_mrp;
+
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        $this->db_mrp = db_connect('db_mrp');
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_machine_data()
+    {
+        $query = "  SELECT mcode as mchid, mname as mchname FROM m_machine 
+            where mlocation in ('Molding 1', 'Molding 2', 'Vertikal')
+            and mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+            ORDER BY substring(mname FROM '^[^-]+'), CAST(substring(mname FROM '[^-]+$') AS INTEGER)";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_period($month, $year)
+    {
+        // Get the last date of the selected month
+        $lastDateOfMonth            = date("Y-m-t", strtotime("$year-$month-01"));
+
+        // Check if the last date is a Saturday or Sunday
+        $lastDateTimestamp          = strtotime($lastDateOfMonth);
+        $lastDateOfMonth            = date("Y-m-d", strtotime('-1 day', $lastDateTimestamp));
+
+        // Get the last date of the previous month
+        $lastDateOfPreviousMonth    = date("Y-m-t", strtotime("$year-$month-01 -1 month"));
+
+        // Check if the last date of the previous month is a Saturday or Sunday
+        $previousMonthTimestamp     = strtotime($lastDateOfPreviousMonth);
+        $previousMonthDayOfWeek     = date('N', $previousMonthTimestamp);
+
+        // If it's Saturday (6) or Sunday (7), adjust to the previous Friday
+        if ($previousMonthDayOfWeek == 6) { // Saturday
+            $lastDateOfPreviousMonth = date("Y-m-d", strtotime('-1 day', $previousMonthTimestamp)); // move to Friday
+        } elseif ($previousMonthDayOfWeek == 7) { // Sunday
+            $lastDateOfPreviousMonth = date("Y-m-d", strtotime('-2 days', $previousMonthTimestamp)); // move to Friday
+        }
+
+        // Return both dates
+        return [
+            'previous_month' => $lastDateOfPreviousMonth,
+            'selected_month' => $lastDateOfMonth,
+        ];
+    }
+
+    public function get_product($machine_code)
+    {
+        $query = "  SELECT tbzh_prodcode, tbzh_prodname
+                    FROM t_modbraz_hd
+                    WHERE tbzh_mchcode = '$machine_code'
+                    GROUP BY tbzh_prodcode, tbzh_prodname";
+
+        $result = $this->db->query($query, [$machine_code]);
+        return $result->getResultArray();
+    }
+
+    public function get_availability_data($filterBy, $filterValue, $startDate, $endDate)
+    { 
+        // Query to get total ttime for all codes within the specified date range
+        $totalTtimeQuery = "select coalesce (sum(tmld_ttime_calc/60), 0) as total_ttime
+            from t_modmold_dt a
+            inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+            inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status <> 25
+            inner join m_machine d on c.tmlh_mchcode = d.mname
+            where c.tmlh_proddate BETWEEN :startDate: AND :endDate:";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $totalTtimeQuery .= " AND mname = :filterValue:" . $location;
+        } else if ($filterBy == 'Location') {
+            $totalTtimeQuery .= " AND mlocation = :filterValue:";
+        } else if ($filterBy == 'All') {
+            $totalTtimeQuery .= " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+
+        $totalResult = $this->db->query($totalTtimeQuery, [
+            'filterValue' => $filterValue,
+            'startDate'   => $startDate,
+            'endDate'     => $endDate
+        ])->getRow();
+
+        $totalTtime = $totalResult->total_ttime;
+        // var_dump('data;', $totalTtime);die();
+
+        // Initialize an array to hold the results
+        $activityData = [];
+
+        // Define the activity codes and names
+        $activityCodes = [
+            1000 => 'Running',
+            2000 => 'Unused Time',
+            3000 => 'No Order No Plan',
+            4000 => 'Regular Maintenance',
+            5000 => 'External',
+            6000 => 'Planned Downtime',
+            7000 => 'Breakdown'
+        ];
+
+        // Loop through each activity code to get the ttime and calculate percentages
+        foreach ($activityCodes as $code => $activity) {
+            $ttimeQuery = "select coalesce (sum(tmld_ttime_calc/60), 0) as ttime
+                from t_modmold_dt a
+                inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+                inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status <> 25
+                inner join m_machine d on c.tmlh_mchcode = d.mname
+                where c.tmlh_proddate BETWEEN :startDate: AND :endDate:
+                and a.tmld_oee_code = :activityCode:";
+
+            if ($filterBy == 'Machine') {
+                $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+                $ttimeQuery .= " AND mname = :filterValue:" . $location;
+            } else if ($filterBy == 'Location') {
+                $ttimeQuery .= " AND mlocation = :filterValue:";
+            } else if ($filterBy == 'All') {
+                $ttimeQuery .= " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            }
+
+            $ttimeResult = $this->db->query($ttimeQuery, [
+                'activityCode' => $code,
+                'filterValue'  => $filterValue,
+                'startDate'    => $startDate,
+                'endDate'      => $endDate
+            ])->getRow();
+            // echo $this->db->getLastQuery();
+            // die();
+
+            $ttime = $ttimeResult ? $ttimeResult->ttime : 0;
+
+            // Calculate the percentage
+            $percentage = $totalTtime > 0 ? ($ttime / $totalTtime) * 100 : 0;
+
+            // Store the result
+            $activityData[$activity] = [
+                'ttime' => $ttime,
+                'percentage' => $percentage
+            ];
+        }
+        $runningTime = $activityData['Running']['ttime'] ?? 0;   //1000
+        $regTime = $activityData['Regular Maintenance']['ttime'] ?? 0;   //4000
+        $extTime = $activityData['External']['ttime'] ?? 0;   //5000
+        $pdtTime = $activityData['Planned Downtime']['ttime'] ?? 0;   //6000
+        $breakdownTime = $activityData['Breakdown']['ttime'] ?? 0;   //7000
+        $jml = $runningTime + $regTime + $extTime + $pdtTime + $breakdownTime;
+        $result = $jml != 0 ? $runningTime / $jml : 0;
+        
+        return $result * 100;
+    }
+
+    public function get_availability_data_date($filterBy, $filterValue, $date)
+    { 
+        $date = $date->format('Y-m-d');
+        // var_dump($filterBy, $filterValue, $date);die();
+
+        // Query to get total ttime for all codes within the specified date range
+        $totalTtimeQuery = "select coalesce (sum(tmld_ttime_calc/60), 0) as total_ttime
+            from t_modmold_dt a
+            inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+            inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status <> 25
+            inner join m_machine d on c.tmlh_mchcode = d.mname
+            where c.tmlh_proddate = :date:";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $totalTtimeQuery .= " AND mname = :filterValue:" . $location;
+        } else if ($filterBy == 'Location') {
+            $totalTtimeQuery .= " AND mlocation = :filterValue:";
+        } else if ($filterBy == 'All') {
+            $totalTtimeQuery .= " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+
+        $totalResult = $this->db->query($totalTtimeQuery, [
+            'filterValue' => $filterValue,
+            'date'   => $date
+        ])->getRow();
+
+        $totalTtime = $totalResult->total_ttime;
+        // var_dump('data;', $totalTtime);die();
+
+        // Initialize an array to hold the results
+        $activityData = [];
+
+        // Define the activity codes and names
+        $activityCodes = [
+            1000 => 'Running',
+            2000 => 'Unused Time',
+            3000 => 'No Order No Plan',
+            4000 => 'Regular Maintenance',
+            5000 => 'External',
+            6000 => 'Planned Downtime',
+            7000 => 'Breakdown'
+        ];
+
+        // Loop through each activity code to get the ttime and calculate percentages
+        foreach ($activityCodes as $code => $activity) {
+            $ttimeQuery = "select coalesce (sum(tmld_ttime_calc/60), 0) as ttime
+                from t_modmold_dt a
+                inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+                inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status <> 25
+                inner join m_machine d on c.tmlh_mchcode = d.mname
+                where c.tmlh_proddate = :date:
+                and a.tmld_oee_code = :activityCode:";
+
+            if ($filterBy == 'Machine') {
+                $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+                $ttimeQuery .= " AND mname = :filterValue:" . $location;
+            } else if ($filterBy == 'Location') {
+                $ttimeQuery .= " AND mlocation = :filterValue:";
+            } else if ($filterBy == 'All') {
+                $ttimeQuery .= " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            }
+
+            $ttimeResult = $this->db->query($ttimeQuery, [
+                'activityCode' => $code,
+                'filterValue'  => $filterValue,
+                'date'    => $date
+            ])->getRow();
+            // echo $this->db->getLastQuery();
+            // die();
+
+            $ttime = $ttimeResult ? $ttimeResult->ttime : 0;
+
+            // Calculate the percentage
+            $percentage = $totalTtime > 0 ? ($ttime / $totalTtime) * 100 : 0;
+
+            // Store the result
+            $activityData[$activity] = [
+                'ttime' => $ttime,
+                'percentage' => $percentage
+            ];
+        }
+        $runningTime = $activityData['Running']['ttime'] ?? 0;   //1000
+        $regTime = $activityData['Regular Maintenance']['ttime'] ?? 0;   //4000
+        $extTime = $activityData['External']['ttime'] ?? 0;   //5000
+        $pdtTime = $activityData['Planned Downtime']['ttime'] ?? 0;   //6000
+        $breakdownTime = $activityData['Breakdown']['ttime'] ?? 0;   //7000
+        $jml = $runningTime + $regTime + $extTime + $pdtTime + $breakdownTime;
+        $result = $jml != 0 ? $runningTime / $jml : 0;
+        
+        return $result * 100;
+    }
+
+    public function get_qual_chart($filterBy, $filterValue, $startDate, $endDate, $month = '', $year = '')
+    { 
+        // var_dump($filterBy, $filterValue, $startDate, $endDate);die();
+        //TOTAL GOOD PRODUCT MENGGUNAKAN SQL DAN SQL2
+        $sql = "SELECT COALESCE(COALESCE(SUM(tmld_prodqty), 0)/NULLIF(coalesce(avg(b.tmlh_cavity), 0),0),0) as prod_qty  FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                WHERE a.mcode NOT IN ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_act_code = 1101
+                AND b.tmlh_proddate BETWEEN '$startDate' AND '$endDate'
+                AND c.tmld_status <> 25";
+                
+        $sql_detail = "SELECT tml_mchcode, tml_dies_cavid, tml_diesno, tml_partcode, tml_qty 
+                FROM t_mold_limitation 
+                WHERE tml_mchcode = ? AND tml_month = ? AND tml_year = ?";
+        $get_detail = $this->db->query($sql_detail, [$filterValue, $month, $year])->getResult();
+        
+        $result = []; // Array untuk menyimpan hasil akhir
+        $total_final_qty = 0; // Variabel untuk menampung total final_qty
+        
+        if (!empty($get_detail)) {
+            // Ambil satu nilai cavity dari get_loop
+            $sql_loop = "SELECT tmlh_cavity 
+                        FROM t_modmold_hd 
+                        WHERE tmlh_mchcode = ? 
+                            AND tmlh_dies_cavid = ? 
+                            AND tmlh_diesno = ? 
+                            AND tmlh_prodcode = ? 
+                            AND tmlh_proddate BETWEEN ? AND ? 
+                        LIMIT 1";
+        
+            // Ambil data pertama dari get_detail untuk query cavity
+            $first_detail = $get_detail[0];
+        
+            $get_loop = $this->db->query($sql_loop, [
+                $first_detail->tml_mchcode, 
+                $first_detail->tml_diesno, 
+                $first_detail->tml_dies_cavid, 
+                $first_detail->tml_partcode, 
+                $startDate, 
+                $endDate
+            ])->getRow();
+        
+            // Jika tidak ada data cavity, gunakan nilai default 1 agar tidak error saat pembagian
+            $cavity = $get_loop ? (int) $get_loop->tmlh_cavity : 1;
+        
+            // Looping semua data detail dan gunakan cavity sebagai pembagi
+            foreach ($get_detail as $detail) {
+                $final_qty = (int) $detail->tml_qty / $cavity; // Hitung final_qty
+        
+                $result[] = [
+                    'tml_mchcode'  => $detail->tml_mchcode,
+                    'tml_dies_cavid' => $detail->tml_dies_cavid,
+                    'tml_diesno'   => $detail->tml_diesno,
+                    'tml_partcode' => $detail->tml_partcode,
+                    'tml_qty'      => (int) $detail->tml_qty,
+                    'tmlh_cavity'  => $cavity, // Cavity yang didapat dari get_loop
+                    'final_qty'    => $final_qty, // Final qty hasil pembagian
+                ];
+        
+                // Tambahkan final_qty ke total
+                $total_final_qty += $final_qty;
+            }
+        }
+        
+        // Menampilkan hasil untuk debugging
+        // var_dump($result);
+        // echo "Total Final Qty: " . $total_final_qty;
+        // die(); 
+ 
+        $sql2 = "SELECT COALESCE(SUM(tml_qty), 0) as limit_qty from t_mold_limitation a
+                inner join m_machine b on a.tml_mchcode = b.mname
+                where tml_status <> 25 and tml_month = '$month' and tml_year = '$year'";
+
+        //UNTUK MENDAPATKAN TOTAL PRODUCT
+        $sql3 = "SELECT COALESCE((COALESCE(SUM(c.tmld_prodqty), 0) + COALESCE(SUM(c.tmld_scrapqty), 0)) / NULLIF(COALESCE(AVG(b.tmlh_cavity), 0), 0), 0) AS total_qty 
+                FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                where a.mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_oee_code = 1000
+                and b.tmlh_proddate BETWEEN '$startDate' AND '$endDate' and tmld_status <> 25";
+
+        if ($filterBy == 'Machine') {
+            $location = " AND mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+
+            $sql .= " AND a.mname = '$filterValue'" . $location;
+            $sql2 .= " AND b.mname = '$filterValue'" . $location;
+            $sql3 .= " AND a.mname = '$filterValue'" . $location;
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND a.mlocation = '$filterValue'";
+            $sql2 .= " AND b.mlocation = '$filterValue'";
+            $sql3 .= " AND a.mlocation = '$filterValue'";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND a.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql2 .= " AND b.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql3 .= " AND a.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+        // var_dump($sql, $sql2, $sql3);die();
+        // Eksekusi query dengan parameter binding
+        $query = $this->db->query($sql);
+        $query2 = $this->db->query($sql2);
+        $result = $query->getRow();
+        // var_dump($result);die();
+        $result2 = $query2->getRow();
+        $prod_qty = !empty($result->prod_qty) ? $result->prod_qty : 0 ;
+        $limit_qty = !empty($result2->limit_qty) ? $result2->limit_qty : 0 ;
+
+        $total_good_product = $prod_qty - $total_final_qty;
+
+        $query3 = $this->db->query($sql3);
+        $result3 = $query3->getRow();
+
+        $total_product = !empty($result3->total_qty) ? $result3->total_qty : 0;
+
+        $quality = $total_product != 0 ? ($total_good_product / $total_product) * 100 : 0;
+        // var_dump($quality);die();
+        return $quality;
+    }
+
+    public function get_qual_chart_date($filterBy, $filterValue, $date)
+    { 
+        // var_dump($filterBy, $filterValue, $startDate, $endDate);die();
+        $date = $date->format('Y-m-d');
+        //TOTAL GOOD PRODUCT MENGGUNAKAN SQL DAN SQL2
+        $sql = "SELECT COALESCE(COALESCE(SUM(tmld_prodqty), 0)/NULLIF(coalesce(avg(b.tmlh_cavity), 0),0),0) as prod_qty  FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                WHERE a.mcode NOT IN ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_act_code = 1101
+                AND b.tmlh_proddate = '$date'
+                AND c.tmld_status <> 25";
+        
+        // $sql2 = "SELECT COALESCE(SUM(tml_qty), 0) as limit_qty from t_mold_limitation a
+        //         inner join m_machine b on a.tml_mchcode = b.mname
+        //         where tml_status <> 25 and tml_month = '$month' and tml_year = '$year'";
+
+        //UNTUK MENDAPATKAN TOTAL PRODUCT
+        $sql3 = "SELECT COALESCE((COALESCE(SUM(c.tmld_prodqty), 0) + COALESCE(SUM(c.tmld_scrapqty), 0)) / NULLIF(COALESCE(AVG(b.tmlh_cavity), 0), 0), 0) AS total_qty 
+                FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                where a.mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_oee_code = 1000
+                and b.tmlh_proddate = '$date' and tmld_status <> 25";
+
+        if ($filterBy == 'Machine') {
+            $location = " AND mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+
+            $sql .= " AND a.mname = '$filterValue'" . $location;
+            // $sql2 .= " AND b.mname = '$filterValue'" . $location;
+            $sql3 .= " AND a.mname = '$filterValue'" . $location;
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND a.mlocation = '$filterValue'";
+            // $sql2 .= " AND b.mlocation = '$filterValue'";
+            $sql3 .= " AND a.mlocation = '$filterValue'";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND a.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            // $sql2 .= " AND b.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql3 .= " AND a.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+        // var_dump($sql, $sql2, $sql3);die();
+        // Eksekusi query dengan parameter binding
+        $query = $this->db->query($sql);
+        // $query2 = $this->db->query($sql2);
+        $result = $query->getRow();
+        // var_dump($result);die();
+        // $result2 = $query2->getRow();
+        $prod_qty = !empty($result->prod_qty) ? $result->prod_qty : 0 ;
+        // $limit_qty = !empty($result2->limit_qty) ? $result2->limit_qty : 0 ;
+
+        $total_good_product = $prod_qty;
+
+        $query3 = $this->db->query($sql3);
+        $result3 = $query3->getRow();
+
+        $total_product = !empty($result3->total_qty) ? $result3->total_qty : 0;
+
+        $quality = $total_product != 0 ? ($total_good_product / $total_product) * 100 : 0;
+        // var_dump($quality);die();
+        return $quality;
+    }
+
+    public function get_perf_chart($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // var_dump($filterBy, $filterValue, $startDate, $endDate);die();
+
+        //UNTUK MENDAPATKAN TOTAL PRODUCT
+        $sql = "SELECT COALESCE((COALESCE(SUM(c.tmld_prodqty), 0) + COALESCE(SUM(c.tmld_scrapqty), 0)) / NULLIF(COALESCE(AVG(b.tmlh_cavity), 0), 0), 0) AS total_qty 
+            FROM m_machine a
+            inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+            inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+            where a.mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+            and tmld_oee_code = 1000
+            and b.tmlh_proddate BETWEEN '$startDate' AND '$endDate' and tmld_status <> 25";
+
+        // ACTUAL RUNNING TIME
+        $sql2 = "SELECT COALESCE(SUM(tmld_ttime_calc/60), 0) as calc FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                where mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_oee_code = 1000 and tmld_status <> 25
+                and b.tmlh_proddate BETWEEN '$startDate' AND '$endDate'";
+
+        //SPM
+        $sql3 = "SELECT tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode, AVG(tmlh_spm) as spm FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname where tmlh_status <> 25 
+                and tmlh_proddate between '$startDate' and '$endDate'";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND a.mname = '$filterValue'" . $location;
+            $sql2 .= " AND a.mname = '$filterValue'" . $location;
+            $sql3 .= " AND tmlh_mchcode = '$filterValue'" . $location . "group by tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND a.mlocation = '$filterValue'";
+            $sql2 .= " AND a.mlocation = '$filterValue'";
+            $sql3 .= " AND mlocation = '$filterValue' group by mlocation, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        } else if ($filterBy == 'All') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= $location;
+            $sql2 .= $location;
+            $sql3 .= $location. "group by mlocation, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        }
+        // var_dump($sql, $sql2, $sql3);die();
+
+        $query = $this->db->query($sql);
+        $query2 = $this->db->query($sql2);
+        $query3 = $this->db->query($sql3);
+        $result = $query->getRow();
+        $result2 = $query2->getRow();
+        $result3 = $query3->getResultArray();
+        
+        $total_product = !empty($result->total_qty) ? $result->total_qty : 0;
+        $act_run_time = !empty($result2->calc) ? $result2->calc : 0;
+        $totalPerformance = 0; // Variabel untuk menjumlahkan semua nilai performance
+        $totalRows = count($result3); // Hitung jumlah total row
+
+        if ($totalRows > 0) { // Pastikan ada data untuk menghindari pembagian dengan nol
+            foreach ($result3 as $row) {
+                $spm = $row['spm']; // Ambil nilai SPM dari setiap baris
+                $spm_act = $spm * $act_run_time;
+                $performance = $spm_act != 0 ? ($total_product / ($spm * $act_run_time)) * 100 : 0;
+                $totalPerformance += $performance; // Tambahkan ke total
+            }
+
+            // Hitung rata-rata performance
+            $averagePerformance = round($totalPerformance / $totalRows, 2);
+        } else {
+            $averagePerformance = 0; // Jika tidak ada data, beri nilai default 0
+        }
+        // Menampilkan hasil
+        // echo "Total Performance: " . round($totalPerformance, 2) . "<br>";
+        // echo "Average Performance: " . $averagePerformance . "%";
+        $result = $averagePerformance != 0 ? $averagePerformance : 0;
+        // var_dump($averagePerformance);die();
+
+        return $result;
+    }
+
+    public function get_perf_chart_date($filterBy, $filterValue, $date)
+    {
+        $date = $date->format('Y-m-d');
+
+        //UNTUK MENDAPATKAN TOTAL PRODUCT
+        $sql = "SELECT COALESCE((COALESCE(SUM(c.tmld_prodqty), 0) + COALESCE(SUM(c.tmld_scrapqty), 0)) / NULLIF(COALESCE(AVG(b.tmlh_cavity), 0), 0), 0) AS total_qty 
+            FROM m_machine a
+            inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+            inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+            where a.mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+            and tmld_oee_code = 1000
+            and b.tmlh_proddate = '$date' and tmld_status <> 25";
+
+        // ACTUAL RUNNING TIME
+        $sql2 = "SELECT COALESCE(SUM(tmld_ttime_calc/60), 0) as calc FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                where mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_oee_code = 1000 and tmld_status <> 25
+                and b.tmlh_proddate = '$date'";
+
+        //SPM
+        $sql3 = "SELECT tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode, AVG(tmlh_spm) as spm FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname where tmlh_status <> 25 
+                and tmlh_proddate = '$date'";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND a.mname = '$filterValue'" . $location;
+            $sql2 .= " AND a.mname = '$filterValue'" . $location;
+            $sql3 .= " AND tmlh_mchcode = '$filterValue'" . $location . "group by tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND a.mlocation = '$filterValue'";
+            $sql2 .= " AND a.mlocation = '$filterValue'";
+            $sql3 .= " AND mlocation = '$filterValue' group by mlocation, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        } else if ($filterBy == 'All') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= $location;
+            $sql2 .= $location;
+            $sql3 .= $location. "group by mlocation, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        }
+        // var_dump($sql, $sql2, $sql3);die();
+
+        $query = $this->db->query($sql);
+        $query2 = $this->db->query($sql2);
+        $query3 = $this->db->query($sql3);
+        $result = $query->getRow();
+        $result2 = $query2->getRow();
+        $result3 = $query3->getResultArray();
+        
+        $total_product = !empty($result->total_qty) ? $result->total_qty : 0;
+        $act_run_time = !empty($result2->calc) ? $result2->calc : 0;
+        $totalPerformance = 0; // Variabel untuk menjumlahkan semua nilai performance
+        $totalRows = count($result3); // Hitung jumlah total row
+
+        if ($totalRows > 0) { // Pastikan ada data untuk menghindari pembagian dengan nol
+            foreach ($result3 as $row) {
+                $spm = $row['spm']; // Ambil nilai SPM dari setiap baris
+                $spm_act = $spm * $act_run_time;
+                $performance = $spm_act != 0 ? ($total_product / ($spm * $act_run_time)) * 100 : 0;
+                $totalPerformance += $performance; // Tambahkan ke total
+            }
+
+            // Hitung rata-rata performance
+            $averagePerformance = round($totalPerformance / $totalRows, 2);
+        } else {
+            $averagePerformance = 0; // Jika tidak ada data, beri nilai default 0
+        }
+        // Menampilkan hasil
+        // echo "Total Performance: " . round($totalPerformance, 2) . "<br>";
+        // echo "Average Performance: " . $averagePerformance . "%";
+
+        $result = $averagePerformance != 0 ? $averagePerformance : 0;
+        // var_dump($averagePerformance);die();
+
+        return $result;
+    }
+
+    public function get_loose_chart($filterBy, $filterValue, $startDate, $endDate, $month = '', $year = '')
+    {
+        // var_dump($filterBy, $filterValue, $startDate, $endDate);die();        
+        // ACTUAL RUNNING TIME
+        $sql = "SELECT COALESCE(SUM(tmld_ttime_calc/60), 0) as calc FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                where mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_oee_code = 1000 and tmld_status <> 25
+                and b.tmlh_proddate BETWEEN '$startDate' AND '$endDate'";
+
+        //TOTAL GOOD PRODUCT MENGGUNAKAN SQL2 DAN SQL3
+        $sql2 = "SELECT COALESCE((COALESCE(SUM(c.tmld_prodqty), 0) + COALESCE(SUM(c.tmld_scrapqty), 0)) / NULLIF(COALESCE(AVG(b.tmlh_cavity), 0), 0), 0) AS total_qty 
+                FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                WHERE a.mcode NOT IN ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_act_code in ('1101', '1102', '1103', '1104', '1105', '1106', '1107', '1108', '1109', '1110', '1111', '1112') 
+                AND b.tmlh_proddate BETWEEN '$startDate' AND '$endDate'
+                AND c.tmld_status <> 25";
+
+        $sql3 = "SELECT COALESCE(SUM(tml_qty), 0) as limit_qty from t_mold_limitation a
+                inner join m_machine b on a.tml_mchcode = b.mname
+                where tml_status <> 25 and tml_month = '$month' and tml_year = '$year'";
+
+        $sql_detail = "SELECT tml_mchcode, tml_dies_cavid, tml_diesno, tml_partcode, tml_qty 
+            FROM t_mold_limitation 
+            WHERE tml_mchcode = ? AND tml_month = ? AND tml_year = ?";
+        $get_detail = $this->db->query($sql_detail, [$filterValue, $month, $year])->getResult();
+
+        $result = []; // Array untuk menyimpan hasil akhir
+        $total_final_qty = 0; // Variabel untuk menampung total final_qty
+
+        if (!empty($get_detail)) {
+            // Ambil satu nilai cavity dari get_loop
+            $sql_loop = "SELECT tmlh_cavity 
+                    FROM t_modmold_hd 
+                    WHERE tmlh_mchcode = ? 
+                        AND tmlh_dies_cavid = ? 
+                        AND tmlh_diesno = ? 
+                        AND tmlh_prodcode = ? 
+                        AND tmlh_proddate BETWEEN ? AND ? 
+                    LIMIT 1";
+
+            // Ambil data pertama dari get_detail untuk query cavity
+            $first_detail = $get_detail[0];
+
+            $get_loop = $this->db->query($sql_loop, [
+                            $first_detail->tml_mchcode, 
+                            $first_detail->tml_diesno, 
+                            $first_detail->tml_dies_cavid, 
+                            $first_detail->tml_partcode, 
+                            $startDate, 
+                            $endDate
+                        ])->getRow();
+
+            // Jika tidak ada data cavity, gunakan nilai default 1 agar tidak error saat pembagian
+            $cavity = $get_loop ? (int) $get_loop->tmlh_cavity : 1;
+
+            // Looping semua data detail dan gunakan cavity sebagai pembagi
+            foreach ($get_detail as $detail) {
+                $final_qty = (int) $detail->tml_qty / $cavity; // Hitung final_qty
+
+                $result[] = [
+                    'tml_mchcode'  => $detail->tml_mchcode,
+                    'tml_dies_cavid' => $detail->tml_dies_cavid,
+                    'tml_diesno'   => $detail->tml_diesno,
+                    'tml_partcode' => $detail->tml_partcode,
+                    'tml_qty'      => (int) $detail->tml_qty,
+                    'tmlh_cavity'  => $cavity, // Cavity yang didapat dari get_loop
+                    'final_qty'    => $final_qty, // Final qty hasil pembagian
+                ];
+
+                // Tambahkan final_qty ke total
+                $total_final_qty += $final_qty;
+            }
+        }
+
+        //SPM
+        $sql4 = "SELECT tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode, AVG(tmlh_spm) as spm FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname where tmlh_status <> 25 
+                and tmlh_proddate between '$startDate' and '$endDate'";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND a.mname = '$filterValue'" . $location;
+            $sql2 .= " AND a.mname = '$filterValue'" . $location;
+            $sql3 .= " AND b.mname = '$filterValue'" . $location;
+            $sql4 .= " AND tmlh_mchcode = '$filterValue'" . $location . "group by tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND a.mlocation = '$filterValue'";
+            $sql2 .= " AND a.mlocation = '$filterValue'";
+            $sql3 .= " AND b.mlocation = '$filterValue'";
+            $sql4 .= " AND mlocation = '$filterValue' group by mlocation, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND a.mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql2 .= " AND a.mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql3 .= " AND b.mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql4 .= " AND mlocation in ('Molding 1', 'Molding 2', 'Vertikal') group by mlocation, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_prodcode";
+        }
+
+
+        $query = $this->db->query($sql);
+        $query2 = $this->db->query($sql2);
+        $query3 = $this->db->query($sql3);
+        $query4 = $this->db->query($sql4);
+        $result = $query->getRow();
+        $result2 = $query2->getRow();
+        $result3 = $query3->getRow();
+        $result4 = $query4->getResultArray();
+
+        $total_qty = $result2->total_qty;
+        $total_shot_counter = $total_qty != 0 ? $result2->total_qty - $total_final_qty : 0;
+
+        $totalPerformance = 0; // Variabel untuk menjumlahkan semua nilai performance
+        $totalRows = count($result4); // Hitung jumlah total row
+
+        if ($totalRows > 0) { // Pastikan ada data untuk menghindari pembagian dengan nol
+            foreach ($result4 as $row) {
+                $spm = $row['spm']; // Ambil nilai SPM dari setiap baris
+                $spm_act = $spm;
+                $performance = $spm_act != 0 ? ($total_shot_counter / $spm ) : 0;
+                $totalPerformance += $performance; // Tambahkan ke total
+            }
+
+            // Hitung rata-rata performance
+            $averagePerformance = round($totalPerformance / $totalRows, 2);
+        } else {
+
+            $averagePerformance = 0; // Jika tidak ada data, beri nilai default 0
+        }
+        // Menampilkan hasil
+        // echo "Total Performance: " . round($totalPerformance, 2) . "<br>";
+        // echo "Average Performance: " . $averagePerformance . "%";
+        $result_spm = $averagePerformance != 0 ? $averagePerformance : 0;
+        $final_result = ($result->calc - $result_spm) / 60;
+        // var_dump($final_result);die();
+        return $final_result;
+        
+    }
+
+    public function get_pdt_chart($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // var_dump($filterBy, $filterValue, $startDate, $endDate);die();
+        $sql = "select mma_actcode || '-' || mma_actname as act, sum(tmld_ttime_calc/60) as ttime
+            from t_modmold_dt a
+            inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+            inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status = 1
+            inner join m_machine d on c.tmlh_mchcode = d.mname
+            where c.tmlh_proddate BETWEEN '$startDate' AND '$endDate'
+            and a.tmld_oee_code = 6000";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND mname = '$filterValue'" . $location;
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND mlocation = '$filterValue'";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+        $sql .= " group by mma_actcode, mma_actname 
+            order by sum(tmld_ttime_calc) desc
+            limit 5";
+        
+        return $this->db->query($sql)->getResult();
+        
+    }
+
+    public function get_breakdown_chart($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // var_dump($filterBy, $filterValue, $startDate, $endDate);die();
+        $sql = "select mma_actcode || '-' || mma_actname as act, COALESCE(SUM(tmld_ttime_calc) / 60, 0) AS ttime
+            from t_modmold_dt a
+            inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+            inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status = 1
+            inner join m_machine d on c.tmlh_mchcode = d.mname
+            where c.tmlh_proddate BETWEEN '$startDate' AND '$endDate'
+            and a.tmld_oee_code = 7000";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND mname = '$filterValue'" . $location;
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND mlocation = '$filterValue'";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+        $sql .= " group by mma_actcode, mma_actname 
+            order by ttime desc
+            limit 5";
+        
+        return $this->db->query($sql)->getResult();
+        
+    }
+
+    public function get_radial_bar_chart_data($filterBy, $filterValue, $startDate, $endDate)
+    {
+        // Query to get total ttime for all codes within the specified date range
+        $totalTtimeQuery = "select coalesce (sum(tmld_ttime_calc/60), 0) as total_ttime
+            from t_modmold_dt a
+            inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+            inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status <> 25
+            inner join m_machine d on c.tmlh_mchcode = d.mname
+            where c.tmlh_proddate BETWEEN :startDate: AND :endDate:";
+
+        if ($filterBy == 'Machine') {
+            $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            $totalTtimeQuery .= " AND mname = :filterValue:" . $location;
+        } else if ($filterBy == 'Location') {
+            $totalTtimeQuery .= " AND mlocation = :filterValue:";
+        } else if ($filterBy == 'All') {
+            $totalTtimeQuery .= " AND mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+        // var_dump($totalTtimeQuery);die();
+
+        $totalResult = $this->db->query($totalTtimeQuery, [
+            'filterValue' => $filterValue,
+            'startDate'   => $startDate,
+            'endDate'     => $endDate
+        ])->getRow();
+
+        $totalTtime = $totalResult->total_ttime;
+        // var_dump('data;', $totalTtime);die();
+
+        // Initialize an array to hold the results
+        $activityData = [];
+
+        // Define the activity codes and names
+        $activityCodes = [
+            1000 => 'Running',
+            2000 => 'Unused Time',
+            3000 => 'No Order No Plan',
+            4000 => 'Regular Maintenance',
+            5000 => 'External',
+            6000 => 'Planned Downtime',
+            7000 => 'Breakdown'
+        ];
+
+        // Loop through each activity code to get the ttime and calculate percentages
+        foreach ($activityCodes as $code => $activity) {
+            $ttimeQuery = "select coalesce (sum(tmld_ttime_calc/60), 0) as ttime
+                from t_modmold_dt a
+                inner join m_modmold_act b on a.tmld_act_code = b.mma_actcode and mma_status = 1
+                inner join t_modmold_hd c on a.tmld_hdid = c.tmlh_id and tmld_status <> 25
+                inner join m_machine d on c.tmlh_mchcode = d.mname
+                where c.tmlh_proddate BETWEEN :startDate: AND :endDate:
+                and a.tmld_oee_code = :activityCode:";
+
+            if ($filterBy == 'Machine') {
+                $location = " and mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+                $ttimeQuery .= " AND mname = :filterValue:" . $location;
+            } else if ($filterBy == 'Location') {
+                $ttimeQuery .= " AND mlocation = :filterValue:";
+            } else if ($filterBy == 'All') {
+                $ttimeQuery .= " AND mlocation in ('Molding 1', 'Molding 2', 'Vertikal')";
+            }
+
+            $ttimeResult = $this->db->query($ttimeQuery, [
+                'activityCode' => $code,
+                'filterValue'  => $filterValue,
+                'startDate'    => $startDate,
+                'endDate'      => $endDate
+            ])->getRow();
+
+            $ttime = $ttimeResult ? $ttimeResult->ttime : 0;
+
+            // Calculate the percentage
+            $percentage = $totalTtime > 0 ? ($ttime / $totalTtime) * 100 : 0;
+
+            // Store the result
+            $activityData[$activity] = [
+                'ttime' => $ttime,
+                'percentage' => $percentage
+            ];
+        }
+        // var_dump($activityData);die();
+
+        return $activityData;
+    }
+
+    public function get_limit_data($filterBy, $filterValue, $month = '', $year = '') 
+    {
+        $sql = "SELECT COALESCE(SUM(tml_qty), 0) as limit_qty from t_mold_limitation a
+                inner join m_machine b on a.tml_mchcode = b.mname
+                where tml_status <> 25 and tml_month = '$month' and tml_year = '$year'";
+
+        if ($filterBy == 'Machine') {
+            $location = " AND mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND b.mname = '$filterValue'" . $location;
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND b.mlocation = '$filterValue'";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND b.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+        }
+
+        $query = $this->db->query($sql);
+        $result = $query->getRow();
+
+        $limit_qty = !empty($result->limit_qty) ? $result->limit_qty : 0 ;
+        // var_dump($limit_qty);die();
+        return $limit_qty;
+    }
+
+    public function get_result_data($filterBy, $filterValue,  $startDate, $endDate, $month = '', $year = '') 
+    {
+        $sql = "SELECT COALESCE(SUM(c.tmld_prodqty), 0) as prod_qty, COALESCE(SUM(c.tmld_scrapqty), 0) as scrap_qty
+                FROM m_machine a
+                inner join t_modmold_hd b on b.tmlh_mchcode = a.mname 
+                inner join t_modmold_dt c on c.tmld_hdid = b.tmlh_id 
+                where a.mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                and tmld_oee_code = 1000
+                and b.tmlh_proddate BETWEEN '$startDate' AND '$endDate' and tmld_status <> 25";
+
+        $sql_planning = "SELECT  cast('$month' as varchar(50)) as month, '$year' as year, sgroup,
+                    sum(mpsh_planqtypermch)Planning, sum(Result)Result, sum(Balance) Balance
+                    from (
+                    select bulan,tahun, sgroup, mpsh_machinename, mpsh_planqtypermch,
+                    Day1+Day2+Day3+Day4+Day5+Day6+Day7+Day8+Day9+Day10+Day11+Day12+Day13+Day14+Day15+Day16+Day17+Day18+Day19+Day20+Day21+Day22+Day23+Day24+Day25+Day26+Day27+Day28+Day29+Day30+Day31+Day32+Day33+Day34+Day35+Day36+Day37+Day38+Day39+Day40 as Result ,
+                    (Day1+Day2+Day3+Day4+Day5+Day6+Day7+Day8+Day9+Day10+Day11+Day12+Day13+Day14+Day15+Day16+Day17+Day18+Day19+Day20+Day21+Day22+Day23+Day24+Day25+Day26+Day27+Day28+Day29+Day30+Day31+Day32+Day33+Day34+Day35+Day36+Day37+Day38+Day39+Day40)-mpsh_planqtypermch as Balance
+                    from  jstmrpdb..VWMPS inner join jstppsdb..M_partbom on ProductCode = PartBOM_ProductCode
+                    where TipeData = 'actual'";
+
+        if ($filterBy == 'Machine') {
+            $location = " AND mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql .= " AND a.mname = '$filterValue'" . $location;
+            $sql_planning .= " AND mpsh_machinename = '$filterValue' AND sgroup in ('Molding 1', 'Molding 2', 'Vertikal'))a
+                                where bulan = '$month' AND tahun = '$year'
+                                group by mpsh_machinename, bulan, tahun, sgroup";
+        } else if ($filterBy == 'Location') {
+            $sql .= " AND a.mlocation = '$filterValue'";
+            $sql_planning .= " AND sgroup = '$filterValue')a
+                                where bulan = '$month' and tahun = '$year'
+                                group by bulan, tahun, sgroup";
+        } else if ($filterBy == 'All') {
+            $sql .= " AND a.mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+            $sql_planning = " SELECT  cast('$month' as varchar(50)) as month, '$year' as year, 
+                                sum(mpsh_planqtypermch)Planning, sum(Result)Result, sum(Balance) Balance
+                                from (
+                                select bulan,tahun, sgroup, mpsh_machinename, mpsh_planqtypermch,
+                                Day1+Day2+Day3+Day4+Day5+Day6+Day7+Day8+Day9+Day10+Day11+Day12+Day13+Day14+Day15+Day16+Day17+Day18+Day19+Day20+Day21+Day22+Day23+Day24+Day25+Day26+Day27+Day28+Day29+Day30+Day31+Day32+Day33+Day34+Day35+Day36+Day37+Day38+Day39+Day40 as Result ,
+                                (Day1+Day2+Day3+Day4+Day5+Day6+Day7+Day8+Day9+Day10+Day11+Day12+Day13+Day14+Day15+Day16+Day17+Day18+Day19+Day20+Day21+Day22+Day23+Day24+Day25+Day26+Day27+Day28+Day29+Day30+Day31+Day32+Day33+Day34+Day35+Day36+Day37+Day38+Day39+Day40)-mpsh_planqtypermch as Balance
+                                from  jstmrpdb..VWMPS inner join jstppsdb..M_partbom on ProductCode = PartBOM_ProductCode
+                                where TipeData = 'actual' and sgroup in ('Molding 1', 'Molding 2', 'Vertikal'))a
+                                where bulan = '$month' and tahun = '$year'
+                                group by bulan, tahun";
+        }
+
+        // var_dump($sql_planning);die();
+        $query = $this->db->query($sql);
+        $result = $query->getRow();
+
+        $query2 = $this->db_mrp->query($sql_planning);
+        $result2 = $query2->getRow();
+        $qtyResults = [];
+
+        $prod_qty = !empty($result->prod_qty) ? $result->prod_qty : 0 ;
+        $scrap_qty = !empty($result->scrap_qty) ? $result->scrap_qty : 0 ;
+        $planning = !empty($result2->Planning) ? $result2->Planning : 0 ;
+        $qtyResults[] = [
+            "prod_qty"  => $prod_qty,
+            "scrap_qty" => $scrap_qty,
+            "planning" => $planning
+        ];
+
+        return $qtyResults;
+    }
+}

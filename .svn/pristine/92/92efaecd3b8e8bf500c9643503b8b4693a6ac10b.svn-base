@@ -1,0 +1,1491 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<style>
+    /* Styling for machine buttons */
+    #machine-container {
+        margin-top: 10px;
+    }
+
+    .btn-machine {
+        margin: 5px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .navPillsBordered {
+        border-bottom: 1px solid #CBD5E1;
+        padding-bottom: 10px;
+        gap: 20px;
+    }
+    .navPillsBordered .nav-item {
+        border-radius: 7px;
+        border: 1px solid #2563EB;
+    }
+    .navPillsBordered .nav-item a {
+        color: #2563EB;
+    }
+
+    .highlighted-row {
+        background-color: #EFF6FF !important;
+    }
+
+    .nav-link:hover,
+    .nav-link:focus {
+        color: #1E3A8A !important;
+    }
+    .nav-link.active:hover,
+    .nav-link.active:focus {
+        color: #BFDBFE !important;
+    }
+    #grid-excel {
+        visibility: hidden !important;
+        position: absolute !important;
+        
+    }
+</style>
+
+<div class="card">
+    <div class="card-body">
+        <!-- Navbar pills -->
+        <div class="row">
+            <div class="col-md-12">
+                <ul class="nav nav-pills flex-column flex-sm-row mb-2 navPillsBordered" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="row-data-tab" data-bs-toggle="tab" href="#row-data" role="tab" aria-controls="row-data" aria-selected="true">
+                            <i class="ti-sm ti ti-layout-grid me-1"></i> Raw Data
+                        </a>
+                    </li>
+<!--                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="others-activity-tab" data-bs-toggle="tab" href="#others-activity" role="tab" aria-controls="others-activity" aria-selected="false">
+                            <i class="ti-sm ti ti-alarm me-1"></i>Input Others Activity
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="prodplan-activity-tab" data-bs-toggle="tab" href="#prodplan-activity" role="tab" aria-controls="prodplan-activity" aria-selected="false">
+                            <i class="ti-sm ti ti-archive me-1"></i>Input Production Plan
+                        </a>
+                    </li>-->
+                </ul>
+                <!-- Tab content -->
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="row-data" role="tabpanel" aria-labelledby="row-data-tab">
+                        <div class="d-flex justify-content-start align-items-center mb-4">
+                            <div>
+                                <label for="start_date" class="form-label">Start Date</label>
+                                <!-- Start Date Filter -->
+                                <div style="width: 180px; margin-right: 15px">
+                                    <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Start Date">
+                                        <input type="text" id="start_date" class="form-control" placeholder="Start Date">
+                                        <span class="position-absolute me-3 end-0"><i class="fa fa-calendar"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="end_date" class="form-label">End Date</label>
+                                <!-- End Date Filter -->
+                                <div style="width: 180px; margin-right: 15px">
+                                    <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="End Date">
+                                        <input type="text" id="end_date" class="form-control" placeholder="End Date">
+                                        <span class="position-absolute me-3 end-0"><i class="fa fa-calendar"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="series" class="form-label">Location</label>
+                                <!-- Series Filter -->
+                                <div style="width: 180px">
+                                    <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Location">
+                                        <select id="series" class="form-control form-control-solid">
+                                            <option value="Molding 1">Molding 1</option>
+                                            <option value="Molding 2">Molding 2</option>
+                                            <option value="Vertikal">Vertikal</option>
+                                        </select>
+                                        <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-left: 15px; margin-top: 27px;">
+                                <button class="btn btn-secondary" id="btnRefreshMold">Refresh Machines</button>
+                            </div>
+<!--                            <div style="margin-left: 50px; margin-top: 27px;">
+                                <button id="export_excel" class="btn btn-icon btn-warning text-main fs-4">
+                                    <i class="fa fa-file-excel" data-bs-toggle="tooltip" data-bs-title="Export to XLS"></i>
+                                </button>
+                            </div>-->
+                            <div style="margin-left: 10px; margin-top: 40px;">
+                                <h3>Machine : <span class="ml-2" id="text-machine"></span></h3>
+                            </div>
+                        </div>
+
+                        <!-- Machine Names will be displayed here -->
+                        <div id="machine-container" class="d-flex flex-wrap my-4"></div>
+                        
+                        <table id="grid-excel" >
+                            <thead>
+                                <tr style="font-size: 1px;">
+                                        <th>DETAIL ID</th>
+                                        <th>PRODUCTION DATE</th>
+                                        <th>SHIFT</th>
+                                        <th>MACHINE</th>
+                                        <th>SPM</th>
+                                        <th>INSTRUCTION</th>
+                                        <th>LOT NO.</th>
+                                        <th>Product CODE</th>
+                                        <th>PRODUCT NAME</th>
+                                        <th>EMPLOYEE</th>
+                                        <th>ACT CODE</th>
+                                        <th>ACT NAME</th>
+                                        <th>START</th>
+                                        <th>FINISH</th>
+                                        <th>TOTAL TIME</th>
+                                        <th>ACTUAL COUNTER</th>
+                                        <th>SCRAP MAINTENANCE</th>
+                                        <th>REWORK</th>
+                                        <th>REMARK MOD</th>
+                                        <th>TROUBLE</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            
+                        
+                        <h5 class="mt-3 px-4 py-2 fw-bold" style="background-color: #BBF7D0; border-radius: 5px; display: inline-block">
+                            Header Data
+                        </h5>
+                        <!-- DataTable to display machine Header -->
+                        <div class="card-datatable table-responsive pt-0 mb-3">
+                            <table class="datatables-basic table table-bordered" id="grid-header">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>ID</th>
+                                        <th>Production Date</th>
+                                        <th>Machine Code</th>
+                                        <th>Dies</th>
+                                        <th>Dies Cav</th>
+                                        <th>Inst. No</th>
+                                        <th>Product Code</th>
+                                        <th>Product Name</th>
+                                        <th>CYCLE TIME</th>
+                                        <th>Cavity</th>
+                                        <th>SPM</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+
+                        <div class="mt-3 d-flex w-100 gap-3 align-items-center">
+                            <h5 class="px-4 py-2 fw-bold" style="background-color: #FEF08A; border-radius: 5px; display: inline-block">
+                                Detail Data
+                            </h5>
+                            <!-- <span id="total_time_actual" class="ms-3" style="font-weight: bold">Total Time Actual: 0</span> -->
+                            <h5 id="total_time_calc" class="ms-3" style="font-weight: bold">Total Time : 0</h5>
+                        </div>
+                        <!-- DataTable to display machine Detail -->
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatables-basic table table-bordered" id="grid-detail">
+                                <thead class="table-light">
+                                    <tr>
+                                        <!-- <th>Action</th> -->
+                                        <th>ID</th>
+                                        <th>Shift</th>
+                                        <th>Act Code</th>
+                                        <th>Start</th>
+                                        <th>Finish</th>
+                                        <th>Time</th>
+                                        <th>Employee</th>
+                                        <th>Prod Qty</th>
+                                        <th>Lot Start</th>
+                                        <th>Lot End</th>
+                                        <th>Remark</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="others-activity" role="tabpanel" aria-labelledby="others-activity-tab">
+                        <div class="d-flex justify-content-left align-items-center mb-4">
+                                <!-- Left Section: Production Date Filter -->
+                            <div class="">
+                                <label for="prod_date" class="form-label me-2">Production Date</label>
+                                <div style="width: 180px; margin-right: 15px">
+                                    <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Production Date">
+                                        <input type="text" id="prod_date" class="form-control" placeholder="Production Date">
+                                        <span class="position-absolute me-3 end-0"><i class="fa fa-calendar"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Right Section: Buttons -->
+                            <div class="d-flex align-items-center mt-4">
+                                <!-- Add Others Activity Button -->
+                                <button type="button" class="btn btn-secondary create-new btn-success" data-bs-toggle="modal" data-bs-target="#add_others_activity_modal">
+                                    <span><i class="ti ti-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add Others Activity</span></span>
+                                </button>
+
+                                <!-- Refresh Button -->
+                                <button type="button" class="btn btn-secondary refresh-btn ms-2">
+                                    <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatables-basic table table-bordered" id="grid-others">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>ID</th>
+                                        <th>Machine Code</th>
+                                        <th>Activity</th>
+                                        <th>Start</th>
+                                        <th>Finish</th>
+                                        <th>Remark</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    
+                    <div class="tab-pane fade" id="prodplan-activity" role="tabpanel" aria-labelledby="prodplan-activity-tab">
+                        <div class="d-flex justify-content-left align-items-center mb-4">
+                                
+                            <div style="width: 180px; margin-right: 15px">
+                                <label for="monthPeriod" class="form-label me-2">Month</label>
+                                <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Month">
+                                    <select id="monthPeriod" class="form-control form-select-dark">
+                                        <option value="01">Jan</option>
+                                        <option value="02">Feb</option>
+                                        <option value="03">Mar</option>
+                                        <option value="04">Apr</option>
+                                        <option value="05">May</option>
+                                        <option value="06">Jun</option>
+                                        <option value="07">Jul</option>
+                                        <option value="08">Aug</option>
+                                        <option value="09">Sep</option>
+                                        <option value="10">Oct</option>
+                                        <option value="11">Nov</option>
+                                        <option value="12">Dec</option>
+                                    </select>
+                                    <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                                </div>
+                            </div>
+                                
+                            <div style="width: 180px; margin-right: 15px">
+                                <label for="yearPeriod" class="form-label me-2">Year</label>
+                                <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Year">
+                                    <select id="yearPeriod" class="form-control form-select-dark">
+                                        <!-- JavaScript will populate this select element with the years -->
+                                    </select>
+                                    <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                                </div>
+                            </div>
+
+                            <!-- Right Section: Buttons -->
+                            <div class="d-flex align-items-center mt-4">
+                                <!-- Add Others Activity Button -->
+<!--                                <button type="button" class="btn btn-secondary create-new btn-success" data-bs-toggle="modal" data-bs-target="#add_others_activity_modal">
+                                    <span><i class="ti ti-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add Others Activity</span></span>
+                                </button>-->
+
+                                <!-- Refresh Button -->
+                                <button type="button" class="btn btn-secondary ms-2" id="btnRefProdPlan">
+                                    <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatables-basic table table-bordered" id="grid-prodplan">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Year</th>
+                                        <th>Machine</th>
+                                        <th>Plan Qty</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        <!--/ Navbar pills -->
+    </div>
+</div>
+
+<!-- Modal for add others activity -->
+<div class="modal fade" id="add_others_activity_modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-simple modal-dialog-centered modal-lg">
+        <div class="modal-content p-3 p-md-5">
+            <div class="modal-body">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center mb-4">
+                    <h3 class="mb-2">Add Others Activity</h3>
+                </div>
+                <form method="POST" enctype="multipart/form-data" id="add_others_activity" class="row g-3">
+                    <div class="col-12 col-md-12">
+                        <label for="tbzo_actcode" class="form-label">Activity <span style="color: red">*</span></label>
+                        <select id="tbzo_actcode" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                            <option value="">Select Activity</option>
+                            <?php foreach ($activity_data as $activity) { ?>
+                                <option value="<?= htmlspecialchars($activity->mba_actcode) ?>"><?= htmlspecialchars($activity->mba_actcode) ?> | <?= htmlspecialchars($activity->mba_actname) ?></option>
+                            <?php } ?>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-12">
+                        <label for="tbzo_start" class="form-label">Start Date <span style="color: red">*</span></label>
+                        <input type="text" name="tbzo_start" id="tbzo_start" class="form-control" placeholder="Select Start Date (YYYY-MM-DD HH:mm)">
+                    </div>
+                    <div class="col-12 col-md-12">
+                        <label for="tbzo_finish" class="form-label">Finish Date <span style="color: red">*</span></label>
+                        <input type="text" name="tbzo_finish" id="tbzo_finish" class="form-control" placeholder="Select Finish Date (YYYY-MM-DD HH:mm)">
+                    </div>
+                    <div class="col-12 col-md-12">
+                        <label for="machines" class="form-label">Machines <span style="color: red">*</span></label>
+                        <select id="machines" name="machines" class="form-control">
+                            <option value="">Select Machines</option>
+                            <option value="all">All</option>
+                            <option value="select">Select Machines</option>
+                        </select>
+                    </div>
+
+                    <!-- Machine Code Select2 (hidden by default) -->
+                    <div class="col-12 col-md-12 mt-3" id="machine-code-container" style="display: none">
+                        <label for="machine_code" class="form-label">Machine Code </label>
+                        <select id="machine_code" class="selectpicker w-100" data-style="btn-default" data-live-search="true" multiple>
+                            <option value="">Select Machine Code</option>
+                            <?php foreach ($machine_data as $machine) { ?>
+                                <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                            <?php } ?>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-12">
+                        <label for="tbzo_remark" class="form-label">Remark</label>
+                        <textarea name="tbzo_remark" id="tbzo_remark" class="form-control" rows="3" placeholder="Enter remark"></textarea>
+                    </div>
+                    <div class="col-12 mt-5 text-center">
+                        <button type="submit" class="btn btn-success me-sm-3 me-1">
+                            <span class="indicator-label">Save</span>
+                            <span class="loading" style="display: none">Please wait...
+                                <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                            </span>
+                        </button>
+                        <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="f_excel" action="<?= base_url("OEEDataMold/export_excel") ?>" method="post" class="d-none">
+    <input type="hidden" name="start_date_excel" id="start_date_excel">
+    <input type="hidden" name="end_date_excel" id="end_date_excel">
+    <input type="hidden" name="series_excel" id="series_excel">
+    <input type="hidden" name="mch_excel" id="mch_excel">
+</form>
+
+<!-- Modal for edit detail -->
+<div class="modal fade" id="edit_detail_modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-simple modal-dialog-centered modal-lg">
+        <div class="modal-content p-3 p-md-5">
+            <div class="modal-body">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center mb-4">
+                    <h3 class="mb-2">Edit Machine Detail</h3>
+                </div>
+                <form method="POST" enctype="multipart/form-data" id="edit_detail" class="row g-3">
+                    <input type="hidden" name="tmlh_id" id="tmlh_id">
+                    <input type="hidden" name="tmld_id" id="tmld_id">
+                    <div class="col-6 col-md-6">
+                        <label for="tmld_start" class="form-label">Start Date</label>
+                        <input type="text" name="tmld_start" id="tmld_start" class="form-control" placeholder="Select Start Date (YYYY-MM-DD HH:mm)">
+                    </div>
+                    <div class="col-6 col-md-6">
+                        <label for="tmld_finish" class="form-label">Finish Date</label>
+                        <input type="text" name="tmld_finish" id="tmld_finish" class="form-control" placeholder="Select Finish Date (YYYY-MM-DD HH:mm)">
+                    </div>
+                    <div class="col-6 col-md-6">
+                        <label for="tmld_prodresult_qty" class="form-label">Actual Counter</label>
+                        <input type="number" min="0" name="tmld_prodresult_qty" id="tmld_prodresult_qty" class="form-control" placeholder="Enter quantity">
+                    </div>
+                    <div class="col-6 col-md-6">
+                        <label for="tmld_scrapmaint_qty" class="form-label">Scrap Maintenance</label>
+                        <input type="number" min="0" name="tmld_scrapmaint_qty" id="tmld_scrapmaint_qty" class="form-control" placeholder="Enter quantity">
+                    </div>
+                    <div class="col-6 col-md-6">
+                        <label for="tmld_rework_qty" class="form-label">Rework Qty</label>
+                        <input type="number" min="0" name="tmld_rework_qty" id="tmld_rework_qty" class="form-control" placeholder="Enter quantity">
+                    </div>
+                    <div class="col-12">
+                        <label for="tmld_remark" class="form-label">Remark</label>
+                        <textarea name="tmld_remark" id="tmld_remark" class="form-control" rows="3" placeholder="Enter remark"></textarea>
+                    </div>
+                    <div class="col-6 col-md-6">
+                        <label for="tmld_isrolling" class="form-label">Is Rolling?</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="tmld_isrolling_checkbox">
+                            <label class="form-check-label" for="tmld_isrolling_checkbox">Yes</label>
+                        </div>
+                        <input type="hidden" name="tmld_isrolling" id="tmld_isrolling" value="0">
+                    </div>
+                    <div class="col-12 mt-5 text-center">
+                        <button type="submit" class="btn btn-success me-sm-3 me-1">
+                            <span class="indicator-label">Save</span>
+                            <span class="loading" style="display: none">Please wait...
+                                <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                            </span>
+                        </button>
+                        <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Trigger the function export XLS
+        $('#btnRefreshMold').on('click', function() {
+            loadMachineData();
+        });
+
+        // Listen for change on machines select dropdown
+        $('#machines').on('change', function() {
+            var selectedValue = $(this).val();
+            var machineCodeLabel = $('label[for="machine_code"]');
+
+            if (selectedValue === 'select') {
+                // Show the machine code select2 dropdown
+                
+                $('#machine-code-container').show();
+                $('#machine_code').prop('required', true); // Make machine code selection required
+
+                // Add the red asterisk to the machine code label
+                if (!machineCodeLabel.find('span').length) {
+                    machineCodeLabel.append('<span style="color: red">*</span>');
+                }
+            } else {
+                // Hide the machine code select2 dropdown and reset its value
+                $('#machine-code-container').hide();
+                $('#machine_code').val(null).trigger('change');
+                $('#machine_code').prop('required', false); // Remove required attribute
+
+                // Remove the red asterisk from the machine code label
+                machineCodeLabel.find('span').remove();
+            }
+        });
+        
+        // Get the current month and year
+        const currentMonth = new Date().getMonth() + 1; // Months are zero-based in JS
+        const currentYear = new Date().getFullYear();
+
+        // Set the current month in the start_month dropdown
+        $('#monthPeriod').val(currentMonth.toString().padStart(2, '0'));
+
+        // Populate end year options (current year to 10 years before)
+        for (let year = currentYear; year >= currentYear - 10; year--) {
+            $('#yearPeriod').append(`<option value="${year}">${year}</option>`);
+        }
+        
+        var startDate = document.querySelector("#start_date");
+        var endDate = document.querySelector("#end_date");
+        var prodDate = document.querySelector("#prod_date");
+        var tmld_start = document.querySelector("#tmld_start");
+        var tmld_finish = document.querySelector("#tmld_finish");
+        var start_edit = document.querySelector("#start_edit");
+        var finish_edit = document.querySelector("#finish_edit");
+
+        // Function to get the current date and time in the format "Y-m-d H:i"
+        function getCurrentDate() {
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = ('0' + (now.getMonth() + 1)).slice(-2); // Adding leading zero if needed
+            var day = ('0' + now.getDate()).slice(-2); // Adding leading zero if needed
+
+            return `${year}-${month}-${day}`;
+        }
+
+        // Set default values for start_date and end_date
+        var defaultDate = getCurrentDate();
+        $('#start_date').val(defaultDate);
+        $('#end_date').val(defaultDate);
+        $('#prod_date').val(defaultDate);
+
+        // Trigger the function when the page loads (initial request)
+        loadMachineData();
+
+        startDate.flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+
+        endDate.flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+
+        prodDate.flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+
+        tmld_start.flatpickr({
+            dateFormat: "Y-m-d H:i", // Format for date
+            enableTime: true, // Enable time picker
+            time_24hr: true, // Use 24-hour format
+            allowInput: true, // Allow manual input
+            minuteIncrement: 1, // Increment minutes by 1
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true); // Set the date if manually entered
+            }
+        });
+
+        tmld_finish.flatpickr({
+            dateFormat: "Y-m-d H:i", // Format for date
+            enableTime: true, // Enable time picker
+            time_24hr: true, // Use 24-hour format
+            allowInput: true, // Allow manual input
+            minuteIncrement: 1, // Increment minutes by 1
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true); // Set the date if manually entered
+            }
+        });
+
+        var tbzo_start = document.querySelector("#tbzo_start").flatpickr({
+            dateFormat: "Y-m-d H:i", // Format for date
+            enableTime: true, // Enable time picker
+            time_24hr: true, // Use 24-hour format
+            allowInput: true, // Allow manual input
+            minuteIncrement: 1, // Increment minutes by 1
+            defaultDate: new Date().setHours(7, 20), // Set default to today at 07:20
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true); // Set the date if manually entered
+            }
+        });
+
+        var tbzo_finish = document.querySelector("#tbzo_finish").flatpickr({
+            dateFormat: "Y-m-d H:i", // Format for date
+            enableTime: true, // Enable time picker
+            time_24hr: true, // Use 24-hour format
+            allowInput: true, // Allow manual input
+            minuteIncrement: 1, // Increment minutes by 1
+            defaultDate: new Date().setHours(16, 50), // Set default to today at 07:20
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true); // Set the date if manually entered
+            }
+        });
+
+        start_edit.flatpickr({
+            dateFormat: "Y-m-d H:i", // Format for date
+            enableTime: true, // Enable time picker
+            time_24hr: true, // Use 24-hour format
+            allowInput: true, // Allow manual input
+            minuteIncrement: 1, // Increment minutes by 1
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true); // Set the date if manually entered
+            }
+        });
+
+        finish_edit.flatpickr({
+            dateFormat: "Y-m-d H:i", // Format for date
+            enableTime: true, // Enable time picker
+            time_24hr: true, // Use 24-hour format
+            allowInput: true, // Allow manual input
+            minuteIncrement: 1, // Increment minutes by 1
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true); // Set the date if manually entered
+            }
+        });
+        
+        // Function to load machine header data
+        function getExcelData() {
+            $.ajax({
+                url: '<?= base_url("OEEDataMold/export_excel_fix"); ?>',
+                method: 'POST',
+                data: {
+                    start_date_excel: $("#start_date").val(),
+                    end_date_excel: $("#end_date").val(),
+                    series_excel: $("#series").val(),
+                    mch_excel: $("#text-machine").text()
+                },
+                success: function(data) {
+                    if ($.fn.DataTable.isDataTable('#grid-excel')) {
+                            $('#grid-excel').DataTable().clear().rows.add(data).draw();
+                            // Update title dynamically
+                            updateExportTitle();
+                            $('#grid-excel').DataTable().button('.buttons-excel').trigger();
+                        } else {
+                            $('#grid-excel').DataTable({
+                                data: data, 
+                                columns: [
+                                    {
+                                        data: 'tmld_id',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_proddate',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_shift',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_mchcode',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_spm',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_instno',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_lotno',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_prodcode',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmlh_prodname',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_emplname',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_actcode',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'mba_actname',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_start',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_finish',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_ttime_calc',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_prodresult_qty',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_scrapmaint_qty',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_rework_qty',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'tmld_remark',
+                                        className: "text-center"
+                                    },
+                                    {
+                                        data: 'mtbz_desc',
+                                        className: "text-center"
+                                    }
+                                ],
+                                dom: 'Bfrtip',  // Enable Buttons
+                                buttons: [
+                                    {
+                                        extend: 'excel',
+                                        text: '<i class="ti ti-file-spreadsheet me-sm-1"></i> Export XLS',
+                                        className: 'btn btn-warning custom-export-btn btn_exp_grid_excel',
+                                        title: function() {
+                                            return 'MOD_Data_Export_ ' + ($("#text-machine").text() === '' ? $("#series").val() : $("#text-machine").text()) + '_' + $('#start_date').val() + '_' + $('#end_date').val();
+                                        },
+                                        exportOptions: {
+                                            columns: ':visible'
+                                        }
+                                    }
+                                ],
+                                autoWidth: false, // Disable auto width adjustment
+                                lengthMenu: [5, 10, 25, 50, 100],
+                                paging: false,    
+                                searching: false,  
+                                info: false,   
+                            });
+                            // Trigger Excel download after initializing the DataTable
+                            updateExportTitle();
+                            $('#grid-excel').DataTable().button('.buttons-excel').trigger();
+                        }
+
+                    
+                    $('<style>')
+                        .prop('type', 'text/css')
+                        .html(`
+                            .custom-export-btn {
+                                display: none !important;
+                            }
+                        `)
+                        .appendTo('head');
+            
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching export data:', error);
+                }
+            });
+        }
+        
+        function updateExportTitle() {
+            const table = $('#grid-excel').DataTable();
+            const newTitle = 'MOD_Data_Export_ ' + ($("#text-machine").text() === '' ? $("#series").val() : $("#text-machine").text()) + '_' + $('#start_date').val() + '_' + $('#end_date').val();
+            table.button('.buttons-excel').text('<i class="ti ti-file-spreadsheet me-sm-1"></i> Export XLS');
+            table.button('.buttons-excel').action(function(e, dt, button, config) {
+                config.title = newTitle;
+                $.fn.dataTable.ext.buttons.excelHtml5.action.call(this, e, dt, button, config);
+            });
+        }
+
+        // Function to load machine data
+        function loadMachineData() {
+            let start_date = $('#start_date').val();
+            let end_date = $('#end_date').val();
+            let series = $('#series').val();
+            // console.log(start_date, end_date, series);
+
+            // AJAX request to get machine data based on filters
+            $.ajax({
+                url: '<?= base_url("OEEDataMold/get_data"); ?>',
+                method: 'POST',
+                data: {
+                    start_date: start_date,
+                    end_date: end_date,
+                    series: series
+                },
+                success: function(response) {
+                    // console.log(response);
+                    
+                    // Clear the previous machine buttons
+                    $('#machine-container').empty();
+
+                    // Set a common width for all buttons
+                    const buttonWidth = '100px'; // Define the desired width
+
+                    // Create an "ALL" button to represent all machines
+                    let allButton = $('<button>')
+                        .text('ALL')
+                        .addClass('btn btn-machine')
+                        .css({
+                            'background-color': '#312E81', // Black background
+                            'color': 'white', // White text for contrast
+                            'width': buttonWidth, // Set the common button width
+                            'margin': '5px', // Add some margin for spacing between buttons
+                            'border': '1px solid #18181B'
+                        })
+                        .on('click', function() {
+                           loadMachineHeader('');
+                        });
+                    // console.log(allButton);
+                    
+                    $('#machine-container').append(allButton);
+
+                    // Loop through each machine in the response and create a button for each
+                    $.each(response, function(index, machine) {
+                        let button = $('<button>')
+                            .text(machine.mchname)
+                            .addClass('btn btn-machine position-relative') // position-relative for the badge positioning
+                            .css({
+                                'background-color': machine.color,
+                                'color': 'black',
+                                'width': buttonWidth,
+                                'margin': '5px',
+                                'border': '1px solid #A1A1AA'
+                            })
+                            .attr('data-machine-code', machine.mchname)
+                            .on('click', function() {
+                                // Remove active class from all buttons and add to this one
+                                $('#machine-container .btn-machine').removeClass('active');
+                                $(this).addClass('active');
+                                // console.log($(this).data('machine-code'));
+                                if ($.fn.DataTable.isDataTable('#grid-detail')) {
+                                    const dataTable = $('#grid-detail').DataTable();
+                                    // Clear all rows from the DataTable and redraw
+                                    dataTable.clear().draw();
+                                    $('#total_time_calc').text(`Total Time: 0`);
+                                }
+                                // Load machine details when a machine button is clicked
+                                loadMachineHeader($(this).data('machine-code'), start_date, end_date);
+
+                            });
+
+                        // If machine.isFinish is false, add a badge with the play icon
+                        if (machine.isFinish == 0) {
+                            let badge = $('<span>')
+                                .addClass('position-absolute mt-n2 top-0 end-0 me-n1 badge bg-primary rounded-circle')
+                                .css({
+                                    'padding': '0.4rem', // Adjust size of the badge
+                                    'font-size': '0.5rem' // Adjust font size if needed
+                                })
+                                .html('<i class="fas fa-play"></i>'); // Font Awesome play icon 
+
+                            button.append(badge); // Append the badge to the button
+                        }
+
+                        $('#machine-container').append(button);
+                    });
+
+                    // Load machine details for "ALL" by default
+                    loadMachineHeader('');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching machine data:', error);
+                }
+            });
+        }
+
+        // Function to load machine header data
+        function loadMachineHeader(machineCode, startDate, endDate) {
+            $.ajax({
+                url: '<?= base_url("OEEDataMold/get_machine_header"); ?>',
+                method: 'POST',
+                data: {
+                    machine: machineCode,
+                    start_date: startDate,
+                    end_date: endDate
+                },
+                success: function(data) {
+                    // Initialize or clear DataTable
+                    if ($.fn.DataTable.isDataTable('#grid-header')) {
+                        $('#grid-header').DataTable().clear().rows.add(data).draw();
+                    } else {
+                        $('#grid-header').DataTable({
+                            data: data,
+                            columns: [{
+                                    data: 'tmlh_id',
+                                    render: function(data, type, row, meta) {
+                                        return '<button class="btn btn-icon btn-outline-primary btn-detail" data-id="' + data + '"><i class="fa fa-eye" data-bs-toggle="tooltip" data-bs-title="View Detail"></i></button>';
+                                    },
+                                    className: "text-center"
+                                },
+                                {
+                                    data: 'tmlh_id',
+                                    className: "text-center"
+                                },
+                                {
+                                    data: 'tmlh_proddate',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_mchcode',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_dies_cavid',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_diesno',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_instno',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_prodcode',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_prodname',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_cycle_time',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_cavity',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                },
+                                {
+                                    data: 'tmlh_spm',
+                                    render: function(data, type, row, meta) {
+                                        return '<strong>' + data + '</strong>'; // Bold the production date
+                                    }
+                                }
+                            ],
+                            lengthMenu: [5, 10, 25, 50, 100],
+                        });
+                    }
+                    if(machineCode == '') {
+                            $('#text-machine').text('ALL');
+                    } else {
+                            $('#text-machine').text(machineCode);
+                    }
+                    // Attach click event listener to the action buttons
+                    $('#grid-header').on('click', '.btn-detail', function() {
+                        var id = $(this).data('id');
+                        
+                        loadMachineDetail(id); // Call the function to load the machine detail
+                        // Remove the yellow background from all rows first
+                        $('#grid-header tbody tr').removeClass('highlighted-row');
+
+                        // Get the row for the clicked button
+                        var row = $(this).closest('tr');
+
+                        // Add yellow background color to the clicked row
+                        row.addClass('highlighted-row');
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching machine header data:', error);
+                }
+            });
+        }
+
+        // Function to load machine detail data
+        function loadMachineDetail(id) {
+            
+            $.ajax({
+                url: '<?= base_url("OEEDataMold/get_machine_detail"); ?>',
+                method: 'POST',
+                data: {
+                    header_id: id
+                },
+                success: function(data) {  
+                    console.log(data);
+                                      
+                    // Initialize or clear DataTable
+                    if ($.fn.DataTable.isDataTable('#grid-detail')) {
+                        $('#grid-detail').DataTable().clear().rows.add(data.details).draw();
+                    } else {
+                        $('#grid-detail').DataTable({
+                            data: data.details,
+                            columns: [
+                                // {
+                                //     data: null,
+                                //     render: function(data, type, row) {
+                                //         // Helper function to format date without seconds
+                                //         function formatDateWithoutSeconds(dateStr) {
+                                //             if (dateStr) {
+                                //                 var date = new Date(dateStr);
+                                //                 var year = date.getFullYear();
+                                //                 var month = ('0' + (date.getMonth() + 1)).slice(-2);
+                                //                 var day = ('0' + date.getDate()).slice(-2);
+                                //                 var hours = ('0' + date.getHours()).slice(-2);
+                                //                 var minutes = ('0' + date.getMinutes()).slice(-2);
+                                //                 return `${year}-${month}-${day} ${hours}:${minutes}`;
+                                //             }
+                                //             return '';
+                                //         }
+
+                                //         // Format start and finish dates without seconds
+                                //         var formattedStart = formatDateWithoutSeconds(row.tmld_start);
+                                //         var formattedFinish = formatDateWithoutSeconds(row.tmld_finish);
+
+                                //         return `<div class="d-flex gap-2">
+                                //                     <a href="javascript:;" class="btn btn-icon btn-outline-secondary edit-button" data-header-id="${id}" data-id="${row.tmld_id}" 
+                                //                         data-start="${formattedStart}" data-finish="${formattedFinish}" data-prodresult-qty="${row.tmld_prodresult_qty}" 
+                                //                             data-scrapmaint-qty="${row.tmld_scrapmaint_qty}" data-rework-qty="${row.tmld_rework_qty}" data-remark="${row.tmld_remark}" 
+                                //                             data-trouble="${row.tmld_trouble}" data-rolling="${row.tmld_isrolling}"><i class="fa fa-pen-to-square"></i></a>
+                                //                     <a href="javascript:;" class="btn btn-icon btn-outline-danger btnDelete" data-id="${row.tmld_id}"><i class="fa fa-trash-can"></i></a>
+                                //                 </div>`;
+                                //     },
+                                //     className: "text-center"
+                                // },
+                                {
+                                    data: 'tmld_id',
+                                    className: "text-center"
+                                },
+                                {
+                                    data: 'tmld_shift'
+                                },
+                                {
+                                    data: 'tmld_act_code'
+                                },
+                                {
+                                    data: 'tmld_start',
+                                    render: function(data, type, row) {
+                                        if (data) {
+                                            var date = new Date(data);
+                                            var year = date.getFullYear();
+                                            var month = ('0' + (date.getMonth() + 1)).slice(-2);
+                                            var day = ('0' + date.getDate()).slice(-2);
+                                            var hours = ('0' + date.getHours()).slice(-2);
+                                            var minutes = ('0' + date.getMinutes()).slice(-2);
+                                            return `${year}-${month}-${day} ${hours}:${minutes}`;
+                                        }
+                                        return data;
+                                    }
+                                },
+                                {
+                                    data: 'tmld_finish',
+                                    render: function(data, type, row) {
+                                        if (data) {
+                                            var date = new Date(data);
+                                            var year = date.getFullYear();
+                                            var month = ('0' + (date.getMonth() + 1)).slice(-2);
+                                            var day = ('0' + date.getDate()).slice(-2);
+                                            var hours = ('0' + date.getHours()).slice(-2);
+                                            var minutes = ('0' + date.getMinutes()).slice(-2);
+                                            return `${year}-${month}-${day} ${hours}:${minutes}`;
+                                        }
+                                        return data;
+                                    }
+                                },
+                                {
+                                    data: 'tmld_ttime_calc'
+                                },
+                                {
+                                    data: 'tmld_emplname'
+                                },
+                                {
+                                    data: 'tmld_prodqty'
+                                },
+                                {
+                                    data: 'tmld_lot_start'
+                                },
+                                {
+                                    data: 'tmld_lot_end'
+                                },
+                                {
+                                    data: 'tmld_remark'
+                                }
+                            ],
+                            lengthMenu: [5, 10, 25, 50, 100],
+                        });
+
+                        // Attach click event for edit buttons
+                        $('#grid-detail').on('click', '.edit-button', function() {
+                            // Extract data attributes
+                            const headerId = $(this).data('header-id');
+                            const id = $(this).data('id');
+                            const start = $(this).data('start');
+                            const finish = $(this).data('finish');
+                            const prodresultQty = $(this).data('prodresult-qty');
+                            const scrapmaintQty = $(this).data('scrapmaint-qty');
+                            const reworkQty = $(this).data('rework-qty');
+                            const remark = $(this).data('remark');
+                            const trouble = $(this).data('trouble');
+                            const isrolling = $(this).data('rolling');
+
+                            // Call openEditModal with the extracted data
+                            openEditModal(headerId, id, start, finish, prodresultQty, scrapmaintQty, reworkQty, remark, trouble, isrolling);
+                        });
+                    }
+
+                    // Display total time values
+                    // $('#total_time_actual').text(`Total Time Actual: ${data.total_time_actual}`);
+                    $('#total_time_calc').text(`Total Time: ${data.total_time_calc}`);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching machine detail data:', error);
+                }
+            });
+        }
+        
+        document.getElementById('tmld_isrolling_checkbox').addEventListener('change', function() {
+            document.getElementById('tmld_isrolling').value = this.checked ? '1' : '0';
+        });
+
+
+        // Function to load machine header data
+        function loadProdQty(month, year) {
+            $.ajax({
+                url: '<?= base_url("OEEDataMold/get_prod_qty"); ?>',
+                method: 'POST',
+                data: {
+                    monthPeriod: month,
+                    yearPeriod: year
+                },
+                success: function(data) {
+                    // Initialize or clear DataTable
+                    if ($.fn.DataTable.isDataTable('#grid-prodplan')) {
+                        $('#grid-prodplan').DataTable().clear().rows.add(data).draw();
+                    } else {
+                        $('#grid-prodplan').DataTable({
+                            data: data,
+                            columns: [{
+                                    data: 'pp_month',
+                                    className: "text-center"
+                                },
+                                {
+                                    data: 'pp_year',
+                                    className: "text-center"
+                                },
+                                {
+                                    data: 'pp_machinename',
+                                    className: "text-center"
+                                },
+                                {
+                                    data: 'pp_planqty',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        // Format plan quantity with a thousand separator
+                                        return data ? data.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : data;
+                                    },
+                                    // Enable inline editing for the quantity
+                                    createdCell: function(td, cellData, rowData, row, col) {
+                                        let originalValue = cellData; // Store the original value
+
+                                        $(td).attr('contenteditable', true);
+
+                                        // When a key is pressed inside the cell
+                                        $(td).on('keydown', function(e) {
+                                            // Allow: Backspace, Delete, Tab, Escape, Enter, Arrow keys, and numeric keys
+                                            if (
+                                                (e.key >= '0' && e.key <= '9') || // Allow numbers
+                                                ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape'].includes(e.key)
+                                            ) {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault(); // Prevent default Enter behavior
+                                                    var newQty = $(this).text().replace(/,/g, ''); // Remove commas
+                                                    rowData.pp_planqty = newQty; // Update data in the row
+                                                    $(this).text(newQty.replace(/\B(?=(\d{3})+(?!\d))/g, ",")); // Reformat with commas
+                                                    console.log(rowData);
+
+                                                    // Send the updated quantity to the server
+                                                    $.ajax({
+                                                        url: '<?= base_url("OEEDataMold/update_prod_qty"); ?>',
+                                                        method: 'POST',
+                                                        data: {
+                                                            monthPeriod: rowData.pp_month,
+                                                            yearPeriod: rowData.pp_year,
+                                                            machinename: rowData.pp_machinename,
+                                                            planqty: newQty
+                                                        },
+                                                        success: function(response) {
+                                                            // Show SweetAlert2 success notification
+                                                            Swal.fire({
+                                                                icon: response.success ? 'success' : 'error',
+                                                                title: '',
+                                                                text: response.error,
+                                                                confirmButtonText: 'OK'
+                                                            });
+                                                        },
+                                                        error: function(xhr, status, error) {
+                                                            console.error('Error updating quantity:', error);
+                                                        }
+                                                    });
+                                                }
+                                            } else if (e.key === 'Escape') {
+                                                // Revert to the original value if Escape is pressed
+                                                $(this).text(originalValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+                                            } else {
+                                                e.preventDefault(); // Prevent any other non-numeric input
+                                            }
+                                        });
+
+                                        // Prevent pasting non-numeric values
+                                        $(td).on('paste', function(e) {
+                                            e.preventDefault();
+                                            const pastedData = e.originalEvent.clipboardData.getData('Text').replace(/[^0-9]/g, ''); // Allow only numeric values
+                                            $(this).text(pastedData);
+                                        });
+                                    }
+                                }
+                            ],
+                            "bLengthChange": false,
+                            iDisplayLength: -1,
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching production plan:', error);
+                }
+            });
+        }
+
+        loadProdQty($('#monthPeriod').val(), $('#yearPeriod').val());
+        
+        // Trigger the function export XLS
+        $('#btnRefProdPlan').on('click', function() {
+            loadProdQty($('#monthPeriod').val(), $('#yearPeriod').val());
+        });
+
+
+        function openEditModal(headerId, id, start, finish, prodresultQty, scrapmaintQty, reworkQty, remark, trouble, isrolling) {
+            // Populate modal fields directly from data-attributes passed
+            $('#tmlh_id').val(headerId);
+            $('#tmld_id').val(id);
+            $('#tmld_start').val(start);
+            $('#tmld_finish').val(finish);
+            $('#tmld_prodresult_qty').val(prodresultQty);
+            $('#tmld_scrapmaint_qty').val(scrapmaintQty);
+            $('#tmld_rework_qty').val(reworkQty);
+            $('#tmld_remark').val(remark);
+            $('#tmld_trouble').val(trouble);
+            $("#tmld_trouble").selectpicker("destroy").selectpicker();
+            $('#tmld_isrolling').val(isrolling);
+            $('#tmld_isrolling_checkbox').prop('checked', isrolling == 1);
+
+            // Open modal after populating all fields
+            $('#edit_detail_modal').modal('show');
+        }
+
+        $("#edit_detail").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            showLoading();
+
+            const tmlh_id = $("#tmlh_id").val();
+
+            const data = {
+                tmlh_id: tmlh_id,
+                tmld_id: $("#tmld_id").val(),
+                tmld_start: $("#tmld_start").val(),
+                tmld_finish: $("#tmld_finish").val(),
+                tmld_prodresult_qty: $("#tmld_prodresult_qty").val(),
+                tmld_scrapmaint_qty: $("#tmld_scrapmaint_qty").val(),
+                tmld_rework_qty: $("#tmld_rework_qty").val(),
+                tmld_remark: $("#tmld_remark").val(),
+                tmld_trouble: $("#tmld_trouble").val(),
+                tmld_isrolling: $("#tmld_isrolling").val()
+            };
+
+            // AJAX to save the updated row
+            $.ajax({
+                method: "POST",
+                url: "<?= base_url("OEEDataMold/update_detail") ?>",
+                data: data,
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            title: "Data has been saved",
+                            icon: "success",
+                            showConfirmButton: false,
+                            timer: 1000
+                        });
+                        document.activeElement.blur();
+                        $("#edit_detail_modal").modal("hide");
+                        // Clear the form data
+                        $("#edit_detail")[0].reset();
+                        loadMachineDetail(tmlh_id);
+                    } else {
+                        Swal.fire("Error!", response.error, "error");
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+        
+
+        $('#export_excel').on('click', function() {
+            // $("#start_date_excel").val($("#start_date").val());
+            // $("#end_date_excel").val($("#end_date").val());
+            // $("#series_excel").val($("#series").val());
+            // $("#mch_excel").val($("#text-machine").text());
+            getExcelData();
+            // $("#f_excel").submit();
+        });
+        
+        $('#series').on('change', function() {
+            $("#text-machine").text('');
+        });
+
+        // Handle Delete button click
+        $(document).on("click", ".btnDelete", function() {
+            var tmld_id = $(this).data("id");
+            updateStatus(tmld_id, 25); // Update status to 25 (Delete)
+        });
+
+        // Handle Delete button click
+        $(document).on("click", ".btnDeleteOthers", function() {
+            var tbzo_id = $(this).data("id");
+            updateStatusOthers(tbzo_id, 25); // Update status to 25 (Delete)
+        });
+
+        // Function to update status via AJAX
+        function updateStatus(tmld_id, newStatus) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You will delete the data. Do you want to proceed?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: "<?= base_url('OEEDataMold/update_status_data') ?>",
+                        type: "POST",
+                        data: {
+                            tmld_id,
+                            new_status: newStatus
+                        }
+                    }).then((response) => {
+                        if (!response.success) {
+                            throw new Error(response.message); // Throw error to reject the Promise
+                        }
+                        return response; // Return response for use in the `then`
+                    }).catch(() => {
+                        Swal.fire("Error!", "An error occurred while updating status.", "error");
+                        throw new Error("AJAX error"); // Throw error to reject the Promise
+                    });
+                }
+            }).then((result) => {
+                // Check if the result is confirmed
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Status Updated",
+                        text: "Status updated successfully", // Update message here
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    loadMachineDetail(tmld_id); // Use tmld_id instead of tmlh_id
+                }
+            }).catch((error) => {
+                console.error(error); // Log error to console
+            });
+        }
+
+        // Function to update status via AJAX
+        function updateStatusOthers(tbzo_id, newStatus) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You will delete the data. Do you want to proceed?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: "<?= base_url('OEEDataMold/update_status_others') ?>",
+                        type: "POST",
+                        data: {
+                            tbzo_id,
+                            new_status: newStatus
+                        },
+                        success: function(response) {
+                            if (!response.success) {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                            return response;
+                        }
+                    }).catch(() => Swal.fire("Error!", "An error occurred while updating status.", "error"));
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Status Updated",
+                        text: result.value.message,
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    table.ajax.reload();
+                }
+            });
+        }
+ 
+        
+
+        // Initialize DataTable
+        var table = $("#grid-others").DataTable({
+            "processing": true,
+            "serverSide": false,
+            "ajax": {
+                "url": "<?= base_url('OEEDataMold/get_data_others') ?>",
+                "type": "POST",
+                "data": function(d) {
+                    d.proddate = $('#prod_date').val(); // Send the production date with the AJAX request
+                },
+                "dataSrc": function(json) {
+                    return json;
+                }
+            },
+            "columns": [{
+                    data: null,
+                    render: function(data, type, row) {
+                        return `<div class="d-flex justify-content-center gap-2">
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-info btnEdit" data-id="${row.tbzo_id}" data-mchcode="${row.tbzo_mchcode}" data-actcode="${row.tbzo_actcode}" data-start="${row.tbzo_start}" data-finish="${row.tbzo_finish}" data-remark="${row.tbzo_remark}" title="Edit"><i class="fa fa-pen-to-square"></i></a>
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-danger btnDeleteOthers" data-id="${row.tbzo_id}" title="Delete"><i class="fa fa-trash-can"></i></a>
+                                </div>`;
+                    },
+                    className: "text-center"
+                },
+                {
+                    data: "tbzo_id"
+                },
+                {
+                    data: "tbzo_mchcode"
+                },
+                {
+                    data: null,
+                    render: function(data, type, row) {
+                        return `${row.tbzo_actcode} | ${row.mba_actname}`;
+                    }
+                },
+                {
+                    data: "tbzo_start"
+                },
+                {
+                    data: "tbzo_finish"
+                },
+                {
+                    data: "tbzo_remark"
+                }
+            ]
+        });
+
+        
+
+        // Refresh button click event
+        $('.refresh-btn').on('click', function() {
+            // $('#prod_date').val(''); // Reset filter
+            table.ajax.reload(); // Reload data without filter
+
+            // Reset the default values for tbzo_start and tbzo_finish
+            tbzo_start.setDate(new Date().setHours(7, 20), true);
+            tbzo_finish.setDate(new Date().setHours(16, 50), true);
+        });
+         
+    });
+</script>
+
+<?= $this->endSection() ?>

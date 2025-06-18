@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Controllers\oee_assy;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_assy\M_OEEDataAssy;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Ods;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+
+class OEEDataAssy extends BaseController
+{
+    protected $M_OEEDataAssy;
+
+    public function __construct()
+    {
+        $this->M_OEEDataAssy = new M_OEEDataAssy();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEDataAssy") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        return view("oee_assy/data/main", $data);
+    }
+    
+    public function show_prod_data()
+    {
+        $start_date     = $this->request->getPost("start_date");
+        $end_date   = $this->request->getPost("end_date");
+
+        $data = $this->M_OEEDataAssy->get_prod_data($start_date, $end_date);
+        return $this->response->setJSON($data);
+    }
+    
+}

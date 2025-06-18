@@ -1,0 +1,436 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+        <!-- Title on the Left -->
+        <!-- <div class="head-label">
+            <h5 class="fw-bold">
+                <span class="text-muted fw-light"><?= htmlspecialchars($active_menu_group) ?> /</span> <?= htmlspecialchars($active_menu_name) ?>
+            </h5>
+        </div> -->
+        <!-- Buttons on the Right -->
+        <div class="dt-action-buttons d-flex pt-3 pt-md-0">
+            <div class="dt-buttons btn-group flex-wrap">
+                <!-- Add New Machine Assy -->
+                <button type="button" class="btn create-new btn-success" data-bs-toggle="modal" data-bs-target="#add_mch_assy">
+                    <span><i class="ti ti-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add Machine SPM</span></span>
+                </button>
+                <!-- Refresh Button -->
+                <button type="button" class="btn btn-secondary refresh-btn ms-2">
+                    <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                </button>   
+            </div>
+        </div>
+    </div>
+    <div class="card-datatable table-responsive pt-0">
+        <table class="datatables-basic table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Action</th>
+                    <th>ID</th>
+                    <th>Machine</th>
+                    <th>Pole</th>
+                    <th>SPM</th>
+                    <th>PCS Per Stroke</th>
+                    <th>Extra Qty</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>    
+
+    <!-- Modal for add record -->
+    <div class="modal fade" id="add_mch_assy" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Add Machine Assy</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="form_mch_assy" class="row g-3">
+                        <div class="col-12 col-md-12">
+                            <label for="code" class="form-label">Machine Code </label>
+                            <select id="code" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="" selected>Select Machine</option>
+                                <?php foreach ($machines as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine['mcode']) ?>">
+                                        <?= htmlspecialchars($machine['mcode']) ?> | <?= htmlspecialchars($machine['mname']) ?>
+                                    </option> 
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="pole">Pole <span style="color: red">*</span></label>
+                            <input type="number" id="pole" name="pole" class="form-control" placeholder="Pole">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="spm">SPM <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="spm" name="spm" class="form-control" placeholder="SPM">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="stroke">PCS Per Stroke <span style="color: red">*</span></label>
+                            <input type="number" id="stroke" name="stroke" class="form-control" placeholder="PCS Per Stroke">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="qty">Extra Qty <span style="color: red">*</span></label>
+                            <input type="number" id="qty" name="qty" class="form-control" placeholder="Extra Qty">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Save</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for edit record -->
+    <div class="modal fade" id="edit_mch_assy" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-enable-otp modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Edit Machine Assy</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="form_edit_mch_assy" class="row g-3">
+                        <input type="hidden" id="mas_id" name="mas_id">
+                        <div class="col-12 col-md-12">
+                            <label for="edit_code" class="form-label">Machine Code</label>
+                            <select id="edit_code" name="edit_code" class="selectpicker w-100" data-style="btn-default" data-live-search="true" disabled>
+                                <option value="">Select Machine</option>
+                                <?php foreach ($machines as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine['mcode']) ?>">
+                                        <?= htmlspecialchars($machine['mcode']) ?> | <?= htmlspecialchars($machine['mname']) ?>
+                                    </option> 
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="pole">Pole <span style="color: red">*</span></label>
+                            <input type="number" id="edit_pole" name="edit_pole" class="form-control" placeholder="Pole" disabled>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="spm">SPM <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="edit_spm" name="edit_spm" class="form-control" placeholder="SPM">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="stroke">PCS Per Stroke <span style="color: red">*</span></label>
+                            <input type="number" id="edit_stroke" name="edit_stroke" class="form-control" placeholder="PCS Per Stroke">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="qty">Extra Qty <span style="color: red">*</span></label>
+                            <input type="number" id="edit_qty" name="edit_qty" class="form-control" placeholder="Extra Qty">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Update</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable
+        var table = $(".datatables-basic").DataTable({
+            "processing": true,
+            "serverSide": false,
+            "ajax": {
+                "url": "<?= base_url('MstMachineAssy/get_data') ?>",
+                "type": "GET",
+                "dataSrc": function(json) {
+                    return json;
+                }
+            },
+            "columns": [{
+                    "data": null,
+                    "render": function(data, type, row) {
+
+                        return `<div class="d-flex justify-content-center gap-2">
+                                    <a href="javascript:;" class="btn btn-icon btn-info btnEdit" data-id="${row.mas_id}" data-code="${row.mas_mchid}" data-pole="${row.mas_pole}" data-spm="${row.mas_spm}" data-stroke="${row.mas_pcs_stroke}" data-qty="${row.mas_extqty}">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-danger btnDelete" data-id="${row.mas_id}"><i class="fa fa-trash-can"></i></a>
+                                </div>`;
+                    },
+                    "className": "text-center"
+                },
+                {
+                    data: "mas_id"
+                },
+                {
+                    data: "mas_mchcode"
+                },
+                {
+                    data: "mas_pole"
+                },
+                {
+                    data: "mas_spm"
+                },
+                {
+                    data: "mas_pcs_stroke"
+                },
+                {
+                    data: "mas_extqty"
+                },
+            ]
+        });
+
+        $("#form_mch_assy").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "code",
+                    message: "Code is required."
+                },
+                {
+                    id: "pole",
+                    message: "Pole is required."
+                },
+                {
+                    id: "spm",
+                    message: "SPM is required."
+                },
+                {
+                    id: "stroke",
+                    message: "PCS Per Stroke is required."
+                },
+                {
+                    id: "qty",
+                    message: "Extra QTY is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                code: $("#code").val(),
+                pole: $("#pole").val(),
+                spm: $("#spm").val(),
+                stroke: $("#stroke").val(),
+                qty: $("#qty").val(),
+                tipe: "add"
+            };
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstMachineAssy/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        // Data already exists, show error message
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                        hideLoading();
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>/MstMachineAssy/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                $("#add_mch_assy").modal("hide");
+                                // Clear the form data
+                                $("#form_mch_assy")[0].reset();
+                                // Reload DataTable
+                                $(".datatables-basic").DataTable().ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                    hideLoading();
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $("#form_edit_mch_assy").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "edit_code",
+                    message: "Code is required."
+                },
+                {
+                    id: "edit_pole",
+                    message: "Pole is required."
+                },
+                {
+                    id: "edit_spm",
+                    message: "SPM is required."
+                },
+                {
+                    id: "edit_stroke",
+                    message: "PCS Per Stroke is required."
+                },
+                {
+                    id: "edit_qty",
+                    message: "Extra QTY is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val().trim() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                id: $("#mas_id").val(),
+                code: $("#edit_code").val(),
+                pole: $("#edit_pole").val(),
+                spm: $("#edit_spm").val(),
+                stroke: $("#edit_stroke").val(),
+                qty: $("#edit_qty").val(),
+                tipe: "edit"
+            };
+            console.log(data);
+
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstMachineAssy/update_data",
+                data: data,
+                success: function(submitResponse) {
+                    Swal.fire({
+                        title: "Data has been saved",
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    $("#edit_mch_assy").modal("hide");
+                    // Clear the form data
+                    $("#form_edit_mch_assy")[0].reset();
+                    // Reload DataTable
+                    table.ajax.reload();
+                },
+                error: function(submitError) {
+                    Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $(document).on("click", ".btnEdit", function() {
+            var id = $(this).data("id");
+            var code = $(this).data("code");
+            var pole = $(this).data("pole");
+            var spm = $(this).data("spm");
+            var stroke = $(this).data("stroke");
+            var qty = $(this).data("qty");
+            console.log(code);
+            
+            // Populate the modal form with the data
+            $("#mas_id").val(id);
+            $("#edit_code").val(code);
+            // Re-initialize selectpicker to update the display
+            $("#edit_code").selectpicker("destroy").selectpicker();
+            $("#edit_pole").val(pole);
+            $("#edit_spm").val(spm);
+            $("#edit_stroke").val(stroke);
+            $("#edit_qty").val(qty);
+
+            // Show the modal
+            $("#edit_mch_assy").modal('show');
+        });
+
+        // Handle Delete button click
+        $(document).on("click", ".btnDelete", function() {
+            var id = $(this).data("id");
+            updateStatus(id, 25); // Update status to 25 (Delete)
+        });
+
+        // Function to update status via AJAX
+        function updateStatus(id, newStatus) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You will delete the data. Do you want to proceed?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: "<?= base_url('MstMachineAssy/update_status_data') ?>",
+                        type: "POST",
+                        data: {
+                            id,
+                            new_status: newStatus
+                        },
+                        success: function(response) {
+                            if (!response.success) {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                            return response;
+                        }
+                    }).catch(() => Swal.fire("Error!", "An error occurred while updating status.", "error"));
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Status Updated",
+                        text: result.value.message,
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    table.ajax.reload(); // Reload DataTable
+                }
+            });
+        }
+
+        // Refresh button click event
+        $(".refresh-btn").on("click", function() {
+            table.ajax.reload(); // Reload the DataTable
+        });
+    });
+</script>
+
+<?= $this->endSection() ?>

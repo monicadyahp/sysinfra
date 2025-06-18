@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Controllers\oee_molding;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_molding\M_OEEDataMold;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Ods;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+
+class OEEDataMold extends BaseController
+{
+    protected $M_OEEDataMold;
+
+    public function __construct()
+    {
+        $this->M_OEEDataMold = new M_OEEDataMold();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEDataMold") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        return view("oee_molding/data/main", $data);
+    }
+}

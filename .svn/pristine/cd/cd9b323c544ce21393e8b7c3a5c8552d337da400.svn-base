@@ -1,0 +1,386 @@
+<?php
+
+namespace App\Models\oee_molding;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEDataMold extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+        $this->db_postgre = db_connect('default');
+        $this->db_pps = db_connect('db_pps');
+    }
+        
+    public function get_data($series, $end_date)
+    {
+        if (!empty($series)) {
+            $cond = " where mlocation = '$series'";
+        } else {
+            $cond = " where mlocation = 'Molding 1'";
+        }
+
+        $q = "select mcode as mchid, mname as mchname from m_machine 
+            $cond ORDER BY substring(mname FROM '^[^-]+'), CAST(substring(mname FROM '[^-]+$') AS INTEGER)";
+
+        $q_res      = $this->db_postgre->query($q);
+
+        $machines   = $q_res->getResultArray();
+
+        // Loop through each machine to get the last activity and set the color
+        foreach ($machines as &$machine) {
+
+            $mchname = $machine["mchname"];
+            // var_dump($mchname, $end_date);die();
+
+            // Query to get the last activity's button color for the machine
+            $q2 = " SELECT *
+                    FROM t_modmold_dt
+                    INNER JOIN m_modmold_act
+                        ON mma_actcode      = tmld_act_code
+                        AND mma_status      = 1
+                    INNER JOIN t_modmold_hd
+                        ON tmld_hdid       = tmlh_id
+                        AND tmlh_status     <> 25
+                    WHERE tmld_status       <> 25
+                        -- AND tmlh_proddate   = '$end_date'
+                        AND tmlh_mchcode    = '$mchname'
+                    ORDER BY tmld_id DESC
+                    LIMIT 1";
+
+            $activityQuery  = $this->db_postgre->query($q2);
+            $lastActivity   = $activityQuery->getRowArray();
+
+            // Set the color for the machine
+            $machine['color'] = !empty($lastActivity) ? $lastActivity['mma_btncolor'] : '#FFFFFF';
+            $machine['isFinish'] = (empty($lastActivity) || ($lastActivity['tmld_finish'] !== null && $lastActivity['tmld_finish'] !== '')) ? 1 : 0;
+        }
+        return $machines;
+    }
+    
+    public function get_machine_header($machine, $start_date, $end_date)
+    {
+        // var_dump($machine, $start_date, $end_date);die();
+        if (!empty($machine)) {
+            $cond = "AND tmlh_mchcode = '$machine'";
+        } else {
+            $cond = "";
+        }
+
+        if (!empty($start_date) && !empty($end_date)) {
+            $cond2 = "AND tmlh_proddate BETWEEN '$start_date' AND '$end_date'";
+        } else {
+            $cond2 = "";
+        }
+        
+        $query = "  SELECT tmlh_id, tmlh_mchcode, tmlh_diesno, TO_CHAR(tmlh_proddate, 'YYYY-MM-DD') as tmlh_proddate, tmlh_prodname, tmlh_instno, tmlh_spm, tmlh_cavity, tmlh_cycle_time, tmlh_created_user, tmlh_created_at        
+                    ,tmlh_lastuser, tmlh_lastupdate, tmlh_status, tmlh_dies_cavid, tmlh_prodcode, tmlh_qtylot, tmlh_totlot, tmlh_sec_perlot, tmlh_splitfromid
+                    FROM t_modmold_hd
+                    WHERE tmlh_status <> 25
+                        $cond
+                        $cond2
+                    ORDER BY tmlh_proddate DESC, tmlh_mchcode, tmlh_instno";
+
+        return $this->db_postgre->query($query)->getResult();
+    }
+
+    public function get_machine_detail($header_id)
+    {
+        // var_dump($header_id);die();
+        $query = " select tmld_id, tmld_shift, tmld_act_code, tmld_start, tmld_finish, tmld_ttime_act, tmld_ttime_calc/60 as tmld_ttime_calc, tmld_emplname, tmld_prodqty, tmld_remark, tmld_status, tmld_lot_start, tmld_lot_end  
+                    from t_modmold_dt
+                    WHERE tmld_status   <> 25
+                        AND tmld_hdid   = $header_id
+                    ORDER BY tmld_start asc";
+
+        return $this->db_postgre->query($query)->getResult();
+    }
+
+    public function get_total_times($header_id)
+    {
+        // var_dump($header_id);die();
+        $query = "  SELECT SUM(tmld_ttime_act/60) AS total_time_actual, SUM(tmld_ttime_calc/60) AS total_time_calc
+                    FROM t_modmold_dt
+                    WHERE tmld_status <> 25
+                        AND tmld_hdid = $header_id";
+
+        return $this->db_postgre->query($query)->getRow();
+    }
+
+    public function get_machine_data()
+    {
+        $query = "  SELECT mcode as mchid, mname as mchname FROM m_machine 
+            where mlocation in ('Molding 1', 'Molding 2', 'Vertikal')
+            and mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+            ORDER BY substring(mname FROM '^[^-]+'), CAST(substring(mname FROM '[^-]+$') AS INTEGER)";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_partcode()
+    {
+        $query = "SELECT partbom_partcode, partbom_partname FROM m_partbom";
+        $result = $this->db_postgre->query($query)->getResultArray();
+    
+        if (empty($result)) {
+            log_message('error', 'Query returned no data');
+        } else {
+            log_message('info', 'Query result: ' . json_encode($result));
+        }
+    
+        return $result;
+    }
+
+    public function get_dies()
+    {
+        $query = "select dcode, dname, dcavityindentity from m_dies
+                where dloc in ('Molding', 'Molding 2', 'Vertikal')
+                order by dname, dcavityindentity";
+        $result = $this->db_postgre->query($query)->getResultArray();
+        if (empty($result)) {
+            log_message('error', 'Query returned no data');
+        } else {
+            log_message('info', 'Query result: ' . json_encode($result));
+        }
+    
+        return $result;
+    }
+
+    public function add_limit($data)
+    {
+        $id = $data['id_limit'];
+        $insertData = [
+            'tml_mchcode' => !empty($data['mchname']) ? $data['mchname'] : null,
+            'tml_diescode' => !empty($data['dcode']) ? $data['dcode'] : null,
+            'tml_diesno' => !empty($data['dcavityindentity']) ? $data['dcavityindentity'] : null,
+            'tml_dies_cavid' => !empty($data['dname']) ? $data['dname'] : null,
+            'tml_partcode' => !empty($data['partbom_partcode']) ? $data['partbom_partcode'] : null,
+            'tml_partname' => !empty($data['partbom_partname']) ? $data['partbom_partname'] : null,
+            'tml_qty' => !empty($data['qty']) ? $data['qty'] : null,
+            'tml_month' => !empty($data['month']) ? $data['month'] : null,
+            'tml_year' => !empty($data['year']) ? $data['year'] : null,
+            'tml_lastuser' => session()->get("user_info")["EM_EmplCode"],
+            'tml_lastupdate' => date("Y-m-d H:i:s"),
+            'tml_status' => 1
+        ];
+        // Gunakan Query Builder untuk insert data ke database
+        try {
+            if (empty($id)) {
+                $this->db_postgre->table('t_mold_limitation')->insert($insertData);
+            } else {
+                $this->db_postgre->table('t_mold_limitation')->where('tml_id', $id)->update($insertData);
+            }
+            
+            return [
+                'status' => true,
+                'message' => 'Data berhasil disimpan.'
+            ];
+        } catch (\Exception $e) {
+            // Handle error jika terjadi dan catat log error
+            return [
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function get_data_limitation($data)
+    {
+        if (!isset($data['month']) || !isset($data['year'])) {
+            return [];
+        }
+    
+        $sql = "SELECT * FROM t_mold_limitation WHERE tml_status <> 25 AND tml_month = ? AND tml_year = ? order by tml_id desc";
+        $query = $this->db_postgre->query($sql, [$data['month'], $data['year']]);
+    
+        $result = $query->getResultArray();
+    
+        if (empty($result)) {
+            log_message('error', 'No data for month: ' . $data['month'] . ' and year: ' . $data['year']);
+        } else {
+            log_message('info', 'Query result: ' . json_encode($result));
+        }
+    
+        return $result;
+    }
+    
+    public function update_data_limitation($tml_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE t_mold_limitation
+                    SET tml_status     = ?,
+                        tml_lastuser   = ?,
+                        tml_lastupdate = ?
+                    WHERE tml_id       = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $tml_id];
+
+        $this->db_postgre->query($query, $params);
+
+        return $this->db_postgre->affectedRows() > 0;
+    }
+
+    public function cek_data_limitation($data)
+    {
+        // var_dump($data);die();
+        $sql = "SELECT tml_id FROM t_mold_limitation
+                WHERE tml_month = ? 
+                AND tml_year = ? 
+                AND tml_partcode = ? 
+                AND tml_partname = ? 
+                AND tml_mchcode = ? 
+                AND tml_diesno = ? 
+                AND tml_dies_cavid = ? 
+                AND tml_diescode = ? 
+                AND tml_qty = ? 
+                AND tml_status <> 25";
+        
+        $result = $this->db_postgre
+                    ->query($sql, [
+                        $data["month"],
+                        $data["year"],
+                        $data["partbom_partcode"],
+                        $data["partbom_partname"],
+                        $data["mchname"],
+                        $data["dcavityindentity"],
+                        $data["dname"],
+                        $data["dcode"],
+                        $data["qty"]
+                    ])->getRow();
+        return ($result !== null);
+    }
+
+    public function get_data_prodplan($m, $y)
+    {
+        $query = "select pp_year,pp_month,pp_location,pp_machinename,cast(pp_planqty as integer) as pp_planqty,pp_lastupdate,pp_lastuser from tmfg_prodplan "
+                . "where pp_month = $m and pp_year = $y and pp_location = 'Molding' order by pp_machinename asc";
+
+        return $this->db_postgre->query($query)->getResult();
+    }
+
+    public function generate_data($data)
+    {
+        $query = "SELECT mcode AS mchid, mname AS mchname 
+                  FROM m_machine 
+                  WHERE mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')
+                  and mcode not in  ('1239', '1240', '1241', '1242', '1243', '1244')
+                  ORDER BY substring(mname FROM '^[^-]+'), 
+                           CAST(substring(mname FROM '[^-]+$') AS INTEGER)";
+    
+        $result = $this->db_postgre->query($query)->getResult();
+        // var_dump($result);die();
+
+        $query2 = "select pp_year, pp_month, pp_location from tmfg_prodplan where pp_location = 'Molding' and pp_month = ? and pp_year = ?";
+        $cekData = $this->db_postgre->query($query2,[$data['month'], $data['year']])->getResult();
+        // var_dump($cekData);die();
+
+        if ($cekData) {
+            return [
+                'status' => false,
+                'message' => 'Data sudah di generate'
+            ];
+        }
+    
+        if (!$result) {
+            return [
+                'status' => false,
+                'message' => 'Data mesin tidak ditemukan'
+            ];
+        }
+    
+        $batchInsertData = [];
+        foreach ($result as $row) {
+            $batchInsertData[] = [
+                'pp_machinename' => $row->mchname,
+                'pp_location' => 'Molding',
+                'pp_planqty' => 0,
+                'pp_year' => $data['year'],
+                'pp_month' => $data['month'],
+            ];
+        }
+        // var_dump($batchInsertData);die();
+    
+        if (!empty($batchInsertData)) {
+            // var_dump(count($batchInsertData));die();
+
+            $this->db_postgre->table('tmfg_prodplan')->insertBatch($batchInsertData);
+            return [
+                'status' => true,
+                'message' => 'Data berhasil di-generate'
+            ];
+        } else {
+            return [
+                'status' => false,
+                'message' => 'Tidak ada data yang di-generate'
+            ];
+        }
+    }
+
+    public function update_qtyplan( $m, $y, $mch, $qty, $empl)
+    {
+        $query = "  UPDATE tmfg_prodplan
+                    SET pp_planqty = $qty, pp_lastupdate = '$this->currentDateTime', pp_lastuser = '$empl'
+                    WHERE pp_month = $m and pp_year = $y and pp_machinename = '$mch' and pp_location ='Molding'";
+
+        return $this->db->query($query);
+    }
+    
+    public function get_limit_detail($tml_id)
+    {
+        return $this->db_postgre->table('t_mold_limitation')
+            ->where('tml_id', $tml_id)
+            ->get()
+            ->getRowArray();
+    }
+
+    public function update_limit($data)
+    {
+        return $this->db_postgre->table('t_mold_limitation')
+            ->where('tml_id', $data['tml_id'])
+            ->update([
+                'tml_mchcode' => $data['tml_mchcode'],
+                'tml_diesno' => $data['tml_diesno'],
+                'tml_dies_cavid' => $data['tml_dies_cavid'],
+                'tml_partcode' => $data['tml_partcode'],
+                'tml_partname' => $data['tml_partname'],
+                'tml_qty' => $data['tml_qty']
+            ]);
+    }
+
+    public function get_data_excel_fix($mch, $location, $start_date, $end_date)
+    {
+        // var_dump($mch, $location, $start_date, $end_date);die();
+
+        $query = "select tmld_hdid, tmld_id, tmlh_proddate, tmld_shift, tmlh_mchcode, tmlh_diesno, tmlh_dies_cavid, tmlh_instno, tmlh_prodcode, tmlh_prodname, tmlh_cavity, tmlh_cycle_time, tmlh_spm,
+            tmld_oee_code, tmld_act_code, tmld_start, tmld_finish, tmld_ttime_calc, tmld_prodqty, tmld_scrapqty, tmld_lot_start, tmld_lot_end, tmld_jml_lot, tmld_emplno, tmld_emplname, mtrb_code || ' - ' || mtrb_desc as trouble
+            from t_modmold_dt	
+            inner join t_modmold_hd on tmld_hdid = tmlh_id and tmlh_status <> 25
+            left join m_mold_trouble on mtrb_id = tmld_remark 
+            inner join m_machine on tmlh_mchcode = mname
+            where tmlh_proddate between '$start_date' and '$end_date' and tmld_status <> 25";
+
+        if ($mch == 'ALL') {
+            $query .= " AND mlocation IN ('Molding 1', 'Molding 2', 'Vertikal')";
+        } elseif ($mch == '') {
+            $query .= " AND mlocation = '$location'";
+        } else {
+            $query .= " AND tmlh_mchcode = '$mch' AND mlocation = '$location'";
+        }
+
+        $query .= " ORDER BY tmlh_proddate ASC, tmlh_mchcode, tmld_shift";
+
+        return $this->db_postgre->query($query)->getResult();
+    }
+    
+}

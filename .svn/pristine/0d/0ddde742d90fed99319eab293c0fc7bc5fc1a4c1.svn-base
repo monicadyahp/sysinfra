@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Models\prs_pe;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set("Asia/Jakarta");
+$currentDateTime = date("Y-m-d H:i:s");
+
+class M_Verification extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+    private $db_pe;
+    private $db_pps;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set("Asia/Jakarta");
+        $this->currentDateTime = date("Y-m-d H:i:s");
+
+        if (!$this->db_pe) {
+            $this->db_pe = db_connect(session()->get("db_pe_postgre"));
+        }
+        if (!$this->db_pps) {
+            $this->db_pps = db_connect("db_pps");
+        }
+    }
+
+    public function get_listheader($request_type)
+    {
+        $user_section = session()->get("user_info")["EM_SectionCode"];
+        $filter_sec = "";
+        // if user is not PE or System
+        if (!($user_section >= 5400 && $user_section <= 5412)) {
+            // YMMA (yang manajer manajer aja)
+            $filter_sec = " AND prhreqsectcode::text LIKE '" . substr($user_section, 0, 2) . "%'";
+        }
+        $filter_type = $request_type == "ALL" ? "" : "AND prhreqtype='$request_type'";
+        return $this->db_pe->query("SELECT pe_requesthd.*, TO_CHAR(prhissuedate, 'YYYY-MM-DD') AS prhissuedate,
+            TO_CHAR(prhreqapprovedate, 'YYYY-MM-DD') AS prhreqapprovedate, TO_CHAR(prhpeapprovedate, 'YYYY-MM-DD') AS prhpeapprovedate, 
+            TO_CHAR(prhcanceldate, 'YYYY-MM-DD') AS prhcanceldate, TO_CHAR(prhlastupdate, 'YYYY-MM-DD') AS prhlastupdate,
+            TO_CHAR(prhreqfinishdate, 'YYYY-MM-DD') AS prhreqfinishdate, 
+            sec_shortsectname, processhdname, badgecolor, yesprocessid, prhmainstat
+            FROM pe_requesthd LEFT JOIN tbmst_section ON sec_sectioncode = prhreqsectcode 
+            LEFT JOIN mprocesshdr ON processhdid = prhprocessid 
+            WHERE prhprocessid = 2 AND COALESCE(prhprocessid, 0) <> 25 $filter_sec $filter_type ORDER BY pe_requesthd.prhlastupdate DESC")->getResult();
+    }
+
+    public function get_detail($header_id)
+    {
+        if (empty($header_id)) {
+            return [];
+        }
+
+        return $this->db_pe->query("SELECT d.*,
+            e.em_emplname AS prdfclosename, 
+            CASE WHEN EXISTS (SELECT 1 FROM pe_requestpic p WHERE p.prp_requestid = h.prhid AND p.prp_status  <> 25) THEN 1 ELSE NULL END AS pic,
+            CASE WHEN prhtype = 'Part' AND COALESCE(prhdrawprocess, '') = '' THEN NULL ELSE 1 END AS allset, 
+            CASE 
+                WHEN prdfilename IS NOT NULL AND prdfilename <> '' THEN 
+                    LEFT(prdfilename, 2) || '...' || 
+                    SUBSTRING(SPLIT_PART(prdfilename, '.', 1) FROM LENGTH(SPLIT_PART(prdfilename, '.', 1)) - 2 FOR 3) || 
+                    '.' || 
+                    SPLIT_PART(prdfilename, '.', 2)
+                ELSE prdfilename
+            END AS prdfilename_ellipsis,
+            (   -- only for PRS Part, else hidden
+                SELECT COALESCE(SUM(weight * (progress / 100)), 0) total_progress FROM
+                (SELECT max(a.praprogress) progress, b.weight FROM pe_requestactivity a 
+                LEFT JOIN mprocessdet b ON b.procdetcode = a.praprocessid AND b.processsubgroup = h.prhdrawprocess
+                WHERE a.pradetid = d.prdid AND a.prastatus <> 25 GROUP BY a.praprocessid,b.weight)
+            )
+            FROM pe_requestdt d LEFT JOIN pe_requesthd h ON h.prhid = d.prdhdid
+            LEFT JOIN tbmst_employee e ON e.em_emplcode = d.prdfcloseby
+            WHERE d.prdhdid = $header_id AND d.prdstatus <> '25' ORDER BY d.prdid DESC")->getResult();
+    }
+
+    public function approve_request($id)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $process_id = $this->db_pe->query("SELECT yesprocessid FROM mprocesshdr LEFT JOIN pe_requesthd ON prhprocessid = processhdid WHERE prhid = $id")->getRow();
+        $empl_code = session()->get("user_info")["EM_EmplCode"];
+        $this->db_pe->table("pe_requesthd")->where("prhid", $id)->update(
+            [
+                "prhprocessid" => $process_id->yesprocessid,
+                "prhlastupdate" => date("Y-m-d H:i:s"),
+                "prhlastuser" => $empl_code,
+                "prhreqapprovedate" => date("Y-m-d H:i:s"),
+                "prhreqapprovecode" => $empl_code
+            ]
+        );
+        return array("status" => "success", "message" => "");
+    }
+
+    public function return_request($id)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $process_id = $this->db_pe->query("SELECT noprocessid FROM mprocesshdr LEFT JOIN pe_requesthd ON prhprocessid = processhdid WHERE prhid = $id")->getRow();
+        $empl_code = session()->get("user_info")["EM_EmplCode"];
+        $this->db_pe->table("pe_requesthd")->where("prhid", $id)->update(
+            [
+                "prhprocessid" => $process_id->noprocessid,
+                "prhlastupdate" => date("Y-m-d H:i:s"),
+                "prhlastuser" => $empl_code
+            ]
+        );
+        return array("status" => "success", "message" => "");
+    }
+}

@@ -1,0 +1,340 @@
+<?php
+
+namespace App\Controllers\oee_molding;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_molding\M_OEEDataMold;
+use App\Models\oee_brazing\M_OEEDataBraz;
+use App\Models\master_brazing\M_MstMachine;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Ods;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+
+class OEEDataMold extends BaseController
+{
+    protected $M_OEEDataMold;
+    protected $M_OEEDataBraz;
+    protected $M_MstMachine;
+
+    public function __construct()
+    {
+        $this->M_OEEDataMold = new M_OEEDataMold();
+        $this->M_OEEDataBraz = new M_OEEDataBraz();
+        $this->M_MstMachine = new M_MstMachine();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEDataMold") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        $data["trouble_data"]       = $this->M_OEEDataBraz->get_trouble();
+        $data["activity_data"]      = $this->M_OEEDataBraz->get_activity();
+        $data["machine_data"]       = $this->M_OEEDataMold->get_machine_data();
+
+        return view("oee_molding/data/main", $data);
+    }
+
+    public function get_data()
+    {
+        $series     = $this->request->getPost("series");
+        $end_date   = $this->request->getPost("end_date");
+        $data = $this->M_OEEDataMold->get_data($series, $end_date);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_machine_header()
+    {
+        $machine    = $this->request->getPost("machine");
+        $start_date = $this->request->getPost("start_date");
+        $end_date   = $this->request->getPost("end_date");
+        // var_dump($machine, $start_date, $end_date);die();
+
+        $data = $this->M_OEEDataMold->get_machine_header($machine, $start_date, $end_date);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_machine_detail()
+    {
+        $header_id = $this->request->getPost("header_id");
+
+        // Get machine details
+        $details = $this->M_OEEDataMold->get_machine_detail($header_id);
+        // Get total time calculations
+        $totals = $this->M_OEEDataMold->get_total_times($header_id);
+        // var_dump($details, $totals);die();
+
+        return $this->response->setJSON([
+            'details'           => $details,
+            'total_time_actual' => $totals->total_time_actual ?? 0, // Fallback to 0 if null
+            'total_time_calc'   => $totals->total_time_calc ?? 0    // Fallback to 0 if null
+        ]);
+    }
+
+    public function get_partcode()
+    {
+        $data = $this->M_OEEDataMold->get_partcode();
+
+        // Cek apakah data sudah benar sebelum mengirim response JSON
+        if (empty($data)) {
+            return $this->response->setJSON([
+                'data' => [],
+                'message' => 'No data found',
+                'status' => false
+            ]);
+        }
+
+        return $this->response->setJSON($data);
+    }
+
+    public function get_dies()
+    {
+        $data = $this->M_OEEDataMold->get_dies();
+
+        // Cek apakah data sudah benar sebelum mengirim response JSON
+        if (empty($data)) {
+            return $this->response->setJSON([
+                'data' => [],
+                'message' => 'No data found',
+                'status' => false
+            ]);
+        }
+
+        return $this->response->setJSON($data);
+    }
+
+    public function add_limit()
+    {
+        // Ambil data dari request POST
+        $data = $this->request->getPost();
+        // var_dump($data);die();
+
+        try {
+            $result = $this->M_OEEDataMold->add_limit($data);
+    
+            if ($result['status']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => $result['message']
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $result['message']
+                ]);
+            }
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function get_data_limitation()
+    {
+        $data = $this->request->getPost();
+    
+        if (empty($data['month']) || empty($data['year'])) {
+            return $this->response->setJSON([
+                'data' => [],
+                'message' => 'Month and Year are required',
+                'status' => false
+            ]);
+        }
+    
+        $result = $this->M_OEEDataMold->get_data_limitation($data);
+    
+        if (empty($result)) {
+            return $this->response->setJSON([
+                'data' => [],
+                'message' => 'No data found',
+                'status' => false
+            ]);
+        }
+    
+        return $this->response->setJSON([
+            'data' => $result,
+            'message' => 'Data retrieved successfully',
+            'status' => true
+        ]);
+    }    
+
+    public function update_data_limitation()
+    {
+        $emplcode = session()->get("user_info")["EM_EmplCode"];
+
+        // Check if it's a POST request
+        if ($this->request->isAJAX() && $this->request->getPost("tml_id") && $this->request->getPost("new_status")) {
+            $tml_id     = $this->request->getPost("tml_id");
+            $new_status = $this->request->getPost("new_status");
+
+            // Call the model method to update status
+            $update = $this->M_OEEDataMold->update_data_limitation($tml_id, $new_status, $emplcode);
+
+            // Prepare response
+            if ($update) {
+                $response = [
+                    "success" => true,
+                    "message" => "Status updated successfully!"
+                ];
+            } else {
+                $response = [
+                    "success" => false,
+                    "message" => "Failed to update status."
+                ];
+            }
+
+            // Return JSON response
+            return $this->response->setJSON($response);
+        } else {
+            // Handle invalid requests, if needed
+            return $this->response->setStatusCode(400)->setBody("Bad request");
+        }
+    }
+
+    public function cek_data_limitation()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(["error" => "Invalid request"]);
+        }
+
+        // Ambil data dari request POST
+        $data = $this->request->getPost();
+        // Debugging - Cek apakah data diterima dengan benar
+        if (empty($data)) {
+            return $this->response->setJSON(["error" => "No data received"]);
+        }
+
+        // Panggil model untuk cek data
+        $exists = $this->M_OEEDataMold->cek_data_limitation($data);
+
+        return $this->response->setJSON(["exists" => $exists]);
+    }
+
+    public function get_prod_qty()
+    {
+        $m    = $this->request->getPost("monthPeriod");
+        $y = $this->request->getPost("yearPeriod");
+        // var_dump($m, $y);die();
+        
+        $data = $this->M_OEEDataMold->get_data_prodplan($m, $y);
+        return $this->response->setJSON($data);
+    }
+
+    public function update_prod_qty()
+    {
+        $m    = $this->request->getPost("monthPeriod");
+        $y    = $this->request->getPost("yearPeriod");
+        $mch    = $this->request->getPost("machinename");
+        $qty    = $this->request->getPost("planqty");
+        $empl = session()->get("user_info")["EM_EmplName"];
+        // var_dump($m, $y, $mch, $qty, $empl);die();
+
+        $update = $this->M_OEEDataMold->update_qtyplan($m, $y, $mch, $qty, $empl);
+
+        if ($update) {
+            return $this->response->setJSON(["success" => true, "error" => "Data successfully updated !"]);
+        } else {
+            return $this->response->setJSON(["success" => false, "error" => "Failed update quantity !"]);
+        }
+    }
+
+    public function generate_data()
+    {
+        $data = $this->request->getPost();
+
+        // Cek apakah data yang dikirim kosong
+        if (empty($data['month']) || empty($data['year'])) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Periode bulan dan tahun harus diisi'
+            ]);
+        }
+
+        log_message('info', 'Received data: ' . json_encode($data));
+
+        try {
+            $result = $this->M_OEEDataMold->generate_data($data);
+            // var_dump($result);die();
+
+            if ($result['status']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => $result['message']
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $result['message']
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Exception: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan server: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function get_limit_detail()
+    {
+        $tml_id = $this->request->getPost('id');
+        if (!$tml_id) {
+            return $this->response->setJSON(['status' => false, 'message' => 'ID is required']);
+        }
+
+        $result = $this->M_OEEDataMold->get_limit_detail($tml_id);
+
+        if ($result) {
+            return $this->response->setJSON(['status' => true, 'data' => $result]);
+        } else {
+            return $this->response->setJSON(['status' => false, 'message' => 'Data not found']);
+        }
+    }
+
+    public function update_limit()
+    {
+        $data = $this->request->getPost();
+        
+        $update = $this->M_OEEDataMold->update_limit($data);
+        
+        if ($update) {
+            return $this->response->setJSON(['status' => true, 'message' => 'Data updated successfully']);
+        } else {
+            return $this->response->setJSON(['status' => false, 'message' => 'Failed to update data']);
+        }
+    }
+
+    public function export_excel_fix()
+    {
+        $start_date = $this->request->getPost('start_date_excel');
+        $end_date   = $this->request->getPost('end_date_excel');
+        $location     = $this->request->getPost('series_excel');
+        $mch     = $this->request->getPost('mch_excel');
+        $data = $this->M_OEEDataMold->get_data_excel_fix($mch, $location, $start_date, $end_date);
+        
+        return $this->response->setJSON($data);
+    }
+    
+}

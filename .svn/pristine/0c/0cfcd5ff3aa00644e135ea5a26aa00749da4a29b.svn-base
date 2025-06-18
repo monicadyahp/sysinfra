@@ -1,0 +1,1209 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<style>
+    .select2-container--default, .select2-selection--single {
+            background-color: rgb(15, 23, 42) !important; /* Dark background */
+            color: #fff !important; /* Light text */
+            border: 1px solid #434968 !important; /* Dark border */
+            border-radius: 5px !important;
+        }
+    .select2-container--default .select2-dropdown--below, .form-control {
+            background-color: rgb(15, 23, 42) !important; /* Dark background */
+            color: #fff !important; /* Light text */
+            border: 1px solid #434968 !important; /* Dark border */
+        }
+        .select2-selection--single .select2-selection__rendered {
+            color: #fff !important; /* Light text */
+        } 
+       
+        .select2-container--default .select2-dropdown--below .select2-results .select2-results__options .select2-results__option {
+            color: #fff !important; /* Light text */
+        }
+        .select2-container--default .select2-dropdown--below .select2-results .select2-results__options .select2-results__option[aria-selected="true"] {
+            background: rgb(37, 99, 235) !important; /* Light text */
+        }
+        .select2-container--default .select2-dropdown--below .select2-results .select2-results__options .select2-results__option.select2-results__option--highlighted {
+            background: rgba(37, 99, 235, .075) !important; /* Light text */
+        }
+</style>
+
+<div style="background: #0F172A;">
+    
+<div class="row w-full mb-4 mt-3">
+    <div class="col-12">
+        <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-2">
+                        <label for="filterBy" class="form-label text-muted">Filter By</label>
+                        <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Filter By">
+                            <select id="filterBy" class="form-control form-select-dark">
+                                <option value="Machine">Machine</option>
+                                <option value="Series">Series</option>
+                                <option value="All">All</option>
+                            </select>
+                            <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <label for="filterVal" class="form-label text-muted" id="filterValLabel">Machine Code</label>
+                        <select id="filterVal" class="w-100 form-select-dark" data-style="btn-default" data-live-search="true"></select>
+                    </div>
+                    <div class="col-1">
+                        <label for="monthPeriod" class="form-label text-muted">Month</label>
+                        <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Month">
+                            <select id="monthPeriod" class="form-control form-select-dark">
+                                <option value="01">Jan</option>
+                                <option value="02">Feb</option>
+                                <option value="03">Mar</option>
+                                <option value="04">Apr</option>
+                                <option value="05">May</option>
+                                <option value="06">Jun</option>
+                                <option value="07">Jul</option>
+                                <option value="08">Aug</option>
+                                <option value="09">Sep</option>
+                                <option value="10">Oct</option>
+                                <option value="11">Nov</option>
+                                <option value="12">Dec</option>
+                            </select>
+                            <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-1">
+                        <label for="yearPeriod" class="form-label text-muted">Year</label>
+                        <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Year">
+                            <select id="yearPeriod" class="form-control form-select-dark">
+                                <!-- JavaScript will populate this select element with the years -->
+                            </select>
+                            <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <label for="startPeriod" class="form-label text-muted">Start</label>
+                        <input type="text" id="startPeriod" class="form-control form-control-dark" readonly>
+                    </div>
+                    <div class="col-2">
+                        <label for="endPeriod" class="form-label text-muted">End</label>
+                        <input type="text" id="endPeriod" class="form-control form-control-dark" readonly>
+                    </div>
+                    <div class="col-2 d-flex align-items-end gap-3">
+                        <button class="btn btn-primary" id="btnRefresh">Refresh</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-6">
+        <div class="row">
+            <div class="col-4">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Planning (Pcs)</h6>
+                        <h3 class="text-white" id="planningPcs"></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Result (Pcs)</h6>
+                        <h3 class="text-white" id="resultQty"></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Percentage (%)</h6>
+                        <h3 class="text-white" id="percentage"></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6">
+        <div class="row">
+            <div class="col-4">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Scrap In Process (Pcs)</h6>
+                        <h3 class="text-white" id="maintQty"></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Rework (Pcs)</h6>
+                        <h3 class="text-white" id="reworkQty"></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Defect Limitation (Pcs)</h6>
+                        <h3 class="text-white" id="defectQty"></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row d-flex align-items-center my-4">
+    <div class="col-12 col-xxl-4 mb-4 mb-xxl-0">
+        <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+            <div class="card-body">
+                <div id="oeeChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xxl-8">
+        <div class="row">
+            <div class="col-12 col-xl-6 col-xxl-3 mb-4 mb-xxl-0">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body">
+                        <div id="availChart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6 col-xxl-3 mb-4 mb-xxl-0">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body">
+                        <div id="perfChart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6 col-xxl-3 mb-4 mb-xxl-0">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body">
+                        <div id="qualityChart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6 col-xxl-3 mb-4 mb-xxl-0">
+                <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+                    <div class="card-body">
+                        <div id="looseChart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Line OEE Chart -->
+    <div class="col-12 col-xxl-6 mb-4 mb-xxl-0">
+        <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h3 class="card-title mb-0 text-muted" id="oeeLineChartTitle">OEE Line Chart </h3>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="lineChart"></div>
+            </div>
+        </div>
+    </div>
+    <!-- /Activity Chart -->
+    <div class="col-12 col-xxl-6">
+        <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h3 class="card-title mb-0 text-muted">Activity</h3>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="radialBarChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row my-4">
+    <!-- Planned Down Time Chart -->
+    <div class="col-12 col-xxl-6 mb-4 mb-xxl-0">
+        <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h3 class="card-title mb-0 text-muted">Top 5 Planned Downtime</h3>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="plannedDTChart"></div>
+            </div>
+        </div>
+    </div>
+    <!-- Breakdown Chart -->
+    <div class="col-12 col-xxl-6">
+        <div class="card" style="background: rgba(47, 51, 73, 0.45);">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h3 class="card-title mb-0 text-muted">Top 5 Breakdown</h3>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="breakDownChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+    
+</div>
+
+<script>
+    $(document).ready(function() {
+        let plannedDTChart, breakDownChart, qualityChart, availChart, perfChart, radialBarChart, oeeChart, looseChart, lineChart;
+
+        // Ensure plannedDTChartEl, breakDownChartEl, and qualityChartEl are only declared once
+        let plannedDTChartEl = document.querySelector('#plannedDTChart');
+        let breakDownChartEl = document.querySelector('#breakDownChart');
+        let qualityChartEl = document.querySelector('#qualityChart');
+        let availChartEl = document.querySelector('#availChart');
+        let perfChartEl = document.querySelector('#perfChart');
+        let radialBarChartEl = document.querySelector('#radialBarChart');
+        let oeeChartEl = document.querySelector('#oeeChart');
+        let looseChartEl = document.querySelector('#looseChart');
+        let lineChartEl = document.querySelector('#lineChart');
+
+        // Get the current month and year
+        const currentMonth = new Date().getMonth() + 1; // Months are zero-based in JS
+        const currentYear = new Date().getFullYear();
+
+        // Set the current month in the start_month dropdown
+        $('#monthPeriod').val(currentMonth.toString().padStart(2, '0'));
+
+        // Populate end year options (current year to 10 years before)
+        for (let year = currentYear; year >= currentYear - 10; year--) {
+            $('#yearPeriod').append(`<option value="${year}">${year}</option>`);
+        }
+
+        // Initialize Select2 for filterVal select element
+        $('#filterVal').select2();
+
+        const machineOptions = `<?php foreach ($machine_data as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                                <?php } ?>`;
+
+        const seriesOptions = `<option value="BFM">BFM</option>
+                                <option value="BIG">BIG</option>
+                                <option value="MEDIUM-1">MEDIUM-1</option>
+                                <option value="MEDIUM-2">MEDIUM-2</option>
+                                <option value="SMALL">SMALL</option>
+                                <option value="TEYAKI">TEYAKI</option>
+                                <option value="TUB">TUB</option>`;
+
+
+        // Function to populate the filterVal based on filterBy value
+        function populateFilterVal() {
+            const filterBy = $('#filterBy').val();
+            const filterVal = $('#filterVal');
+            const filterValLabel = $('#filterValLabel');
+
+            // Clear the current selected value
+            filterVal.val(null).trigger('change');
+
+            // Update the label and options based on the selected filter
+            if (filterBy === 'Series') {
+                filterValLabel.text('Series');
+                filterVal.html(seriesOptions); // Set Series options
+            } else if (filterBy === 'Machine') {
+                filterValLabel.text('Machine Code');
+                filterVal.html(machineOptions); // Set Machine options
+            } else {
+                filterValLabel.text('Select Filter');
+                filterVal.html('<option value="">All</option>'); // Default option for "All"
+            }
+
+            // Refresh Select2 to apply the new options
+            filterVal.trigger('change.select2');
+        }
+
+        // Populate filterVal on page load based on the initial value of filterBy
+        populateFilterVal();
+
+        // Call getPeriod when the page is first loaded with the initial values
+        getPeriod();
+
+        // Initialize ApexCharts for plannedDTChart and breakDownChart
+        if (plannedDTChartEl) {
+            const plannedDTChartConfig = {
+                chart: {
+                    height: 400,
+                    type: 'bar',
+                    toolbar: {
+                        show: false
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '30%',
+                        startingShape: 'rounded',
+                        borderRadius: 8
+                    }
+                },
+                grid: {
+                    borderColor: '#334155',
+                    padding: {
+                        top: -20,
+                        bottom: -12
+                    }
+                },
+                colors: '#38BDF8',
+                dataLabels: {
+                    enabled: false
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                xaxis: {
+                    categories: [], // Initial empty categories
+                    labels: {
+                        style: {
+                            colors: '#fff',
+                            fontSize: '14px'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            colors: '#fff',
+                            fontSize: '14px'
+                        }
+                    }
+                }
+            };
+
+            plannedDTChart = new ApexCharts(plannedDTChartEl, plannedDTChartConfig);
+            plannedDTChart.render();
+        }
+
+        if (breakDownChartEl) {
+            const breakDownChartConfig = {
+                chart: {
+                    height: 400,
+                    type: 'bar',
+                    toolbar: {
+                        show: false
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '30%',
+                        startingShape: 'rounded',
+                        borderRadius: 8
+                    }
+                },
+                grid: {
+                    borderColor: '#334155',
+                    padding: {
+                        top: -20,
+                        bottom: -12
+                    }
+                },
+                colors: '#F43F5E',
+                dataLabels: {
+                    enabled: false
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                xaxis: {
+                    categories: [], // Initial empty categories
+                    labels: {
+                        style: {
+                            colors: '#fff',
+                            fontSize: '14px'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            colors: '#fff',
+                            fontSize: '14px'
+                        }
+                    }
+                }
+            };
+
+            breakDownChart = new ApexCharts(breakDownChartEl, breakDownChartConfig);
+            breakDownChart.render();
+        }
+
+        if (qualityChartEl) {
+            const qualityChartConfig = {
+                chart: {
+                    height: 280,
+                    type: 'radialBar'
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                colors: ['#FDE047'], // Yellow color
+                plotOptions: {
+                    radialBar: {
+                        hollow: {
+                            size: '60%' // Size of the hollow center
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                color: '#fff',
+                                fontSize: '1.25rem',
+                                offsetY: -15,
+                            },
+                            value: {
+                                fontSize: '2rem',
+                                color: '#fff',
+                                offsetY: 10,
+                                formatter: function(val) {
+                                    return parseFloat(val).toFixed(1) + '%'; // Ensure value shows one decimal
+                                }
+                            }
+                        },
+                        track: {
+                            background: '#334155', // Gray for the remaining
+                            strokeWidth: '100%'
+                        }
+                    }
+                },
+                stroke: {
+                    lineCap: 'round' // Smooth edges
+                },
+                labels: ['Quality'],
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            height: 280
+                        },
+                        dataLabels: {
+                            value: {
+                                fontSize: '1.2rem'
+                            }
+                        }
+                    }
+                }]
+            };
+
+            qualityChart = new ApexCharts(qualityChartEl, qualityChartConfig);
+            qualityChart.render();
+        }
+
+        if (availChartEl) {
+            const availChartConfig = {
+                chart: {
+                    height: 280,
+                    type: 'radialBar'
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                colors: ['#38BDF8'], // Color for the radial bar
+                plotOptions: {
+                    radialBar: {
+                        hollow: {
+                            size: '60%' // Size of the hollow center
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                color: '#fff',
+                                fontSize: '1.25rem',
+                                offsetY: -15,
+                            },
+                            value: {
+                                fontSize: '2rem',
+                                color: '#fff',
+                                offsetY: 10,
+                                formatter: function(val) {
+                                    return parseFloat(val).toFixed(1) + '%'; // Show value with one decimal
+                                }
+                            }
+                        },
+                        track: {
+                            background: '#334155', // Background color for the track
+                            strokeWidth: '100%'
+                        }
+                    }
+                },
+                stroke: {
+                    lineCap: 'round' // Smooth edges
+                },
+                labels: ['Availability'],
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            height: 280
+                        },
+                        dataLabels: {
+                            value: {
+                                fontSize: '1.2rem'
+                            }
+                        }
+                    }
+                }]
+            }
+
+            availChart = new ApexCharts(availChartEl, availChartConfig);
+            availChart.render();
+        };
+
+        if (perfChartEl) {
+            const perfChartConfig = {
+                chart: {
+                    height: 280,
+                    type: 'radialBar'
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                colors: ['#6366F1'],
+                plotOptions: {
+                    radialBar: {
+                        hollow: {
+                            size: '60%'
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                color: '#fff',
+                                fontSize: '1.25rem',
+                                offsetY: -15,
+                            },
+                            value: {
+                                fontSize: '2rem',
+                                color: '#fff',
+                                offsetY: 10,
+                                formatter: function(val) {
+                                    return parseFloat(val).toFixed(1) + '%';
+                                }
+                            }
+                        },
+                        track: {
+                            background: '#334155',
+                            strokeWidth: '100%'
+                        }
+                    }
+                },
+                stroke: {
+                    lineCap: 'round'
+                },
+                labels: ['Performance'],
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            height: 280
+                        },
+                        dataLabels: {
+                            value: {
+                                fontSize: '1.2rem'
+                            }
+                        }
+                    }
+                }]
+            };
+
+            perfChart = new ApexCharts(perfChartEl, perfChartConfig);
+            perfChart.render();
+        }
+
+        if (oeeChartEl) {
+            const oeeChartConfig = {
+                chart: {
+                    height: 370,
+                    type: 'radialBar'
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                colors: ['#F97316'],
+                plotOptions: {
+                    radialBar: {
+                        startAngle: -90, // Semi-circle start
+                        endAngle: 90, // Semi-circle end
+                        hollow: {
+                            size: '70%' // Hollow center size
+                        },
+                        dataLabels: {
+                            name: {
+                                show: true,
+                                color: '#fff',
+                                fontSize: '1.25rem',
+                                offsetY: -35,
+                            },
+                            value: {
+                                fontSize: '2rem',
+                                color: '#fff',
+                                offsetY: 0,
+                                formatter: function(val) {
+                                    return parseFloat(val).toFixed(2) + '%'; // Show value with two decimal places
+                                }
+                            }
+                        },
+                        track: {
+                            background: '#334155',
+                            strokeWidth: '100%'
+                        }
+                    }
+                },
+                stroke: {
+                    lineCap: 'round' // Smooth edges
+                },
+                labels: ['OEE'],
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            height: 280
+                        },
+                        dataLabels: {
+                            value: {
+                                fontSize: '1.2rem'
+                            }
+                        }
+                    }
+                }]
+            };
+
+            oeeChart = new ApexCharts(oeeChartEl, oeeChartConfig);
+            oeeChart.render();
+        }
+
+        if (looseChartEl) {
+            const looseChartConfig = {
+                chart: {
+                    height: 280,
+                    type: 'radialBar'
+                },
+                series: [{
+                    data: []
+                }], // Empty initial data
+                colors: ['#EF4444'], // Red color for the chart
+                plotOptions: {
+                    radialBar: {
+                        hollow: {
+                            size: '60%' // Size of the hollow center
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                color: '#fff',
+                                fontSize: '1.25rem',
+                                offsetY: -15,
+                            },
+                            value: {
+                                fontSize: '2rem',
+                                color: '#fff',
+                                offsetY: 10,
+                                formatter: function(val) {
+                                    return parseFloat(val).toFixed(1) + '%'; // Ensure value shows one decimal
+                                }
+                            }
+                        },
+                        track: {
+                            background: '#334155', // Gray for the remaining
+                            strokeWidth: '100%'
+                        }
+                    }
+                },
+                stroke: {
+                    lineCap: 'round' // Smooth edges
+                },
+                labels: ['Speed Loose'],
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            height: 280
+                        },
+                        dataLabels: {
+                            value: {
+                                fontSize: '1.2rem'
+                            }
+                        }
+                    }
+                }]
+            };
+
+            looseChart = new ApexCharts(looseChartEl, looseChartConfig);
+            looseChart.render();
+        }
+
+        if (lineChartEl) {
+            const lineChartConfig = {
+                chart: {
+                    height: 400,
+                    type: 'line',
+                    parentHeightOffset: 0,
+                    zoom: {
+                        enabled: false
+                    },
+                    toolbar: {
+                        show: false
+                    }
+                },
+                series: [{
+                    name: "OEE",
+                    data: []
+                }],
+                markers: {
+                    strokeWidth: 7,
+                    strokeOpacity: 1,
+                    strokeColors: '#FFF',
+                    colors: ['#14B8A6']
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                stroke: {
+                    curve: 'straight'
+                },
+                colors: ['#14B8A6'],
+                grid: {
+                    borderColor: '#334155',
+                    xaxis: {
+                        lines: {
+                            show: true
+                        }
+                    },
+                    padding: {
+                        top: -20
+                    }
+                },
+                tooltip: {
+                    x: {
+                        format: 'yyyy-MM-dd'
+                    },
+                    y: {
+                        formatter: function(value) {
+                            return (value * 100).toFixed(2) + '%';
+                        }
+                    }
+                },
+                xaxis: {
+                    categories: [],
+                    labels: {
+                        style: {
+                            colors: '#fff',
+                            fontSize: '14px'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            colors: '#fff',
+                            fontSize: '14px'
+                        },
+                        formatter: function(value) {
+                            return (value * 100).toFixed(1) + '%';
+                        }
+                    },
+                    min: 0,
+                    max: 1,
+                    tickAmount: 10
+                }
+            };
+
+            lineChart = new ApexCharts(lineChartEl, lineChartConfig);
+            lineChart.render();
+        }
+
+        // Event handler for filterBy change
+        $('#filterBy').change(function() {
+            populateFilterVal();
+        });
+
+        // Trigger data change only when the Refresh button is clicked
+        $('#btnRefresh').click(function() {
+            // Trigger the AJAX request when filterVal is changed
+            getPeriod();
+        });
+
+        function formatDateString(dateString) {
+            const date = new Date(dateString);
+            const options = {
+                day: 'numeric',
+                month: 'short'
+            }; // Options for formatting
+            return date.toLocaleDateString('en-GB', options); // Format to "30 Sept" using 'en-GB' for day-month format
+        }
+
+        function getPeriod() {
+            const monthPeriod = $('#monthPeriod').val();
+            const yearPeriod = $('#yearPeriod').val();
+
+            // Prepare the data for the AJAX request
+            const requestData = {
+                month: monthPeriod,
+                year: yearPeriod
+            };
+
+            // AJAX request to get the filtered result
+            $.ajax({
+                url: 'OEEDashboardBraz/get_period',
+                method: 'POST',
+                data: requestData,
+                success: function(response) {
+                    const startPeriod = response.previous_month;
+                    const endPeriod = response.selected_month;
+
+                    $('#startPeriod').val(startPeriod);
+                    $('#endPeriod').val(endPeriod);
+
+                    // Format the start and end periods
+                    const formattedStartPeriod = formatDateString(startPeriod);
+                    const formattedEndPeriod = formatDateString(endPeriod);
+
+                    // Update the title with the formatted dates
+                    $('#oeeLineChartTitle').text(`OEE Line Chart ${formattedStartPeriod} to ${formattedEndPeriod}`);
+
+                    getFilteredResult();
+                },
+                error: function(err) {
+                    console.error('Error fetching result:', err);
+                }
+            });
+        }
+
+        // Function to send AJAX request
+        function getFilteredResult() {
+            const filterBy = $('#filterBy').val();
+            const filterVal = $('#filterVal').val();
+            const monthPeriod = $('#monthPeriod').val();
+            const yearPeriod = $('#yearPeriod').val();
+            const startPeriod = $('#startPeriod').val();
+            const endPeriod = $('#endPeriod').val();
+
+            // Prepare the data for the AJAX request
+            const requestData = {
+                filterBy: filterBy,
+                filterValue: filterVal,
+                month: monthPeriod,
+                year: yearPeriod,
+                start: startPeriod,
+                end: endPeriod
+            };
+
+            // AJAX request to get the filtered result
+            $.ajax({
+                url: 'OEEDashboardBraz/get_filtered_result',
+                method: 'POST',
+                data: requestData,
+                success: function(response) {
+                    // Parse response data
+                    const actcounter = parseInt(response.result.actcounter, 10) || 0;
+                    const reworkqty = parseInt(response.result.reworkqty, 10) || 0;
+                    const maintqty = parseInt(response.result.maintqty, 10) || 0;
+                    const defectqty = parseInt(response.result.defectqty, 10) || 0;
+                    const rejectqty = parseInt(response.result.rejectqty, 10) || 0;
+                    const scrapIP = parseInt(response.result.rejectqty, 10) + parseInt(response.result.maintqty, 10) ;
+
+                    let planningData = response.planningData;
+                    let percentage = response.percentage;
+                    let oeePercentage = response.oeePercentage;
+                    let looseValue = parseFloat(response.looseChart) || 0;
+                    // Handle cases where planningData and percentage are '-'
+                    planningData = planningData === '-' || planningData === undefined ? '-' : parseInt(planningData, 10) || 0;
+                    percentage = percentage === '-' || percentage === undefined ? '-' : parseFloat(percentage) || 0;
+
+                    // Calculate quality percentage
+                    const totalQty = actcounter + rejectqty + maintqty;
+                    let quality = totalQty > 0 ?
+                        ((actcounter - (rejectqty + maintqty + reworkqty + defectqty)) / totalQty) * 100 : 0;
+
+                    // Ensure quality is positive
+                    quality = Math.abs(quality);
+
+                    // Update result fields
+                    $('#resultQty').text(actcounter.toLocaleString());
+                    $('#reworkQty').text(reworkqty.toLocaleString());
+                    $('#maintQty').text(scrapIP.toLocaleString());
+                    $('#defectQty').text(defectqty.toLocaleString());
+                    $('#planningPcs').text(planningData === '-' ? '-' : planningData.toLocaleString());
+                    $('#percentage').text(percentage === '-' ? '-' : percentage.toFixed(2) + '%');
+                    $('#oeePercentage').text(oeePercentage ? oeePercentage.toFixed(2) + '%' : '0%');
+                    $('#looseChart').text(looseValue ? looseValue.toFixed(2) + '%' : '-');
+
+                    // Update radialBarChart safely if initialized
+                    if (response.radialBarData) {
+                        const radialBarData = response.radialBarData;
+
+                        // Create the series array for radialBarChart
+                        const seriesData = [{
+                                ttime: parseFloat(radialBarData.Running?.ttime || 0), // ttime for Running
+                                percentage: parseFloat(radialBarData.Running?.percentage || 0).toFixed(2)
+                            },
+                            {
+                                ttime: parseFloat(radialBarData['Planned Downtime']?.ttime || 0), // ttime for Planned Downtime
+                                percentage: parseFloat(radialBarData['Planned Downtime']?.percentage || 0).toFixed(2)
+                            },
+                            {
+                                ttime: parseFloat(radialBarData.Breakdown?.ttime || 0), // ttime for Breakdown
+                                percentage: parseFloat(radialBarData.Breakdown?.percentage || 0).toFixed(2)
+                            },
+                            {
+                                ttime: parseFloat(radialBarData.External?.ttime || 0), // ttime for External
+                                percentage: parseFloat(radialBarData.External?.percentage || 0).toFixed(2)
+                            },
+                            {
+                                ttime: parseFloat(radialBarData['Regular Maintenance']?.ttime || 0), // ttime for Regular Maintenance
+                                percentage: parseFloat(radialBarData['Regular Maintenance']?.percentage || 0).toFixed(2)
+                            }
+                        ];
+
+                        // Extract percentage values for the chart series
+                        const percentageSeries = seriesData.map(data => data.percentage);
+
+                        // Calculate total time from all activities
+                        const totalTime = seriesData.reduce((sum, activity) => sum + activity.ttime, 0); // Sum ttime values
+
+                        // Update radialBarChart if initialized
+                        if (radialBarChart) {
+                            radialBarChart.updateOptions({
+                                series: percentageSeries
+                            });
+                        }
+
+                        const radialBarChartOptions = {
+                            series: percentageSeries, // Use percentage for chart rendering
+                            chart: {
+                                height: 400,
+                                type: 'radialBar'
+                            },
+                            colors: ['#4ADE80', '#38BDF8', '#F43F5E', '#FACC15', '#60A5FA'],
+                            plotOptions: {
+                                radialBar: {
+                                    size: 185,
+                                    hollow: {
+                                        size: '20%' // Size of the hollow center
+                                    },
+                                    track: {
+                                        margin: 10,
+                                        background: '#334155' // Track background color
+                                    },
+                                    dataLabels: {
+                                        // show: true,
+                                        value: {
+                                            fontSize: '2rem',
+                                            color: '#fff',
+                                            formatter: function(w) {
+                                                return `${w} %`;
+                                            }
+                                        },
+                                        total: {
+                                            show: true,
+                                            fontWeight: 400,
+                                            fontSize: '2rem',
+                                            color: '#fff',
+                                            label: 'Total',
+                                            formatter: function(w) {
+                                                return `${totalTime} Min`;
+                                            }
+                                        }
+                                    },
+                                }
+                            },
+                            grid: {
+                                borderColor: '#fff',
+                                padding: {
+                                    top: -25,
+                                }
+                            },
+                            legend: {
+                                show: true,
+                                position: 'right',
+                                horizontalAlign: 'center',
+                                offsetY: 80,
+                                offsetX: 60,
+                                labels: {
+                                    colors: '#fff',
+                                    useSeriesColors: false
+                                },
+                                formatter: function(seriesName, opts) {
+                                    const ttime = seriesData[opts.seriesIndex]?.ttime || 0; // Get ttime from seriesData
+                                    return `${seriesName}: ${ttime} Min`; // Show ttime in the legend
+                                }
+                            },
+                            stroke: {
+                                lineCap: 'round' // Smooth edges
+                            },
+                            labels: ['Running', 'Planned Downtime', 'Breakdown', 'External', 'Regular Maintenance'],
+                        };
+
+                        // Create or render the radialBarChart
+                        if (!radialBarChart) {
+                            radialBarChart = new ApexCharts(document.querySelector("#radialBarChart"), radialBarChartOptions);
+                            radialBarChart.render();
+                        } else {
+                            radialBarChart.updateOptions(radialBarChartOptions);
+                        }
+                    }
+
+                    // Update availChart safely if initialized
+                    if (availChart) {
+                        const availability = parseFloat(response.availData);
+
+                        availChart.updateOptions({
+                            series: [availability]
+                        });
+                    }
+
+                    // Update qualityChart safely if initialized
+                    if (qualityChart) {
+                        qualityChart.updateOptions({
+                            series: [parseFloat(quality.toFixed(1))] // Set the calculated quality percentage
+                        });
+                    }
+
+                    if (perfChart) {
+                        const performance = response.perfChart;
+
+                        const percentageValue = performance > 0 ? performance : 0;
+
+                        perfChart.updateOptions({
+                            series: [percentageValue]
+                        });
+                    }
+
+                    if (oeeChart) {
+                        oeeChart.updateOptions({
+                            series: [parseFloat(oeePercentage) || 0]
+                        });
+                    }
+
+                    if (looseChart) {
+                        looseChart.updateOptions({
+                            series: [looseValue]
+                        });
+                    }
+
+                    if (plannedDTChart) {
+                        const plannedDTData = response.plannedDTData.map(item => item.ttime); // X-axis data (ttime)
+                        const plannedDTCategories = response.plannedDTData.map(item => item.act); // Y-axis categories (act)
+
+                        plannedDTChart.updateOptions({
+                            series: [{
+                                data: plannedDTData
+                            }],
+                            xaxis: {
+                                categories: plannedDTCategories
+                            }
+                        });
+                    }
+
+                    // Update breakDownChart safely if initialized
+                    if (breakDownChart) {
+                        const breakDownData = response.breakDownData.map(item => item.ttime); // X-axis data (ttime)
+                        const breakDownCategories = response.breakDownData.map(item => item.act); // Y-axis categories (act)
+
+                        breakDownChart.updateOptions({
+                            series: [{
+                                data: breakDownData
+                            }],
+                            xaxis: {
+                                categories: breakDownCategories
+                            }
+                        });
+                    }
+
+                    if (response.lineChart) {
+                        const lineChartData = response.lineChart.map(item => item.oee);
+                        const lineChartCategories = response.lineChart.map(item => item.date);
+
+                        lineChart.updateOptions({
+                            series: [{
+                                name: "OEE",
+                                data: lineChartData
+                            }],
+                            xaxis: {
+                                categories: lineChartCategories
+                            }
+                        });
+                    } else if (lineChart) {
+                        console.warn('Line chart data is missing in the response');
+                        lineChart.updateOptions({
+                            series: [{
+                                name: "OEE",
+                                data: [0]
+                            }],
+                            xaxis: {
+                                categories: ['N/A']
+                            }
+                        });
+                    }
+                },
+                error: function(err) {
+                    console.error('Error fetching result:', err);
+                    $('#resultQty').text('0'); // Set to 0 in case of an error
+                    $('#planningPcs').text('-');
+                    $('#percentage').text('-');
+                    $('#oeePercentage').text('0%');
+                }
+            });
+        }
+
+        $("#start_date").flatpickr({
+            dateFormat: "Y-m-d",
+            enableTime: false,
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true);
+            }
+        });
+
+        $("#end_date").flatpickr({
+            dateFormat: "Y-m-d",
+            enableTime: false,
+            onOpen: function(selectedDates, dateStr, instance) {
+                instance.setDate(dateStr, true);
+            }
+        });
+
+        let cardColor, headingColor, labelColor, borderColor, legendColor;
+
+        if (isDarkStyle) {
+            cardColor = config.colors_dark.cardColor;
+            headingColor = config.colors_dark.headingColor;
+            labelColor = config.colors_dark.textMuted;
+            legendColor = config.colors_dark.bodyColor;
+            borderColor = config.colors_dark.borderColor;
+        } else {
+            cardColor = config.colors.cardColor;
+            headingColor = config.colors.headingColor;
+            labelColor = config.colors.textMuted;
+            legendColor = config.colors.bodyColor;
+            borderColor = config.colors.borderColor;
+        }
+
+        // Function to generate random values in multiples of 10
+        function getRandomValues() {
+            const values = [];
+            for (let i = 0; i < 30; i++) { // 30 days from 30 Jul to 29 Aug
+                const randomValue = Math.floor(Math.random() * 11) * 10; // Random value between 0 and 100 in multiples of 10
+                values.push(randomValue);
+            }
+            return values;
+        }
+    });
+</script>
+
+<?= $this->endSection() ?>

@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Controllers\prs_pe;
+
+use App\Controllers\BaseController;
+
+use App\Models\prs_pe\M_RequestPE;
+
+class RequestPE extends BaseController
+{
+    protected $M_RequestPE;
+
+    public function __construct()
+    {
+        $this->M_RequestPE = new M_RequestPE();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "RequestPE") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        $id = $this->request->getGet("id");
+        $new = $this->request->getGet("new");
+        $reqtype = $this->request->getGet("reqtype");
+        if (empty($id) && empty($new)) {
+            return view("prs_pe/request_pe/main", $data);
+        }
+
+        if ($id) {
+            $data["header"] = $this->M_RequestPE->get_header($id);
+            $data["req_activities"] = $this->M_RequestPE->get_activities($id);
+            if ($data["header"]) {
+                $type_text = $data["header"]->prhreqtype == "PRS" ? "Parts" : "Equipment";
+                $data["txt_action"] = "$type_text Request No #" . $data["header"]->prhreqnumber;
+                $data["btn_back"] = "Back";
+                return view("prs_pe/request_pe/detail", $data);
+            }
+            $data["message"] = "Forbidden!";
+            return view("errors/html/error_404", $data);
+        }
+        if ($new) {
+            $type_text = $reqtype == "PRS" ? "Parts" : "Equipment";
+            $data["reqtype"] = $reqtype;
+            $data["txt_action"] = "New $type_text Request";
+            $data["btn_back"] = "Discard";
+            return view("prs_pe/request_pe/detail", $data);
+        }
+    }
+
+    public function get_listheader()
+    {
+        $fiscal_year = $this->request->getGet("fiscal_year");
+        $request_type = $this->request->getGet("request_type");
+        $data = $this->M_RequestPE->get_listheader($fiscal_year, $request_type);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_detail()
+    {
+        $header_id = $this->request->getGet("header_id");
+        if (empty($header_id)) {
+            return $this->response->setJSON([]);
+        }
+        $data = $this->M_RequestPE->get_detail($header_id);
+        return $this->response->setJSON($data);
+    }
+
+    public function save_header()
+    {
+        $data = $this->request->getPost();
+        $result = $this->M_RequestPE->save_header($data);
+        return $this->response->setJSON($result);
+    }
+
+    public function post_header()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_RequestPE->post_header($id);
+        return $this->response->setJSON($result);
+    }
+
+    public function delete_header()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_RequestPE->delete_header($id);
+        return $this->response->setJSON($result);
+    }
+
+    public function save_detail()
+    {
+        $data = $this->request->getPost();
+        $result = $this->M_RequestPE->save_detail($data);
+        return $this->response->setJSON($result);
+    }
+
+    public function delete_detail()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_RequestPE->delete_detail($id);
+        return $this->response->setJSON($result);
+    }
+
+    public function get_partdata()
+    {
+        $param_search = $this->request->getVar("q");
+        $data = $this->M_RequestPE->get_partdata($param_search);
+
+        $results = [];
+        foreach ($data as $row) {
+            $results[] = [
+                "id" => $row["mms_partcode"],
+                "text" => $row["mms_partcode"],
+                "prdpartname" => $row["mms_partname"],
+                "prddrawingno" => $row["mms_drawingnumber"],
+                "prdpartno" => $row["mms_partnumber"]
+            ];
+        }
+
+        return $this->response->setJSON(["results" => $results]);
+    }
+}

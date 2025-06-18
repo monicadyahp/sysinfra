@@ -1,0 +1,428 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-2">
+                        <label for="filterBy" class="form-label">Filter By</label>
+                        <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Filter By">
+                            <select id="filterBy" class="form-control form-control-solid">
+                                <option value="Machine">Machine</option>
+                                <option value="Series">Series</option>
+                                <option value="All">All</option>
+                            </select>
+                            <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <label for="filterVal" class="form-label" id="filterValLabel">Machine Code</label>
+                        <select id="filterVal" class="w-100" data-style="btn-default" data-live-search="true"></select>
+                    </div>
+                    <div class="col-1">
+                        <label for="yearPeriod" class="form-label">Fiscal Year</label>
+                        <div class="position-relative d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Year">
+                            <select id="yearPeriod" class="form-control">
+                                <!-- JavaScript will populate this select element with the years -->
+                            </select>
+                            <span class="position-absolute me-3 end-0"><i class="fa fa-caret-down"></i></span>
+                        </div>
+                    </div>
+                   <div class="col-2 d-flex align-items-end gap-3">
+                        <button class="btn btn-secondary" id="btnRefresh">Refresh</button>
+                    </div>
+                </div>
+                
+                
+    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card-datatable table-responsive pt-0">
+                                <table class="datatables-basic table table-bordered" id="grid-rptsumm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>No.</th>
+                                            <th>Description</th>
+                                            <th></th>
+                                            <th>Apr</th>
+                                            <th>May</th>
+                                            <th>Jun</th>
+                                            <th>Jul</th>
+                                            <th>Aug</th>
+                                            <th>Sep</th>
+                                            <th>Oct</th>
+                                            <th>Nov</th>
+                                            <th>Dec</th>
+                                            <th>Jan</th>
+                                            <th>Feb</th>
+                                            <th>Mar</th>
+                                            <th>Total</th>
+                                            <th>Average</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+
+        const currentYear = new Date().getFullYear();
+
+        // Populate end year options (current year to 10 years before)
+        for (let year = currentYear; year >= currentYear - 10; year--) {
+            $('#yearPeriod').append(`<option value="${year}">${year}</option>`);
+        }
+
+        // Initialize Select2 for filterVal select element
+        $('#filterVal').select2();
+
+        const machineOptions = `<?php foreach ($machine_data as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                                <?php } ?>`;
+
+        const seriesOptions = `<option value="BFM">BFM</option>
+                                <option value="BIG">BIG</option>
+                                <option value="MEDIUM-1">MEDIUM-1</option>
+                                <option value="MEDIUM-2">MEDIUM-2</option>
+                                <option value="SMALL">SMALL</option>
+                                <option value="TEYAKI">TEYAKI</option>
+                                <option value="TUB">TUB</option>`;
+
+
+        // Function to populate the filterVal based on filterBy value
+        function populateFilterVal() {
+            const filterBy = $('#filterBy').val();
+            const filterVal = $('#filterVal');
+            const filterValLabel = $('#filterValLabel');
+
+            // Clear the current selected value
+            filterVal.val(null).trigger('change');
+
+            // Update the label and options based on the selected filter
+            if (filterBy === 'Series') {
+                filterValLabel.text('Series');
+                filterVal.html(seriesOptions); // Set Series options
+            } else if (filterBy === 'Machine') {
+                filterValLabel.text('Machine Code');
+                filterVal.html(machineOptions); // Set Machine options
+            } else {
+                filterValLabel.text('Select Filter');
+                filterVal.html('<option value="">All</option>'); // Default option for "All"
+            }
+
+            // Refresh Select2 to apply the new options
+            filterVal.trigger('change.select2');
+        }
+
+        // Populate filterVal on page load based on the initial value of filterBy
+        populateFilterVal();
+
+        // Event handler for filterBy change
+        $('#filterBy').change(function() {
+            populateFilterVal();
+        });
+        
+        function getRptSumm() {
+            // Prepare the data for the AJAX request
+            const requestData = {
+                filter: $('#filterBy').val(),
+                filterval: $('#filterVal').val(),
+                year: $('#yearPeriod').val()
+            };
+
+            // AJAX request to get the filtered result
+            $.ajax({
+                url: 'OEEReportBraz/get_report_data',
+                method: 'POST',
+                data: requestData,
+                success: function(data) {
+                    // Initialize or clear DataTable
+                    if ($.fn.DataTable.isDataTable('#grid-rptsumm')) {
+                        $('#grid-rptsumm').DataTable().clear().rows.add(data).draw();
+                    } else {
+                        $('#grid-rptsumm').DataTable({
+                            ordering: false,
+                            fixedHeader: true,
+                            data: data,
+                            columns: [
+                                {
+                                    data: 'rmbs_nourut', // Add this column if it's not already part of the data
+                                    className: "text-center",
+                                    visible: false // Hide this column
+                                },
+                                {
+                                    data: 'rmbs_activityname',
+                                    className: "text-left"
+                                },
+                                {
+                                    data: 'rmbs_activitycode',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return data == 0 ? '' : data; // If rmbs_activitycode is 0, render an empty string
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_apr',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_may',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_jun',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_jul',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_aug',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_sep',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_oct',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_nov',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_dec',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_jan',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_feb',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: 'rmbs_mar',
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        return formatValue(data, type, row);
+                                    }
+                                },
+                                {
+                                    data: null, // Total column
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        const months = [
+                                            'rmbs_apr', 'rmbs_may', 'rmbs_jun', 'rmbs_jul', 
+                                            'rmbs_aug', 'rmbs_sep', 'rmbs_oct', 'rmbs_nov', 
+                                            'rmbs_dec', 'rmbs_jan', 'rmbs_feb', 'rmbs_mar'
+                                        ];
+
+                                        let valCount = 0;
+                                        // Calculate Total as the sum of all month values
+                                        let total = months.reduce((sum, month) => {
+                                            let value = parseFloat(row[month]) || 0;
+                                            if(parseFloat(row[month])) {
+                                                valCount ++;
+                                            }
+                                            return sum + value ;
+                                        }, 0);
+                                        let average = total / valCount;
+
+                                        // If the value is a percentage, use the total directly
+                                        if (row.rmbs_activityname == 'OEE' || row.rmbs_activityname == 'Availability' || row.rmbs_activityname == 'Performance' || row.rmbs_activityname == 'Quality' 
+                                                || row.rmbs_activityname == 'Percentage' || row.rmbs_activityname == 'Percentage') {
+                                            return average ? average.toFixed(1).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') +'%': '';
+                                        } else if(row.rmbs_activityname == 'PCS  /Menit Machine' || row.rmbs_activityname == 'Machine Running') {
+                                            return average ? average.toFixed(1).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','): '';
+                                        }
+
+                                        return total ? total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''; // Display Total with 2 decimal places
+                                    }
+                                },
+                                {
+                                    data: null, // Average column
+                                    className: "text-center",
+                                    render: function(data, type, row) {
+                                        const months = [
+                                            'rmbs_apr', 'rmbs_may', 'rmbs_jun', 'rmbs_jul', 
+                                            'rmbs_aug', 'rmbs_sep', 'rmbs_oct', 'rmbs_nov', 
+                                            'rmbs_dec', 'rmbs_jan', 'rmbs_feb', 'rmbs_mar'
+                                        ];
+                                        let valCount = 0;
+                                        // Calculate the average as the sum divided by 12 (number of months)
+                                        let total = months.reduce((sum, month) => {
+                                            let value = parseFloat(row[month]) || 0;
+                                            if(parseFloat(row[month])) {
+                                                valCount ++;
+                                            }
+                                            return sum + value;
+                                        }, 0);
+                                        let average = total / valCount;
+
+                                        // If the value is a percentage, use the total directly
+                                        if (row.rmbs_activityname == 'OEE' || row.rmbs_activityname == 'Availability' || row.rmbs_activityname == 'Performance' || row.rmbs_activityname == 'Quality' 
+                                                || row.rmbs_activityname == 'Percentage' || row.rmbs_activityname == 'Percentage') {
+                                            return average ? average.toFixed(1).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') +'%': '';
+                                        } else {
+                                            return average? average.toFixed(1).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','): '';
+                                        }
+
+                                        return average ? average.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','): ''; // Display Average with 2 decimal places
+                                    }
+                                }
+                            ],
+                            dom: 'Bfrtip',  // Enable Buttons
+                            buttons: [
+                                {
+                                    extend: 'excel',
+                                    text: '<i class="ti ti-file-spreadsheet me-sm-1"></i> Export XLS',
+                                    className: 'btn btn-warning custom-export-btn',
+                                    title: 'OEE FY - ' + $('#yearPeriod').val() + ' - ' +$('#filterVal').val(),
+                                    exportOptions: {
+                                        columns: ':visible'
+                                    }
+                                }
+                            ],
+                            order: [[0, 'asc']], 
+                            "bLengthChange": false,
+                            iDisplayLength: -1,
+                            createdRow: function(row, data, dataIndex) {
+                                $(row).css('color', '#000'); // Set the background
+                                // Check if the activity name is "Total Running Time"
+                                if (data.rmbs_activityname === 'OEE' || data.rmbs_activityname === 'Availability' || data.rmbs_activityname === 'Performance' || data.rmbs_activityname === 'Quality') {
+                                    $(row).css('background-color', '#FEF9C3'); // Set the background color
+                                } else  if (data.rmbs_activityname === 'Total Running') {
+                                    $(row).css('background-color', '#6EE7B7'); // Set the background color
+                                } else if(data.rmbs_activityname === 'Total Unused Time') {
+                                    $(row).css('background-color', '#FDBA74'); // Set the background color
+                                } else if(data.rmbs_activityname === 'Total Regular Maintenance') {
+                                    $(row).css('background-color', '#d9d7b6'); // Set the background color
+                                } else if(data.rmbs_activityname === 'Total External Stop') {
+                                    $(row).css('background-color', '#FDE047'); // Set the background color
+                                } else if(data.rmbs_activityname === 'Total Planned Down Time') {
+                                    $(row).css('background-color', '#67E8F9'); // Set the background color
+                                } else if(data.rmbs_activityname === 'Total Break Down Time') {
+                                    $(row).css('background-color', '#FCA5A5'); // Set the background color
+                                } else if(data.rmbs_activityname === 'Speed Loss') {
+                                    $(row).css('background-color', '#EF4444'); // Set the background color
+                                    $(row).css('color', '#fff'); // Set the background
+                                }  else {
+                                    $(row).css('background-color', '#fff'); // Set the background color
+                                }
+                            }
+                        });
+                        
+                        $('<style>')
+                            .prop('type', 'text/css')
+                            .html(`
+                                .custom-export-btn {
+                                    height: 40px;
+                                    margin-bottom: -40px;
+                                    margin-top: 20px;
+                                }
+                            `)
+                            .appendTo('head');
+                        
+                    }
+                },
+                error: function(err) {
+                    console.error('Error fetching result:', err);
+                }
+            });
+        }
+        
+        
+       // Helper function to format values
+        function formatValue(value, type, row) {
+            if (value == null || value === '') {
+                return ''; // Handle null, undefined, or empty values
+            }
+
+            // Ensure the value is a number
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) {
+                return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); // If value cannot be parsed to a number, return it as is
+            }
+            
+            if (numValue == 0) {
+                return ''; // If value cannot be parsed to a number, return it as is
+            }
+
+            if (numValue % 1 !== 0) {
+                // Value is a decimal, round to 1 decimal place
+                if(row.rmbs_activityname == 'OEE' || row.rmbs_activityname == 'Availability' || row.rmbs_activityname == 'Performance' || row.rmbs_activityname == 'Quality' || row.rmbs_activityname == 'Percentage') {
+                    return numValue.toFixed(1).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '%'; // Ensure dot as decimal separator
+                } else {
+                    return numValue.toFixed(1).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); // Ensure dot as decimal separator
+                }
+            } else {
+                // Value is an integer, format with thousand separators
+                return numValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+        }
+        
+        // Call getPeriod when the page is first loaded with the initial values
+        getRptSumm();
+
+        // Trigger data change only when the Refresh button is clicked
+        $('#btnRefresh').click(function() {
+            // Trigger the AJAX request when filterVal is changed
+            getRptSumm();
+        });
+        
+        // Handle Export to Excel functionality
+        $('#btnExportExcel').on('click', function () {
+            
+        });
+
+        
+    });
+</script>
+
+<?= $this->endSection() ?>

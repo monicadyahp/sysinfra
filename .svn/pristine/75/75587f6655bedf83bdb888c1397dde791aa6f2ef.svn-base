@@ -1,0 +1,128 @@
+<?php
+
+namespace Config;
+
+use CodeIgniter\Database\Config;
+
+/**
+ * Database Configuration
+ */
+class Database extends Config
+{
+    /**
+     * The directory that holds the Migrations and Seeds directories.
+     */
+    public string $filesPath = APPPATH . 'Database' . DIRECTORY_SEPARATOR;
+
+    /**
+     * Lets you choose which connection group to use if no other is specified.
+     */
+    public string $defaultGroup = 'default';
+
+    /**
+     * The default database connection.
+     *
+     * @var array<string, mixed>
+     */
+    public array $default = [
+        'DSN'          => '',
+        'hostname'     => '192.9.18.28',
+        'username'     => 'jinuser',
+        'password'     => 'jinuser',
+        'database'     => 'jstmfgdb',
+        'schema'       => 'public',
+        'DBDriver'     => 'Postgre',
+        'DBPrefix'     => '',
+        'pConnect'     => false,
+        'DBDebug'      => (ENVIRONMENT !== 'production'),
+        'charset'      => 'utf8',
+        'swapPre'      => '',
+        'failover'     => [],
+        'port'         => 5432,
+        'dateFormat'   => [
+            'date'     => 'Y-m-d',
+            'datetime' => 'Y-m-d H:i:s',
+            'time'     => 'H:i:s',
+        ],
+    ];
+
+    public array $db_postgree = [
+        'DSN'          => '',
+        'hostname'     => '192.9.18.28',
+        'username'     => 'jinuser',
+        'password'     => 'jinuser',
+        'database'     => 'common',
+        'schema'       => 'public',
+        'DBDriver'     => 'Postgre',
+        'DBPrefix'     => '',
+        'pConnect'     => false,
+        'DBDebug'      => (ENVIRONMENT !== 'production'),
+        'charset'      => 'utf8',
+        'swapPre'      => '',
+        'failover'     => [],
+        'port'         => 5432,
+        'dateFormat'   => [
+            'date'     => 'Y-m-d',
+            'datetime' => 'Y-m-d H:i:s',
+            'time'     => 'H:i:s',
+        ],
+    ];
+
+    public array $db_pps = [
+        'DSN'           => '',
+        'hostname'      => '192.9.18.1',
+        'username'      => 'gapura',
+        'password'      => 'gapura',
+        'database'      => 'JSTPPSDB',
+        'schema'        => 'dbo',
+        'DBDriver'      => 'SQLSRV',
+        'DBPrefix'      => '',
+        'pConnect'      => false,
+        'DBDebug'       => (ENVIRONMENT !== 'production'),
+        'charset'       => 'utf8',
+        'swapPre'       => '',
+        'encrypt'       => false,
+        'failover'      => [],
+        'port'          => 1433,
+        'dateFormat'    => [
+            'date'      => 'Y-m-d',
+            'datetime'  => 'Y-m-d H:i:s',
+            'time'      => 'H:i:s',
+        ],
+    ];
+    
+    public array $db_mrp = [
+        'DSN'           => '',
+        'hostname'      => '192.9.18.1',
+        'username'      => 'gapura',
+        'password'      => 'gapura',
+        'database'      => 'JSTMRPDB',
+        'schema'        => 'dbo',
+        'DBDriver'      => 'SQLSRV',
+        'DBPrefix'      => '',
+        'pConnect'      => false,
+        'DBDebug'       => (ENVIRONMENT !== 'production'),
+        'charset'       => 'utf8',
+        'swapPre'       => '',
+        'encrypt'       => false,
+        'failover'      => [],
+        'port'          => 1433,
+        'dateFormat'    => [
+            'date'      => 'Y-m-d',
+            'datetime'  => 'Y-m-d H:i:s',
+            'time'      => 'H:i:s',
+        ],
+    ];
+        
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Ensure that we always set the database group to 'tests' if
+        // we are currently running an automated test suite, so that
+        // we don't overwrite live data on accident.
+        if (ENVIRONMENT === 'testing') {
+            $this->defaultGroup = 'tests';
+        }
+    }
+}

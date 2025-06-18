@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Controllers\prs_pe;
+
+use App\Controllers\BaseController;
+
+use App\Models\prs_pe\M_Verification;
+
+class Verification extends BaseController
+{
+    protected $M_Verification;
+
+    public function __construct()
+    {
+        $this->M_Verification = new M_Verification();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "Verification") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+
+        return view("prs_pe/verification/main", $data);
+    }
+
+    public function get_listheader()
+    {
+        $request_type = $this->request->getGet("request_type");
+        $data = $this->M_Verification->get_listheader($request_type);
+        return $this->response->setJSON($data);
+    }
+
+    public function get_detail()
+    {
+        $header_id = $this->request->getGet("header_id");
+        $data = $this->M_Verification->get_detail($header_id);
+        return $this->response->setJSON($data);
+    }
+
+    public function approve_request()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_Verification->approve_request($id);
+        return $this->response->setJSON($result);
+    }
+
+    public function return_request()
+    {
+        $id = $this->request->getPost("id");
+        $result = $this->M_Verification->return_request($id);
+        return $this->response->setJSON($result);
+    }
+}

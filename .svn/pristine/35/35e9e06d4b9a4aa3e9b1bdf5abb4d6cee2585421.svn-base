@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Models\oee_brazing;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEReportBraz extends Model
+{
+    private $db_mrp;
+    protected $table = 'r_oeebraz_fy';
+    protected $primaryKey = 'rob_id';
+    protected $allowedFields = [
+        'rob_group', 'rob_name', 'rob_f_year', 'rob_seq', 'rob_kode', 
+        'rob_desc', 'rob_tot_year', 'rob_avg', 'rob_apr', 'rob_may', 
+        'rob_jun', 'rob_jul', 'rob_aug', 'rob_sep', 'rob_oct', 
+        'rob_nov', 'rob_dec', 'rob_jan', 'rob_feb', 'rob_mar', 
+        'rob_lastuser', 'rob_lastupdate'
+    ];
+
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        $this->db_mrp = db_connect('db_mrp');
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_data_summ($filter, $filterval, $year)
+    {
+        $query = "select * from r_modbrazsumm where rmbs_fy = $year  ";
+        if($filter == 'Machine'){
+            $query .= " and rmbs_rptfilterdesc = '$filterval' ";
+        } else if($filter == 'Series'){
+            $query .= " and rmbs_rptseries = '$filterval'  and rmbs_rptfilter = 'Series'";
+        } else {
+            $query .= " and rmbs_rptseries = '$filter' ";
+        }
+        
+        $query .= " and rmbs_activityname <> '' order by rmbs_nourut asc";
+        
+        return $this->db->query($query)->getResult();
+    }
+    
+}

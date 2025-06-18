@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Models\master_assy;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_MstMachineAssy extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_data()
+    {
+        $query = "select * from m_mchassy_setting WHERE mas_status = 1
+                    ORDER BY mas_id DESC";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function cek_data($code, $pole, $spm, $stroke, $qty)
+    {
+        // Query to check if the document exists
+        $query = "select * from m_mchassy_setting WHERE mas_mchcode = ? and	mas_pole = ? and mas_spm = ? and mas_pcs_stroke = ? and	mas_extqty = ?";
+        // Executing the raw SQL query with a parameter binding
+        $result = $this->db->query($query, [$code, $pole, $spm, $stroke, $qty])->getRow();
+        // Return true if any row is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function update_data($emplcode, $POST)
+    {
+        $code   = $POST["code"];
+        $pole    = $POST["pole"];
+        $spm    = $POST["spm"];
+        $stroke    = $POST["stroke"];
+        $qty    = $POST["qty"];
+        $tipe    = $POST["tipe"];
+        // var_dump($group, $desc, $tipe, $this->currentDateTime, $emplcode);die();
+        if ($tipe == "add") {
+            $query = "INSERT INTO m_mchassy_setting (mas_mchcode, mas_pole, mas_spm, mas_pcs_stroke, mas_extqty, mas_lastuser, mas_lastupdate, mas_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
+
+            $params = [$code, $pole, $spm, $stroke, $qty, $emplcode, $this->currentDateTime];
+        } else if ($tipe == "edit") {
+            $id = $POST["id"];
+            // var_dump($group, $desc, $tipe, $this->currentDateTime, $emplcode, $id);die();
+
+            $query = "  UPDATE m_mchassy_setting
+                        SET mas_mchcode = ?, 
+                            mas_pole = ?, 
+                            mas_spm = ?, 
+                            mas_pcs_stroke = ?,
+                            mas_extqty = ?,
+                            mas_lastuser = ?,
+                            mas_lastupdate = ?
+                        WHERE mas_id = ?";
+
+            $params = [$code, $pole, $spm, $stroke, $qty, $emplcode, $this->currentDateTime, $id];
+        }
+
+        $result = $this->db->query($query, $params);
+        // var_dump($this->db->error());
+        return $result;
+    }
+
+    public function update_status_data($id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE m_mchassy_setting
+                    SET mas_status      = ?,
+                        mas_lastuser    = ?, 
+                        mas_lastupdate  = ?
+                    WHERE mas_id        = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+}

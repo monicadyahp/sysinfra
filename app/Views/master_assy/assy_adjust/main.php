@@ -1,0 +1,389 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+        <!-- Title on the Left -->
+        <!-- <div class="head-label">
+            <h5 class="fw-bold">
+                <span class="text-muted fw-light"><?= htmlspecialchars($active_menu_group) ?> /</span> <?= htmlspecialchars($active_menu_name) ?>
+            </h5>
+        </div> -->
+        <!-- Buttons on the Right -->
+        <div class="dt-action-buttons d-flex pt-3 pt-md-0">
+            <div class="dt-buttons btn-group flex-wrap">
+                <!-- Add New Assy Adjust -->
+                <button type="button" class="btn create-new btn-success" data-bs-toggle="modal" data-bs-target="#add_assy_adjust">
+                    <span><i class="ti ti-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add Adjust</span></span>
+                </button>
+                <!-- Refresh Button -->
+                <button type="button" class="btn btn-secondary refresh-btn ms-2">
+                    <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                </button>   
+            </div>
+        </div>
+    </div>
+    <div class="card-datatable table-responsive pt-0">
+        <table class="datatables-basic table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Action</th>
+                    <th>ID</th>
+                    <th>Group</th>
+                    <th>Description</th>
+                    <!-- <th>Status</th> -->
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Modal for add record -->
+    <div class="modal fade" id="add_assy_adjust" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Add Assy Adjust</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="form_assy_adjust" class="row g-3">
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="group">Group <span style="color: red">*</span></label>
+                            <select id="group" name="group" class="form-select">
+                                <option value="">Select Group</option>
+                                <option value="Housing">Housing</option>
+                                <option value="Post">Post</option>
+                                <option value="Contact">Contact</option>
+                                <option value="Shell">Shell</option>
+                                <option value="Tab">Tab</option>
+                                <option value="Terminal">Terminal</option>
+                                <option value="Insulator ">Insulator </option>
+                                <option value="Sleeve">Sleeve</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="desc">Description <span style="color: red">*</span></label>
+                            <input type="text" id="desc" name="desc" class="form-control" placeholder="Description">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Save</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for edit record -->
+    <div class="modal fade" id="edit_assy_adjust" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-enable-otp modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Edit Assy Adjust</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="form_edit_assy_adjust" class="row g-3">
+                        <input type="hidden" id="mad_id" name="mad_id">
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="group_edit">Group <span style="color: red">*</span></label>
+                            <!-- <input type="text" id="group_edit" name="group_edit" class="form-control" placeholder="Group"> -->
+                            <select id="group_edit" name="group_edit" class="form-select">
+                                <option value="">Select Group</option>
+                                <option value="Housing">Housing</option>
+                                <option value="Post">Post</option>
+                                <option value="Contact">Contact</option>
+                                <option value="Shell">Shell</option>
+                                <option value="Tab">Tab</option>
+                                <option value="Terminal">Terminal</option>
+                                <option value="Insulator ">Insulator </option>
+                                <option value="Sleeve">Sleeve</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="desc_edit">Description <span style="color: red">*</span></label>
+                            <input type="text" id="desc_edit" name="desc_edit" class="form-control" placeholder="Description">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Update</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable
+        var table = $(".datatables-basic").DataTable({
+            "processing": true,
+            "serverSide": false,
+            "ajax": {
+                "url": "<?= base_url('MstAdjustAssy/get_data') ?>",
+                "type": "GET",
+                "dataSrc": function(json) {
+                    return json;
+                }
+            },
+            "columns": [{
+                    "data": null,
+                    "render": function(data, type, row) {
+
+                        return `<div class="d-flex justify-content-center gap-2">
+                                    <a href="javascript:;" class="btn btn-icon btn-info btnEdit" data-id="${row.mad_id}" data-group="${row.mad_grp}" data-desc="${row.mad_desc}">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-danger btnDelete" data-id="${row.mad_id}"><i class="fa fa-trash-can"></i></a>
+                                </div>`;
+                    },
+                    "className": "text-center"
+                },
+                {
+                    data: "mad_id"
+                },
+                {
+                    data: "mad_grp"
+                },
+                {
+                    data: "mad_desc"
+                },
+            ]
+        });
+
+        $("#form_assy_adjust").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "group",
+                    message: "Group is required."
+                },
+                {
+                    id: "desc",
+                    message: "Description is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                group: $("#group").val(),
+                desc: $("#desc").val(),
+                tipe: "add"
+            };
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstAdjustAssy/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        // Data already exists, show error message
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                        hideLoading();
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>/MstAdjustAssy/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                $("#add_assy_adjust").modal("hide");
+                                // Clear the form data
+                                $("#form_assy_adjust")[0].reset();
+                                // Reload DataTable
+                                $(".datatables-basic").DataTable().ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                    hideLoading();
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $("#form_edit_assy_adjust").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "group_edit",
+                    message: "Group is required."
+                },
+                {
+                    id: "desc_edit",
+                    message: "Description is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val().trim() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                id: $("#mad_id").val(),
+                group: $("#group_edit").val(),
+                desc: $("#desc_edit").val(),
+                tipe: "edit"
+            };
+            console.log(data);
+            
+
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstAdjustAssy/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>MstAdjustAssy/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                $("#edit_assy_adjust").modal("hide");
+                                // Clear the form data
+                                $("#form_edit_assy_adjust")[0].reset();
+                                // Reload DataTable
+                                table.ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $(document).on("click", ".btnEdit", function() {
+            var id = $(this).data("id");
+            var group = $(this).data("group");
+            var desc = $(this).data("desc");
+
+            // Populate the modal form with the data
+            $("#mad_id").val(id);
+            $("#group_edit").val(group);
+            $("#desc_edit").val(desc);
+
+            // Show the modal
+            $("#edit_assy_adjust").modal('show');
+        });
+
+        // Handle Delete button click
+        $(document).on("click", ".btnDelete", function() {
+            var id = $(this).data("id");
+            updateStatus(id, 25); // Update status to 25 (Delete)
+        });
+
+        // Function to update status via AJAX
+        function updateStatus(id, newStatus) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You will delete the data. Do you want to proceed?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: "<?= base_url('MstAdjustAssy/update_status_data') ?>",
+                        type: "POST",
+                        data: {
+                            id,
+                            new_status: newStatus
+                        },
+                        success: function(response) {
+                            if (!response.success) {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                            return response;
+                        }
+                    }).catch(() => Swal.fire("Error!", "An error occurred while updating status.", "error"));
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Status Updated",
+                        text: result.value.message,
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    table.ajax.reload(); // Reload DataTable
+                }
+            });
+        }
+
+        // Refresh button click event
+        $(".refresh-btn").on("click", function() {
+            table.ajax.reload(); // Reload the DataTable
+        });
+    });
+</script>
+
+<?= $this->endSection() ?>

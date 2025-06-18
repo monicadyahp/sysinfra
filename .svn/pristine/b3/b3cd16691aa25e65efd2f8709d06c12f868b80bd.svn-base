@@ -1,0 +1,1061 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<style>
+    .btn[data-bs-toggle="dropdown"] {
+        font-weight: 400;
+    }
+</style>
+
+<!-- <?php var_dump(session()->get("user_info")) ?> -->
+
+<?php
+$current_type = ((isset($reqtype) && $reqtype == 'PRS') || (isset($header) && $header->prhreqtype == 'PRS')) ? "PRS" : "ERS";
+?>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-3 row-gap-2">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-0 text-white"><?= $txt_action ?></h4>
+        <!-- <p class="mb-0">Aug 17, <span id="orderYear">2024</span>, 5:48 (ET)</p> -->
+    </div>
+    <div class="d-flex align-content-center flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-label-secondary waves-effect" onclick="window.history.back()"><?= $btn_back ?></button>
+            <?php if (isset($header) && $header->prhprocessid == 1) : ?>
+                <button type="button" id="delete_header" class="btn btn-label-danger delete-customer waves-effect">Delete</button>
+            <?php endif ?>
+            <?php if (!isset($header) || (isset($header) && $header->prhprocessid == 1)) : ?>
+                <button type="button" id="save_header" class="btn btn-label-success waves-effect">Save</button>
+            <?php endif ?>
+        </div>
+        <?php if (isset($header) && $header->prhprocessid == 1) : ?>
+            <button type="button" id="post_header" class="btn btn-primary waves-effect">Post</button>
+        <?php endif ?>
+    </div>
+</div>
+
+<div class="row flex-column flex-sm-row">
+    <div class="col-md-8 col-xl-8 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-0">Header Data</h5>
+            </div>
+            <div class="card-body">
+                <input type="hidden" id="prhprocessid" value="<?= isset($header) ? $header->prhprocessid : '' ?>">
+                <form id="f_reqheader" class="d-flex gap-2" enctype="multipart/form-data">
+                    <?php if (isset($reqtype)) : ?>
+                        <input type="hidden" name="prhreqtype" id="prhreqtype" value="<?= $reqtype ?>">
+                    <?php endif ?>
+                    <input type="hidden" name="prhid" id="prhid" value="<?= isset($header) ? $header->prhid : '' ?>">
+                    <input type="hidden" name="prhreqnumber" id="prhreqnumber" value="<?= isset($header) ? $header->prhreqnumber : '' ?>">
+                    <div class="w-100">
+                        <div class="mb-3">
+                            <?php if ($current_type == "PRS") : ?>
+                                <label for="prhtype" class="form-label required">PRS Type</label>
+                                <select name="prhtype" id="prhtype" class="selectpicker w-100" data-style="btn-default" placeholder="Select PRS Type" required>
+                                    <option <?= isset($header) && $header->prhtype == 'Part' ? 'selected' : '' ?> value="Part">Part</option>
+                                    <option <?= isset($header) && $header->prhtype == 'Project' ? 'selected' : '' ?> value="Project">Project</option>
+                                </select>
+                                <small id="err_prhtype" class="input-warning text-danger"></small>
+                            <?php else: ?>
+                                <label for="prhtype" class="form-label required">ERS Type</label>
+                                <select name="prhtype" id="prhtype" class="selectpicker w-100" data-style="btn-default" placeholder="Select PRS Type" required>
+                                    <option <?= isset($header) && $header->prhtype == 'New Equipment' ? 'selected' : '' ?> value="New Equipment">New Equipment</option>
+                                    <option <?= isset($header) && $header->prhtype == 'New Item Product' ? 'selected' : '' ?> value="New Item Product">New Item Product</option>
+                                    <option <?= isset($header) && $header->prhtype == 'Request Sample' ? 'selected' : '' ?> value="Request Sample">Request Sample</option>
+                                    <option <?= isset($header) && $header->prhtype == 'Improvement' ? 'selected' : '' ?> value="Improvement">Improvement</option>
+                                </select>
+                                <small id="err_prhtype" class="input-warning text-danger"></small>
+                            <?php endif ?>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhdept" class="form-label required">Department</label>
+                            <input type="text" class="form-control readonly" id="prhdept" name="prhdept" value="<?= isset($header) ? $header->prhdept : session()->get("user_info")["sec_department"] ?>" required readonly>
+                            <small id="err_prhdept" class="input-warning text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhissuedate" class="form-label required">Issue Date</label>
+                            <div class="position-relative d-flex align-items-center">
+                                <input type="text" class="flatpickr form-control" id="prhissuedate" name="prhissuedate" placeholder="Select date" value="<?= isset($header) ? $header->prhissuedate : date("Y-m-d") ?>" required>
+                                <span class="position-absolute mb-1 me-2 end-0">
+                                    <i class="ti ti-calendar"></i>
+                                </span>
+                            </div>
+                            <small id="err_prhissuedate" class="input-warning text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhreqfinishdate" class="form-label required">Request Finish Date</label>
+                            <div class="position-relative d-flex align-items-center">
+                                <input type="text" class="flatpickr form-control" id="prhreqfinishdate" name="prhreqfinishdate" placeholder="Select date" value="<?= isset($header) ? $header->prhreqfinishdate : '' ?>" required>
+                                <span class="position-absolute mb-1 me-2 end-0">
+                                    <i class="ti ti-calendar"></i>
+                                </span>
+                            </div>
+                            <small id="err_prhreqfinishdate" class="input-warning text-danger"></small>
+                        </div>
+                    </div>
+                    <div class="w-100">
+                        <div class="mb-3">
+                            <label for="prhequipmentno" class="form-label required">Equipment No.</label>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control" id="prhequipmentno" name="prhequipmentno" placeholder="Equipment No."
+                                    value="<?= isset($header) ? $header->prhequipmentno : '' ?>" required>
+                                <?php if (!isset($header) || (isset($header) && $header->prhprocessid == 1)) : ?>
+                                    <button type="button" data-bs-target="#m_equipment" data-bs-toggle="modal" class="btn btn-light d-none">
+                                        <i class="fa fa-search" data-bs-toggle="tooltip"
+                                            data-bs-placement="top" data-bs-title="Find equipment"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                            <small id="err_prhequipmentno" class="input-warning text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhequipmentname" class="form-label required">Equipment Name</label>
+                            <input type="text" class="form-control" id="prhequipmentname" name="prhequipmentname" placeholder="Equipment name"
+                                value="<?= isset($header) ? $header->prhequipmentname : '' ?>" required>
+                            <small id="err_prhequipmentname" class="input-warning text-danger"></small>
+                        </div>
+                        <div class="mb-3">
+                            <?php if ($current_type == "PRS"): ?>
+                                <label for="prhringino" class="form-label">Ringisho No.</label>
+                                <input type="text" class="form-control" id="prhringino" name="prhringino" placeholder="Ringisho No." value="<?= isset($header) ? $header->prhringino : '' ?>">
+                            <?php else: ?>
+                                <label for="prhersqty" class="form-label required">Quantity</label>
+                                <input type="number" class="form-control" id="prhersqty" name="prhersqty" placeholder="Quantity" value="<?= isset($header) ? $header->prhersqty : '' ?>" required>
+                            <?php endif ?>
+                        </div>
+                        <div class="mb-3 d-none">
+                            <label for="prhtotalkind" class="form-label">Total Kind</label>
+                            <input type="text" class="form-control" id="prhtotalkind" placeholder="Ringisho No." value="<?= isset($header) ? $header->prhtotalkind : '' ?>">
+                        </div>
+                        <div class="mb-3 d-none">
+                            <label for="prhtotalqty" class="form-label">Total Qty</label>
+                            <input type="text" class="form-control" id="prhtotalqty" placeholder="Ringisho No." value="<?= isset($header) ? $header->prhtotalqty : '' ?>">
+                        </div>
+                        <div id="part_status" class="<?= isset($header) && $header->prhtype == 'Part' ? '' : 'd-none' ?>">
+                            <label for="prhmainstat" class="form-label required">Part Status</label>
+                            <select name="prhmainstat" id="prhmainstat" class="selectpicker w-100" data-style="btn-default" placeholder="Select Status" required>
+                                <?php foreach ($part_status as $status): ?>
+                                    <option <?= isset($header) && $header->prhmainstat == $status->PS_Description ? 'selected' : '' ?> value="<?= $status->PS_Description ?>">
+                                        <?= $status->PS_Description ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small id="err_prhmainstat" class="input-warning text-danger"></small>
+                        </div>
+                        <div id="attach_header" class="<?= isset($header) && $header->prhtype == 'Part' ? 'd-none' : '' ?>">
+                            <div class="d-flex justify-content-between">
+                                <label for="attachment1" class="form-label">Attachment (PDF)</label>
+                                <?php if (isset($header) && !empty($header->prhfilename)): ?>
+                                    <a href="<?= base_url("RequestPE/download/header/$header->prhid") ?>"><?= $header->prhfilename_ellipsis ?></a>
+                                <?php endif ?>
+                            </div>
+                            <input type="file" name="attachment1" id="attachment1" class="form-control" accept="application/pdf, .pdf">
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-xl-4 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-0">Request activity</h5>
+            </div>
+            <div id="detail_activity" class="card-body pt-1" style="max-height: 260px; overflow: auto;">
+                <ul class="timeline pb-0 mb-0">
+                    <?php if (isset($req_activities)) :
+                        $total = count($req_activities);
+                        $current = 0;
+                    ?>
+                        <?php foreach ($req_activities as $activity):
+                            $current++;
+                            if ($current == $total - 1) { // if second last loop
+                                $border = "border-primary border-left-dashed";
+                                $point = "timeline-point-primary";
+                            } else if ($current == $total) { // if last loop
+                                $border = "border-transparent";
+                                if ($current == 1) { // if first and last loop (only one data)
+                                    $point = "timeline-point-primary";
+                                } else {
+                                    // if ($activity["processhdid"] == 10) {
+                                    //     $point = "timeline-point-success";
+                                    // } else {
+                                    $point = "timeline-point-secondary";
+                                    // }
+                                    // $activity["text_status"] = "Waiting " . $activity["text_status"];
+                                }
+                            } else {
+                                $border = "border-primary";
+                                $point = "timeline-point-primary";
+                            }
+                        ?>
+                            <li class="timeline-item timeline-item-transparent <?= $border ?>">
+                                <span class="timeline-point <?= $point ?>"></span>
+                                <div class="timeline-event pb-0">
+                                    <h6 class="mb-0"><?= $activity["text_status"] ?></h6>
+                                    <?php if ($activity["processhdid"] == 5): ?>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress w-100 me-2" style="height: 6px;">
+                                                <div class="progress-bar" style="width: <?= round($design_progress) ?>%" aria-valuenow="<?= round($design_progress) ?>%" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                            <span class="text-heading"><?= round($design_progress) ?>%</span>
+                                            <?php if ($header->prhtype != 'Part'): ?>
+                                                <div data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="See Progress">
+                                                    <a href="#m_activity" data-bs-toggle="modal" class="ms-2 btn btn-icon btn-text-secondary waves-effect waves-light rounded-pill">
+                                                        <i class="ti ti-eye mx-2 ti-md"></i>
+                                                    </a>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <p class="m-0"><?= $activity["text_by"] ?></p>
+                                    <?php endif; ?>
+                                    <small class="text-muted"><?= $activity["date"] ?></small>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else : ?>
+                        <li class="timeline-item timeline-item-transparent border-transparent">
+                            <span class="timeline-point timeline-point-primary"></span>
+                            <div class="timeline-event pb-0">
+                                <h6 class="mb-0">New Create</h6>
+                                <small class="text-muted"><?= date('d M Y') ?></small>
+                            </div>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php if ((isset($reqtype) && $reqtype == 'PRS') || (isset($header) && $header->prhreqtype == 'PRS')): ?>
+    <div class="mt-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center flex-wrap gap-2">
+                <h5 class="card-title m-0 me-auto">Detail Data</h5>
+                <?php if (!isset($header) || (isset($header) && $header->prhprocessid == 1)): ?>
+                    <button type="button" id="add_detail" class="btn btn-success <?= isset($header) && $header->prhtype == 'Part' ? '' : 'd-none' ?>">
+                        <i class="ti ti-plus me-1"></i>Add Detail</button>
+                <?php endif; ?>
+                <h6 id="text_detailmanage" class="text-danger m-0 
+                <?= (isset($reqtype) && $reqtype == 'PRS') || (isset($header) && $header->prhtype == 'Part') ? 'd-none' : '' ?>">
+                    Detail Data is managed by PE.</h6>
+            </div>
+
+            <div class="card-datatable table-responsive pt-0">
+                <table id="table-detail" class="datatables-basic table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Action</th>
+                            <th>ID</th>
+                            <th>Drawing No.</th>
+                            <th>Part Name</th>
+                            <th>Part Code</th>
+                            <th>Part No.</th>
+                            <th>QTY</th>
+                            <th>UoM</th>
+                            <th>Material Quality</th>
+                            <th>Type</th>
+                            <th>Attachment</th>
+                            <th>Remark</th>
+                            <th class="progress-col">Progress</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
+<!-- Modal for add/edit request detail -->
+<div class="modal fade" id="m_reqdetail" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-simple modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center">
+                    <h3 class="modal-title">Add Detail Request</h3>
+                </div>
+                <form id="f_reqdetail" class="row g-3 mt-4 mb-4" enctype="multipart/form-data">
+                    <input type="hidden" name="prdid" id="prdid">
+                    <input type="hidden" name="prdhdid" id="prdhdid">
+                    <div class="col-lg-6 col-12 d-flex flex-column gap-2">
+                        <div>
+                            <label for="prddrawingno" class="form-label required">Drawing No.</label>
+                            <select id="select_part" class="form-select" style="width: 100%"></select>
+                            <input type="hidden" name="prddrawingno" id="prddrawingno" class="form-control" placeholder="Drawing No." required readonly>
+                            <small id="err_prddrawingno" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdpartname" class="form-label required">Part Name</label>
+                            <input type="text" name="prdpartname" id="prdpartname" class="form-control" placeholder="Part Name" required readonly>
+                            <small id="err_prdpartname" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdpartcode" class="form-label required">Part Code</label>
+                            <input type="text" name="prdpartcode" id="prdpartcode" class="form-control" placeholder="Drawing No." required readonly>
+                            <small id="err_prdpartcode" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdpartno" class="form-label required">Part No.</label>
+                            <input type="text" name="prdpartno" id="prdpartno" class="form-control" placeholder="Part No." required readonly>
+                            <small id="err_prdpartno" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdmatquality" class="form-label">Material Quality</label>
+                            <input type="text" name="prdmatquality" id="prdmatquality" class="form-control" placeholder="Material Quality">
+                            <small id="err_prdmatquality" class="input-warning text-danger"></small>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-12 d-flex flex-column gap-2">
+                        <div>
+                            <label for="prdqty" class="form-label required">QTY</label>
+                            <input type="number" name="prdqty" id="prdqty" class="form-control" placeholder="QTY" required>
+                            <small id="err_prdqty" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prduom" class="form-label required">UOM</label>
+                            <select name="prduom" id="prduom" class="selectpicker w-100" data-style="btn-default" placeholder="Select UOM" required>
+                                <option value="PCS">PCS</option>
+                                <option value="SET">SET</option>
+                            </select>
+                            <small id="err_prduom" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdtype" class="form-label required">Type</label>
+                            <select name="prdtype" id="prdtype" class="selectpicker w-100" data-style="btn-default" placeholder="Select type" required>
+                                <?php foreach ($rework_type as $type) : ?>
+                                    <option value="<?= $type->R_Description ?>"><?= $type->R_Description ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small id="err_prdtype" class="input-warning text-danger"></small>
+                        </div>
+                        <div id="attach_detail">
+                            <div class="d-flex justify-content-between">
+                                <label for="attachment2" class="form-label">Attachment (PDF)</label>
+                            </div>
+                            <input type="file" name="attachment2" id="attachment2" class="form-control" accept="application/pdf, .pdf">
+                            <small id="err_attachment2" class="input-warning text-danger"></small>
+                        </div>
+                        <div>
+                            <label for="prdremark" class="form-label">Remark</label>
+                            <textarea name="prdremark" id="prdremark" class="form-control" rows="3" placeholder="Enter remark"></textarea>
+                        </div>
+                    </div>
+                </form>
+                <div class="col-12 text-center">
+                    <button type="button" id="save_detail" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for add/edit request detail -->
+<div class="modal fade" id="m_activity" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-simple modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-body">
+                <input type="hidden" id="detail_id">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center">
+                    <h3 class="modal-title">Request Progress</h3>
+                    <span class="badge bg-danger bg-glow fc_display d-none">Force Closed</span>
+                </div>
+                <div class="mb-2 pb-2 border-bottom fc_display d-none">
+                    <span class="badge badge-danger mb-2">Force Closed</span>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-2">
+                                <label for="prdfcloseby">Closed By</label>
+                                <input type="text" class="form-control" id="prdfcloseby" placeholder="" readonly="">
+                            </div>
+                            <div class="mb-2">
+                                <label for="prdfclosedate">Closed Date</label>
+                                <input type="text" class="form-control" id="prdfclosedate" placeholder="" readonly="">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-2">
+                                <label for="prdfclosereason">Reason</label>
+                                <textarea class="form-control" id="prdfclosereason" placeholder="" readonly=""></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <table id="table-activity" class="datatables-basic table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Process</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                </table>
+                <div class="col-12 text-center">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php if (!isset($header) || (isset($header) && $header->prhprocessid == 1)) : ?>
+    <!-- Modal for finding equipment -->
+    <div class="modal fade" id="m_equipment" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-simple modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center">
+                        <h3 class="modal-title">Find Equipment</h3>
+                    </div>
+                    <table id="table_equipment" class="datatables-basic table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Equipment No.</th>
+                                <th>Equipment Name</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                    <div class="col-12 text-center mt-4">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            let table_equipment = $("#table_equipment").DataTable({
+                "pageLength": 5,
+                "lengthMenu": [5, 10, 25, 50, 100],
+                "ajax": {
+                    "url": base_url + 'RequestPE/get_equipment',
+                    "dataSrc": ""
+                },
+                "columnDefs": [{
+                    "className": "text-nowrap",
+                    "targets": "_all"
+                }],
+                "columns": [{
+                        data: "EQ_Code"
+                    },
+                    {
+                        data: "EQ_No"
+                    },
+                    {
+                        data: "EQ_Name"
+                    },
+                    {
+                        data: "EQ_Code",
+                        render: function(data, type, row, meta) {
+                            return `<button type="button" class="btn-select btn btn-success waves-effect waves-light w-100">Select</button>`;
+                        },
+                        className: "text-center"
+                    }
+                ]
+            });
+
+            $('#m_equipment').on('shown.bs.modal', function(event) {
+                table_equipment.search('').columns().search('').draw(true);
+            });
+
+            $('#table_equipment tbody').on('click', '.btn-select', function() {
+                let row_data = table_equipment.row($(this).closest('tr')).data();
+                // console.log(row_data);
+                $('#prhequipmentno').val(row_data.EQ_No);
+                $('#prhequipmentname').val(row_data.EQ_Name);
+                $('#m_equipment').modal('hide');
+            });
+        });
+    </script>
+<?php endif; ?>
+
+<script>
+    const base_url = "<?= base_url() ?>";
+
+    $(document).ready(function() {
+        $('#detail_activity').scrollTop($('#detail_activity')[0].scrollHeight);
+        $(".selectpicker").selectpicker();
+        $('.flatpickr').flatpickr({
+            enableTime: false,
+            dateFormat: "Y-m-d"
+        });
+
+        // true or false value for disabling edit mode
+        let detail_edit = <?= (!isset($header) || (isset($header) && $header->prhprocessid == 1)) ? 'true' : 'false' ?>;
+        $('#f_reqheader').find('input.flatpickr, select.selectpicker').prop('disabled', !detail_edit);
+        $('#f_reqheader').find('input:not(.readonly), textarea').prop('readonly', !detail_edit);
+
+        let table_detail = $("#table-detail").DataTable({
+            "order": [],
+            "processing": true,
+            "serverSide": false,
+            "scrollX": true,
+            "columnDefs": [{
+                "className": "text-nowrap",
+                "targets": "_all"
+            }],
+            "ajax": {
+                "url": base_url + 'RequestPE/get_detail',
+                "data": function(d) {
+                    d.header_id = $('#prhid').val();
+                },
+                "type": "GET",
+                "dataSrc": ""
+            },
+            "drawCallback": function(settings) {
+                let table_api = this.api();
+                if ($("#prhprocessid").val() >= 5 && $("#prhtype").val() == 'Part') table_api.columns('.progress-col').visible(true);
+                else table_api.columns('.progress-col').visible(false);
+            },
+            "columns": [{
+                    data: "prdid",
+                    render: function(data, type, row, meta) {
+                        if (detail_edit) {
+                            return `<div class="d-flex justify-content-center gap-2">
+                                    <button type="button" class="btn btn-icon btn-info btn-edit">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-icon btn-danger btn-delete">
+                                        <i class="fa fa-trash-can"></i>
+                                    </button>
+                                </div>`;
+                        }
+                        return '';
+                    },
+                    visible: detail_edit
+                },
+                {
+                    data: "prdid",
+                    // visible: false
+                },
+                {
+                    data: "prddrawingno"
+                },
+                {
+                    data: "prdpartname"
+                },
+                {
+                    data: "prdpartcode"
+                },
+                {
+                    data: "prdpartno"
+                },
+                {
+                    data: "prdqty"
+                },
+                {
+                    data: "prduom"
+                },
+                {
+                    data: "prdmatquality"
+                },
+                {
+                    data: "prdtype"
+                },
+                {
+                    data: "prdfilename",
+                    render: function(data, type, row, meta) {
+                        let path = base_url + 'RequestPE/download/detail/' + row.prdid;
+                        if (data) return '<a href="' + path + '">' + data + '</a>';
+                        else return '';
+                    },
+                },
+                {
+                    data: "prdremark"
+                },
+                {
+                    data: "total_progress",
+                    render: function(data, type, row, meta) {
+                        data = Math.round(Number(data));
+                        let btn_color = row.prdfclosedate ? 'danger' : data == 100 ? 'success' : 'info';
+                        return `
+                            <button type="button" class="btn btn-${btn_color} waves-effect waves-light w-100" 
+                                data-bs-target="#m_activity" data-bs-toggle="modal">
+                                ${data}%
+                            </button>`;
+                    }
+                }
+            ]
+        });
+
+        $("#delete_header").on('click', function() {
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to delete request No : <b>' + $('#prhreqnumber').val() + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'RequestPE/delete_header',
+                        data: {
+                            id: $('#prhid').val()
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: "success",
+                                title: 'Request has successfully been deleted!',
+                                showConfirmButton: false,
+                                timer: 1500,
+                            }).then((result) => {
+                                window.history.back()
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $("#save_header").on('click', function() {
+            save_header();
+        });
+
+        $("#post_header").on('click', function() {
+            if (table_detail.data().count() === 0 && $('#prhtype').val() == 'Part') {
+                Swal.fire("There is no detail data!", "Add detail data first before posting request.", "error");
+                return false;
+            };
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to post request No : <b>' + $('#prhreqnumber').val() + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, post!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    try {
+                        // save dulu baru post buat jaga2
+                        save_header(true);
+                    } catch (e) {} finally {
+                        $.ajax({
+                            type: 'POST',
+                            url: base_url + 'RequestPE/post_header',
+                            data: {
+                                id: $('#prhid').val()
+                            }
+                        }).done(function(response) {
+                            if (response.status == 'success') {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: 'Request has successfully been posted!',
+                                    showConfirmButton: false,
+                                    timer: 1500,
+                                }).then((result) => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                        }).fail(function(jqXHR, textStatus, errorThrown) {
+                            let message = JSON.parse(jqXHR.responseText);
+                            Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                        }).always(function() {
+                            $('#wait_screen').hide();
+                        });
+                    }
+                }
+            });
+        });
+
+        $("#prhtype").on('change', function() {
+            if ($(this).val() == 'Part') {
+                $("#add_detail").removeClass('d-none');
+                $("#text_detailmanage, #attach_header").addClass('d-none');
+                $("#part_status").removeClass('d-none');
+                // $('label[for="prhequipmentno"], label[for="prhequipmentname"]').removeClass('required');
+                // $('#prhequipmentno, #prhequipmentname').attr('required', false);
+                table_detail.ajax.reload();
+            } else {
+                $("#add_detail").addClass('d-none');
+                $("#text_detailmanage, #attach_header").removeClass('d-none');
+                $("#part_status").addClass('d-none');
+                // $('label[for="prhequipmentno"], label[for="prhequipmentname"]').addClass('required');
+                // $('#prhequipmentno, #prhequipmentname').attr('required', true);
+                table_detail.clear().draw();
+            }
+        });
+
+        $('#table-detail tbody').on('click', '.btn-edit', function() {
+            let row = $(this).closest('tr');
+            let row_data = table_detail.row(row).data();
+            $('#m_reqdetail').data('row_data', row_data);
+            $('#m_reqdetail').data('action', 'edit');
+            $('#m_reqdetail').modal('show');
+        });
+
+        $('#table-detail tbody').on('click', '.btn-delete', function() {
+            let row = $(this).closest('tr');
+            let row_data = table_detail.row(row).data();
+            // console.log(row_data);
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to delete drawing number : <b>' + row_data.prddrawingno + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'RequestPE/delete_detail',
+                        data: {
+                            id: row_data.prdid,
+                            hdr_id: row_data.prdhdid
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: "success",
+                                title: 'Data has successfully been deleted!',
+                                showConfirmButton: false,
+                                timer: 1500,
+                            }).then((result) => {
+                                table_detail.ajax.reload();
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $("#add_detail").on('click', function() {
+            if ($('#prhid').val()) {
+                $('#m_reqdetail').data('action', 'add');
+                $('#m_reqdetail').modal('show');
+            } else {
+                Swal.fire({
+                    title: 'Header data save required',
+                    text: 'You must save Header Data first before proceeding to add Detail Data.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save header data',
+                    cancelButtonText: 'Cancel',
+                    buttonsStyling: false,
+                    customClass: {
+                        confirmButton: 'btn btn-success ms-auto waves-effect m-1',
+                        cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) save_header();
+                });
+            }
+        });
+
+        $('#select_part').select2({
+            dropdownParent: $('#m_reqdetail'),
+            placeholder: 'Search drawing',
+            language: {
+                noResults: function() {
+                    return "Enter a valid drawing no. or part name";
+                }
+            },
+            ajax: {
+                url: base_url + 'RequestPE/get_partdata',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term,
+                        prhid: $('#prhid').val(),
+                        prdid: $('#prdid').val(),
+                        page: params.page || 1 // Add current page
+                    };
+                },
+                processResults: function(data, params) {
+                    // Pagination handling
+                    params.page = params.page || 1;
+
+                    return {
+                        results: data.results,
+                        pagination: {
+                            more: data.pagination.hasMore // Indicate if more results are available
+                        }
+                    };
+                },
+                cache: true
+            },
+            templateResult: function(data) {
+                if (data.loading) {
+                    return 'Searching...';
+                }
+
+                let $result = $(
+                    '<div>' +
+                    '<strong>' + data.prddrawingno + '</strong><br>' +
+                    '<small>Part Name : ' + data.prdpartname + '</small><br>' +
+                    '<small>Part Code : ' + (data.prdpartcode ?? '-') + '</small><br>' +
+                    '<small>Part No. : ' + (data.prdpartno ?? '-') + '</small>' +
+                    '</div>'
+                );
+
+                return $result;
+            }
+        });
+
+        // modal detail request show and hide events
+        $('#m_reqdetail').on('hidden.bs.modal', function() {
+            // clear form inputs
+            $(this).find('input, select, textarea').val('');
+            $(this).find('input[type="checkbox"], input[type="radio"]').prop('checked', false);
+            $(this).find('.selectpicker').selectpicker('val', '');
+            $(this).find('.select2-hidden-accessible').val(null).trigger('change');
+        });
+        $('#m_reqdetail').on('show.bs.modal', function(event) {
+            $(".selectpicker").selectpicker();
+            $('.input-warning').text('');
+            $('#attach_detail').find('a').remove();
+            $('#attach_detail').find('label').addClass('required');
+            $('#attach_detail').find('input').attr('required', true);
+            let action = $(this).data('action');
+            if (action == 'add') {
+                $(this).find('.modal-title').text('Add Detail Request');
+                $('#prdhdid').val($('#prhid').val());
+            } else {
+                let row_data = $(this).data('row_data');
+
+                if (row_data.prdfilename) { // jika sudah ada attachment maka tidak wajib upload lagi
+                    let file_link = '<a href="' + base_url + 'RequestPE/download/detail/' + row_data.prdid + '">' + row_data.prdfilename + '</a>';
+                    $('#attach_detail div').append(file_link);
+                    $('#attach_detail').find('label').removeClass('required');
+                    $('#attach_detail').find('input').attr('required', false);
+                }
+
+                for (let key in row_data) {
+                    if ($('#' + key).hasClass('selectpicker')) {
+                        $('#' + key).selectpicker('val', row_data[key]);
+                    } else {
+                        $('#' + key).val(row_data[key]);
+                    }
+                }
+                $.ajax({
+                    url: base_url + 'RequestPE/get_selectedpart',
+                    dataType: 'json',
+                    data: {
+                        prdid: row_data.prdid
+                    },
+                    success: function(data) {
+                        // Add the single result as a selected option
+                        let item = data[0];
+                        let option = new Option(item.mms_drawingnumber, item.mms_partcode, true, true);
+                        $('#select_part').append(option).trigger('change');
+                    }
+                });
+            }
+        });
+        $('#select_part').on('select2:select', function(e) {
+            let data = e.params.data;
+            // console.log(data);
+            $('#prddrawingno').val(data.prddrawingno);
+            $('#prdpartname').val(data.prdpartname);
+            $('#prdpartcode').val(data.prdpartcode);
+            $('#prdpartno').val(data.prdpartno);
+        });
+
+        $("#save_detail").on('click', function() {
+            if (!check_required_fields('f_reqdetail')) return false;
+
+            $('#wait_screen').show();
+            try {
+                // save header juga
+                save_header(true);
+            } catch (e) {
+                $('#wait_screen').hide();
+            } finally {
+                let form_data = new FormData($('#f_reqdetail')[0]);
+                $.ajax({
+                    type: 'POST',
+                    url: base_url + 'RequestPE/save_detail',
+                    data: form_data,
+                    processData: false,
+                    contentType: false
+                }).done(function(response) {
+                    if (response.status == 'success') {
+                        Swal.fire({
+                            icon: "success",
+                            title: 'Data has successfully been saved!',
+                            showConfirmButton: false,
+                            timer: 1500,
+                        }).then((result) => {
+                            $('#m_reqdetail').modal('hide');
+                            table_detail.ajax.reload();
+                        });
+                    } else {
+                        Swal.fire("Error!", response.message, "error");
+                    }
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    let message = JSON.parse(jqXHR.responseText);
+                    Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                }).always(function() {
+                    $('#wait_screen').hide();
+                });
+            }
+        });
+
+        let table_activity = $("#table-activity").DataTable({
+            "order": [],
+            "pageLength": 5,
+            "lengthMenu": [5, 10, 25, 50, 100],
+            "processing": true,
+            "serverSide": false,
+            "columnDefs": [{
+                "className": "text-nowrap",
+                "targets": "_all"
+            }],
+            "ajax": {
+                "url": base_url + 'RequestPE/get_activity',
+                "data": function(d) {
+                    d.header_id = $('#prhid').val();
+                    d.detail_id = $('#detail_id').val();
+                },
+                "type": "GET",
+                "dataSrc": ""
+            },
+            "autoWidth": false,
+            "drawCallback": function(settings) {},
+            "columns": [{
+                    data: "praactdate",
+                    witdh: "30%"
+                },
+                {
+                    data: "processdetname",
+                    witdh: "50%"
+                },
+                {
+                    data: "praprogress",
+                    render: function(data, type, row, meta) {
+                        return data + '%';
+                    },
+                    witdh: "20%",
+                    className: "text-end"
+                }
+            ]
+        });
+        // modal detail request activity show and hide events
+        $('#m_activity').on('hide.bs.modal', function() {
+            // reset datatables
+            $('#m_activity').find('input, textarea').val('');
+            table_activity.search('').draw();
+        });
+        $('#m_activity').on('shown.bs.modal', function(event) {
+            let button = $(event.relatedTarget);
+            let row = button.closest('tr');
+            let row_data = table_detail.row(row).data();
+            // console.log(row_data);
+            if (row_data) {
+                $('#m_activity').find('.modal-title').text('Request Progress of ID: ' + row_data.prdid);
+                $('#detail_id').val(row_data.prdid);
+                if (row_data.prdfclosedate) {
+                    $('#prdfcloseby').val(row_data.prdfclosename + ' (' + row_data.prdfcloseby + ')');
+                    $('#prdfclosedate').val(row_data.prdfclosedate.split(' ')[0]);
+                    $('#prdfclosereason').val(row_data.prdfclosereason);
+                    $('.fc_display').removeClass('d-none');
+                } else {
+                    $('.fc_display').addClass('d-none');
+                }
+            } else {
+                $('#m_activity').find('.modal-title').html('Request Progress of Request Number: <br>' + $('#prhreqnumber').val());
+            }
+            table_activity.ajax.reload();
+        });
+    });
+
+    function save_header(noalert = false) {
+        if (!check_required_fields('f_reqheader')) return false;
+
+        $('#wait_screen').show();
+        let form_data = new FormData($('#f_reqheader')[0]);
+        $.ajax({
+            type: 'POST',
+            url: base_url + 'RequestPE/save_header',
+            data: form_data,
+            processData: false,
+            contentType: false
+        }).done(function(response) {
+            if (response.status == 'success') {
+                if (!noalert) {
+                    Swal.fire({
+                        icon: "success",
+                        title: 'Data has successfully been saved!',
+                        showConfirmButton: false,
+                        timer: 1500,
+                    }).then((result) => {
+                        window.location.replace(base_url + "RequestPE?id=" + response.id);
+                    });
+                }
+            } else {
+                Swal.fire("Error!", response.message, "error");
+            }
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            let message = JSON.parse(jqXHR.responseText);
+            Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+        }).always(function() {
+            $('#wait_screen').hide();
+        });
+    }
+
+    function check_required_fields(form_id) {
+        let check_fields = true;
+        $('.input-warning').text('');
+        $('#' + form_id).find('input[required]:visible, select[required]:visible').each(function() {
+            if (!$(this).val()) {
+                let id = $(this).attr('id');
+                $('#err_' + id).text('This field is required.');
+                $('#' + id).focus();
+                // console.log(id);
+                check_fields = false;
+                return false;
+            }
+        });
+        return check_fields;
+    }
+</script>
+
+<?= $this->endSection() ?>

@@ -1,0 +1,123 @@
+<?php
+
+namespace App\Models\oee_molding;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEDataMold extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+        $this->db_postgre = db_connect('default');
+        $this->db_pps = db_connect('db_pps');
+    }
+        
+    public function get_data($series, $end_date)
+    {
+        if (!empty($series)) {
+            $cond = " where mlocation = '$series'";
+        } else {
+            $cond = " where mlocation = 'Molding 1'";
+        }
+
+        $q = "select mcode as mchid, mname as mchname from m_machine 
+            $cond
+            and coalesce(mdryertype, 0) = 0 ORDER BY substring(mname FROM '^[^-]+'), CAST(substring(mname FROM '[^-]+$') AS INTEGER)";
+
+        $q_res      = $this->db_postgre->query($q);
+
+        $machines   = $q_res->getResultArray();
+
+        // Loop through each machine to get the last activity and set the color
+        foreach ($machines as &$machine) {
+
+            $mchname = $machine["mchname"];
+            // var_dump($mchname, $end_date);die();
+
+            // Query to get the last activity's button color for the machine
+            $q2 = " SELECT *
+                    FROM t_modmold_dt
+                    INNER JOIN m_modmold_act
+                        ON mma_actcode      = tmld_act_code
+                        AND mma_status      = 1
+                    INNER JOIN t_modmold_hd
+                        ON tmld_hdid       = tmlh_id
+                        AND tmlh_status     <> 25
+                    WHERE tmld_status       <> 25
+                        AND tmlh_proddate   = '$end_date'
+                        AND tmlh_mchcode    = '$mchname'
+                    ORDER BY tmld_id DESC
+                    LIMIT 1";
+
+            $activityQuery  = $this->db_postgre->query($q2);
+            $lastActivity   = $activityQuery->getRowArray();
+
+            // Set the color for the machine
+            $machine['color'] = !empty($lastActivity) ? $lastActivity['mma_btncolor'] : '#FFFFFF';
+            $machine['isFinish'] = (empty($lastActivity) || ($lastActivity['tmld_finish'] !== null && $lastActivity['tmld_finish'] !== '')) ? 1 : 0;
+        }
+        return $machines;
+    }
+    
+    public function get_machine_header($machine, $start_date, $end_date)
+    {
+        // var_dump($machine, $start_date, $end_date);die();
+        if (!empty($machine)) {
+            $cond = "AND tmlh_mchcode = '$machine'";
+        } else {
+            $cond = "";
+        }
+
+        if (!empty($start_date) && !empty($end_date)) {
+            $cond2 = "AND tmlh_proddate BETWEEN '$start_date' AND '$end_date'";
+        } else {
+            $cond2 = "";
+        }
+        
+        $query = "  SELECT tmlh_id, tmlh_mchcode, tmlh_diesno, TO_CHAR(tmlh_proddate, 'YYYY-MM-DD') as tmlh_proddate, tmlh_prodname, tmlh_instno, tmlh_spm, tmlh_cavity, tmlh_cycle_time, tmlh_created_user, tmlh_created_at        
+                    ,tmlh_lastuser, tmlh_lastupdate, tmlh_status, tmlh_dies_cavid, tmlh_prodcode, tmlh_qtylot, tmlh_totlot, tmlh_sec_perlot, tmlh_splitfromid
+                    FROM t_modmold_hd
+                    WHERE tmlh_status <> 25
+                        $cond
+                        $cond2
+                    ORDER BY tmlh_proddate DESC, tmlh_mchcode, tmlh_instno";
+
+        return $this->db_postgre->query($query)->getResult();
+    }
+
+    public function get_machine_detail($header_id)
+    {
+        // var_dump($header_id);die();
+        $query = " select tmld_id, tmld_shift, tmld_act_code, tmld_start, tmld_finish, tmld_ttime_act, tmld_ttime_calc/60 as tmld_ttime_calc, tmld_emplname, tmld_prodqty, tmld_remark, tmld_status, tmld_lot_start, tmld_lot_end  
+                    from t_modmold_dt
+                    WHERE tmld_status   <> 25
+                        AND tmld_hdid   = $header_id
+                    ORDER BY tmld_start asc";
+
+        return $this->db_postgre->query($query)->getResult();
+    }
+
+    public function get_total_times($header_id)
+    {
+        // var_dump($header_id);die();
+        $query = "  SELECT SUM(tmld_ttime_act/60) AS total_time_actual, SUM(tmld_ttime_calc/60) AS total_time_calc
+                    FROM t_modmold_dt
+                    WHERE tmld_status <> 25
+                        AND tmld_hdid = $header_id";
+
+        return $this->db_postgre->query($query)->getRow();
+    }
+    
+}

@@ -1,0 +1,214 @@
+<?php
+
+namespace App\Controllers\oee_brazing;
+
+use App\Controllers\BaseController;
+
+use App\Models\oee_brazing\M_OEEDashboardBraz;
+use App\Models\master_brazing\M_MstMachine;
+use Datetime;
+
+class OEEDashboardBraz extends BaseController
+{
+    protected $M_OEEDashboardBraz;
+    protected $M_MstMachine;
+
+    public function __construct()
+    {
+        $this->M_OEEDashboardBraz   = new M_OEEDashboardBraz();
+        $this->M_MstMachine         = new M_MstMachine();
+    }
+
+    public function index()
+    {
+        if (!session()->get("login")) {
+            return redirect()->to("/");
+        }
+
+        // Retrieve the user menu from the session
+        $usermenu = session()->get("usermenu");
+
+        // Find the active menu group and menu name
+        foreach ($usermenu as $menu) {
+            if ($menu->umn_path === "OEEDashboardBraz") {
+                $activeMenuGroup    = $menu->umg_groupname;
+                $activeMenuName     = $menu->umn_menuname;
+                break; // Stop the loop once the active menu is found
+            }
+        }
+
+        // Get current month and year, and adjust to previous month
+        $currentDate = new DateTime();
+        $currentDate->modify('-1 month');
+        $previousMonth = $currentDate->format('m'); // Get the previous month (numeric)
+        $currentYear = $currentDate->format('Y');   // Get the year
+
+        $data["active_menu_group"]  = $activeMenuGroup;
+        $data["active_menu_name"]   = $activeMenuName;
+        $data["machine_data"]       = $this->M_MstMachine->get_machine_data();
+
+        return view("oee_brazing/dashboard/main_dashboard", $data);
+    }
+
+    public function get_period()
+    {
+        $month  = $this->request->getPost('month');
+        $year   = $this->request->getPost('year');
+
+        $period = $this->M_OEEDashboardBraz->get_period($month, $year);
+
+        return $this->response->setJSON([
+            'previous_month' => $period['previous_month'],
+            'selected_month' => $period['selected_month']
+        ]);
+    }
+
+    public function get_product()
+    {
+        $machine_code = $this->request->getPost('machine_code');
+
+        $products = $this->M_OEEDashboardBraz->get_product($machine_code);
+
+        return $this->response->setJSON($products);
+    }
+
+    public function get_filtered_result()
+    {
+        $filterBy       = $this->request->getPost('filterBy');
+        $filterValue    = $this->request->getPost('filterValue');
+        $month          = $this->request->getPost('month');
+        $year           = $this->request->getPost('year');
+        $start          = $this->request->getPost('start');
+        $end            = $this->request->getPost('end');
+
+        // Call the model method to get filtered result
+        $result         = $this->M_OEEDashboardBraz->get_filtered_result($filterBy, $filterValue, $start, $end, $month, $year);
+
+        // Call the model to get additional data as needed
+        $plannedDTData  = $this->M_OEEDashboardBraz->get_planned_dt_chart_data($filterBy, $filterValue, $start, $end);
+        $breakDownData  = $this->M_OEEDashboardBraz->get_break_down_chart_data($filterBy, $filterValue, $start, $end);
+        $defectQty      = $result->defectqty ?: 0;
+
+        // Get raw availability and performance data
+        $availData      = $this->M_OEEDashboardBraz->get_availability_data($filterBy, $filterValue, $start, $end);
+        $perfChart      = $this->M_OEEDashboardBraz->get_perf_chart($filterBy, $filterValue, $start, $end);
+        
+        // Calculate total quantity as the sum of actcounter, rejectqty, and maintqty
+        $actCounter     = $result->actcounter ?: 0;
+        $rejectQty      = $result->rejectqty ?: 0;
+        $maintQty       = $result->maintqty ?: 0;
+
+        $totalQty = $actCounter + $rejectQty + $maintQty;
+
+        // Availability Calculation
+        $availability   = $availData ? $availData * 100 : 0;
+
+        // Performance Calculation
+        $performance    = $perfChart ? $perfChart : 0;
+        // $performance    = $perfChart ? $perfChart * 100 : 0;
+
+        // Quality Calculation: Check if totalQty is zero to avoid division by zero
+        if ($totalQty > 0) {
+            $quality = (($actCounter - ($rejectQty + $maintQty + $result->reworkqty + $result->defectqty)) / $totalQty) * 100;
+            $quality = abs($quality); // Ensure quality is positive
+        } else {
+            $quality = 0; // Default value if totalQty is zero
+        }
+
+        // Calculate the final OEE percentage
+        $oeePercentage = 0;
+        
+        // OEE Calculation
+        if ($availData && $perfChart && $quality) {
+            $oeePercentage = ($availData * ($perfChart / 100) * ($quality / 100)) * 100;
+            // $oeePercentage = ($availData * $perfChart * ($actCounter / $totalQty)) * 100;  // Adjust OEE logic
+        }
+
+        // Prepare the activity data and radial bar data
+        $activityData   = $this->M_OEEDashboardBraz->get_activity($filterBy, $filterValue, $start, $end);
+        $radialBarData  = $this->M_OEEDashboardBraz->get_radial_bar_chart_data($filterBy, $filterValue, $start, $end);
+
+        // Call the new method to get loose chart data
+        $looseChartData = $this->M_OEEDashboardBraz->get_loose_chart($filterBy, $filterValue, $start, $end);
+
+        $lineChartData  = $this->M_OEEDashboardBraz->get_line_chart($filterBy, $filterValue, $start, $end);
+        
+        $availDataPerDate  = $this->M_OEEDashboardBraz->get_availability_data_per_date($filterBy, $filterValue, $start, $end);
+        $perfChartPerDate     = $this->M_OEEDashboardBraz->get_perf_chart_per_date($filterBy, $filterValue, $start, $end);
+        $resultPerDate         = $this->M_OEEDashboardBraz->get_filtered_result_per_date($filterBy, $filterValue, $start, $end, $month, $year);
+        
+        $calculatedResults = [];
+
+        foreach ($resultPerDate as $date => $data) {            
+            // Set null values to zero
+            $actcounter = isset($data['actcounter']) ? (int)$data['actcounter'] : 0;
+            $reworkqty = isset($data['reworkqty']) ? (int)$data['reworkqty'] : 0;
+            $maintqty = isset($data['maintqty']) ? (int)$data['maintqty'] : 0;
+            $defectqty = isset($data['defectqty']) ? (int)$data['defectqty'] : 0;
+            $rejectqty = isset($data['rejectqty']) ? (int)$data['rejectqty'] : 0;
+
+            // Calculate the formula
+            $numerator = $actcounter - ($maintqty + $rejectqty + $reworkqty + $defectqty);
+            $denominator = $actcounter + $maintqty + $rejectqty;
+
+            $quality = $totalQty != 0 ? (($actCounter - ($rejectQty + $maintQty + $result->reworkqty + $result->defectqty)) / $totalQty) * 100 : 0;
+            // Avoid division by zero
+            if ($denominator > 0) {
+                $calculatedValue = $numerator / $denominator;
+            } else {
+                $calculatedValue = null; // or set to 0 if needed
+            }
+            
+            $availP = $availDataPerDate[$date];
+            $perfValP = $perfChartPerDate[$date] / 100;
+            $resValP = abs($calculatedValue * $availP * $perfValP);
+            
+            // Store the result for the date
+//            $calculatedResults[$date] = $resValP * 100;
+//            if($resValP != 0) {
+                $calculatedResults[] = [
+                    "date" => date('d', strtotime($date)),
+                    "oee" => $resValP
+                ];
+//            }
+        }
+        
+//        Total counter - (Scrap+Rework+Limitasi Defect) / Total counter
+//        // Quality Calculation: Check if totalQty is zero to avoid division by zero
+//        if ($totalQty > 0) {
+//            $quality = (($actCounter - ($rejectQty + $maintQty + $resultPerDate->reworkqty + $resultPerDate->defectqty)) / $totalQty) * 100;
+//            $quality = abs($quality); // Ensure quality is positive
+//        } else {
+//            $quality = 0; // Default value if totalQty is zero
+//        }
+//
+//                'actcounter' => $actCounterVal,
+//                'reworkqty'  => $reworkVal,
+//                'maintqty'   => $maintQtyVal,
+//                'defectqty'   => $defectVal,
+//                'rejectqty'   => $rejectVal,
+                        
+        return $this->response->setJSON([
+            'status'        => 'success',
+            'result'        => $result,
+            'totalQty'      => $totalQty,
+            'plannedDTData' => $plannedDTData,
+            'breakDownData' => $breakDownData,
+            'defectQty'     => $defectQty,
+            'availability'  => $availData,
+            'performance'   => $perfChart,
+            'quality'       => $quality,
+            'availData'     => $availability,
+            'activityData'  => $activityData,
+            'radialBarData' => $radialBarData,
+            'perfChart'     => $performance,
+            'planningData'  => $result->planPcs ?: '-',
+            'percentage'    => $result->percentage ?: '-',
+            'oeePercentage' => $oeePercentage,
+            'ttime'         => $looseChartData['ttime'] ?? 0,
+            'avgspm'        => $looseChartData['avgspm'] ?? 0,
+            'looseChart'    => $looseChartData,
+            'lineChart'     => $calculatedResults
+        ]);
+    }
+}

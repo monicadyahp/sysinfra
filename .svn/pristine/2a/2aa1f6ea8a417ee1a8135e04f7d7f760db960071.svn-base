@@ -1,0 +1,437 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<style>
+    .btn-icon.dots-vertical:hover {
+        background-color: #f3f3f3;
+    }
+</style>
+
+<div class="card">
+    <div class="card-header d-flex align-items-end flex-wrap gap-2">
+        <!-- Left Section: Request Type Filter -->
+        <div>
+            <label for="request_type" class="form-label">Request Type</label>
+            <div style="width: 200px">
+                <select id="request_type" class="selectpicker w-100" data-style="btn-default">
+                    <option selected value="ALL">All Request</option>
+                    <option value="PRS">Parts Request</option>
+                    <option value="ERS">Equipment Request</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Right Section: Buttons -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Refresh Button -->
+            <button type="button" id="refresh_btn" class="btn btn-secondary">
+                <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card-datatable table-responsive pt-0">
+        <table id="table_listreq" class="datatables-basic table table-hover">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Request Number</th>
+                    <th>Request Type</th>
+                    <th>Section</th>
+                    <th>Department</th>
+                    <th>Issue Date</th>
+                    <th>Req Finish Date</th>
+                    <th>Equipment No</th>
+                    <th>Equipment Name</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="m_detail" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-simple modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center">
+                    <h3 class="modal-title">Equipment/Parts Request</h3>
+                </div>
+
+                <div class="d-flex gap-2 mt-2">
+                    <input type="hidden" id="prhid" value="">
+                    <input type="hidden" id="prhreqnumber" value="">
+                    <div class="w-100">
+                        <div class="mb-3">
+                            <label for="prhtype" class="form-label">PRS Type</label>
+                            <input type="text" class="form-control readonly" id="prhtype" value="" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhdept" class="form-label">Department</label>
+                            <input type="text" class="form-control readonly" id="prhdept" value="" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhissuedate" class="form-label">Issue Date</label>
+                            <div class="position-relative d-flex align-items-center">
+                                <input type="text" class="flatpickr form-control" id="prhissuedate" placeholder="Select date" value="" readonly>
+                                <span class="position-absolute mb-1 me-2 end-0">
+                                    <i class="ti ti-calendar"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhreqfinishdate" class="form-label">Request Finish Date</label>
+                            <div class="position-relative d-flex align-items-center">
+                                <input type="text" class="flatpickr form-control" id="prhreqfinishdate" placeholder="Select date" value="" readonly>
+                                <span class="position-absolute mb-1 me-2 end-0">
+                                    <i class="ti ti-calendar"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-100">
+                        <div class="mb-3">
+                            <label for="prhequipmentno" class="form-label">Equipment No.</label>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control" id="prhequipmentno" placeholder="Equipment No." value="" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prhequipmentname" class="form-label">Equipment Name</label>
+                            <input type="text" class="form-control" id="prhequipmentname" placeholder="Equipment name" value="" readonly>
+                        </div>
+                        <div class="prs mb-3">
+                            <label for="prhringino" class="form-label">Ringisho No.</label>
+                            <input type="text" class="form-control" id="prhringino" placeholder="Ringisho No." value="" readonly>
+                        </div>
+                        <div class="ers mb-3">
+                            <label for="prhersqty" class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="prhersqty" placeholder="Quantity" value="" readonly>
+                        </div>
+                        <div class="mb-3 d-none">
+                            <label for="prhtotalkind" class="form-label">Total Kind</label>
+                            <input type="text" class="form-control" id="prhtotalkind" placeholder="Total Kind" value="" readonly>
+                        </div>
+                        <div class="mb-3 d-none">
+                            <label for="prhtotalqty" class="form-label">Total Qty</label>
+                            <input type="text" class="form-control" id="prhtotalqty" placeholder="Total QTY" value="" readonly>
+                        </div>
+                        <div class="prs_part">
+                            <label for="prhmainstat" class="form-label">Part Status</label>
+                            <input type="text" class="form-control" id="prhmainstat" placeholder="Part Status" value="" readonly>
+                        </div>
+                        <div id="attach_header">
+                            <label for="prhfilename" class="form-label">Attachment (PDF)</label>
+                            <input type="text" class="form-control" placeholder="There is no Attachment" readonly>
+                            <a href="" class="form-control"></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="prs_part">
+                    <table id="table_detail" class="datatables-basic table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Drawing No.</th>
+                                <th>Part Name</th>
+                                <th>Part Code</th>
+                                <th>Part No.</th>
+                                <th>QTY</th>
+                                <th>UoM</th>
+                                <th>Material Quality</th>
+                                <th>Type</th>
+                                <th>Attachment</th>
+                                <th>Remark</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div class="col-12 text-center mt-4">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        const base_url = "<?= base_url() ?>";
+
+        let request_type = sessionStorage.getItem('request_type');
+        if (request_type) {
+            $('#request_type').selectpicker('val', request_type);
+        }
+
+        // Initialize DataTable
+        let table = $("#table_listreq").DataTable({
+            "order": [],
+            "processing": true,
+            "serverSide": false,
+            "scrollX": true,
+            "columnDefs": [{
+                "className": "text-nowrap",
+                "targets": "_all"
+            }],
+            "ajax": {
+                "url": base_url + 'Verification/get_listheader',
+                "data": function(d) {
+                    d.request_type = $('#request_type').val();
+                },
+                "type": "GET",
+                "dataSrc": ""
+            },
+            "drawCallback": function(settings) {
+                $(".selectpicker").selectpicker();
+                init_tooltip();
+            },
+            "columns": [{
+                    data: "prhid",
+                    render: function(data, type, row, meta) {
+                        return `
+                            <div class="d-flex justify-content-center gap-2">
+                                <button data-bs-toggle="tooltip" data-bs-title="Approve" type="button" class="btn btn-icon btn-success btn-approve">
+                                    <i class="ti ti-check"></i>
+                                </button>
+                                <button data-bs-toggle="tooltip" data-bs-title="Return" type="button" class="btn btn-icon btn-danger btn-return">
+                                    <i class="ti ti-arrow-back-up"></i>
+                                </button>
+                            </div>`;
+                    },
+                    className: "text-center"
+                },
+                {
+                    data: "prhreqnumber",
+                    render: function(data, type, row) {
+                        return '<a href="#m_detail" data-bs-toggle="modal"><span>' + data + '</span></a>';
+                    }
+                },
+                {
+                    data: "prhtype",
+                },
+                {
+                    data: "sec_shortsectname",
+                },
+                {
+                    data: "prhdept",
+                },
+                {
+                    data: "prhissuedate"
+                },
+                {
+                    data: "prhreqfinishdate"
+                },
+                {
+                    data: "prhequipmentno"
+                },
+                {
+                    data: "prhequipmentname"
+                }
+            ]
+        });
+
+        $('#table_listreq tbody').on('click', '.btn-approve', function() {
+            let row = table.row($(this).closest('tr'));
+            let row_data = row.data();
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to <b>Approve</b> request No. :<br><b>' + row_data.prhreqnumber + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, approve!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-success ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'Verification/approve_request',
+                        data: {
+                            id: row_data.prhid
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                showConfirmButton: false,
+                                timer: 1500
+                            }).then(function(result) {
+                                table.ajax.reload(null, false);
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $('#table_listreq tbody').on('click', '.btn-return', function() {
+            let row = table.row($(this).closest('tr'));
+            let row_data = row.data();
+            Swal.fire({
+                title: 'Are you sure?',
+                html: 'You are about to <b>Return</b> request No. :<br><b>' + row_data.prhreqnumber + '</b>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, return!',
+                cancelButtonText: 'Cancel',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger ms-auto waves-effect m-1',
+                    cancelButton: 'btn btn-label-secondary waves-effect m-1'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#wait_screen').show();
+                    $.ajax({
+                        type: 'POST',
+                        url: base_url + 'Verification/return_request',
+                        data: {
+                            id: row_data.prhid
+                        }
+                    }).done(function(response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                showConfirmButton: false,
+                                timer: 1500
+                            }).then(function(result) {
+                                table.ajax.reload(null, false);
+                            });
+                        } else {
+                            Swal.fire("Error!", response.message, "error");
+                        }
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        let message = JSON.parse(jqXHR.responseText);
+                        Swal.fire("Error!", message.code + '<br>' + message.message, "error");
+                    }).always(function() {
+                        $('#wait_screen').hide();
+                    });
+                }
+            });
+        });
+
+        $('#refresh_btn').on('click', function() {
+            sessionStorage.setItem('request_type', $('#request_type').val());
+            table.ajax.reload();
+        });
+
+        // Initialize DataTable
+        let table_detail = $("#table_detail").DataTable({
+            "order": [],
+            "processing": true,
+            "serverSide": false,
+            "scrollX": true,
+            "columnDefs": [{
+                "className": "text-nowrap",
+                "targets": "_all"
+            }],
+            "ajax": {
+                "url": base_url + 'Verification/get_detail',
+                "data": function(d) {
+                    d.header_id = $('#prhid').val();
+                },
+                "type": "GET",
+                "dataSrc": ""
+            },
+            "drawCallback": function(settings) {},
+            "columns": [{
+                    data: "prdid",
+                },
+                {
+                    data: "prddrawingno",
+                },
+                {
+                    data: "prdpartname",
+                },
+                {
+                    data: "prdpartcode",
+                },
+                {
+                    data: "prdpartno",
+                },
+                {
+                    data: "prdqty"
+                },
+                {
+                    data: "prduom"
+                },
+                {
+                    data: "prdmatquality"
+                },
+                {
+                    data: "prdtype"
+                },
+                {
+                    data: "prdfilename_ellipsis",
+                    render: function(data, type, row, meta) {
+                        let path = base_url + 'RequestPE/download/detail/' + row.prdid;
+                        if (data) return '<a href="' + path + '">' + data + '</a>';
+                        else return '';
+                    },
+                },
+                {
+                    data: "prdremark"
+                }
+            ]
+        });
+
+        $('#m_detail').on('show.bs.modal', function(event) {
+            let button = $(event.relatedTarget);
+            let row = button.closest('tr');
+            let row_data = table.row(row).data();
+            // console.log(row_data);
+            for (let key in row_data) {
+                $('#' + key).val(row_data[key]);
+            }
+            if (row_data.prhreqtype == 'PRS') { // if PRS
+                $('#m_detail').find('.modal-title').html('Parts Request No.<br>#' + row_data.prhreqnumber);
+                $('#m_detail').find("label[for='prhtype']").text('PRS Type');
+                $('#m_detail').find('.prs').removeClass('d-none');
+                $('#m_detail').find('.ers').addClass('d-none');
+            } else { // if ERS
+                $('#m_detail').find('.modal-title').html('Equipment Request No.<br>#' + row_data.prhreqnumber);
+                $('#m_detail').find("label[for='prhtype']").text('ERS Type');
+                $('#m_detail').find('.prs').addClass('d-none');
+                $('#m_detail').find('.ers').removeClass('d-none');
+            }
+
+            if (row_data.prhtype == 'Part') { // if PRS part
+                $('#m_detail').find('.prs_part').removeClass('d-none');
+                $('#m_detail').find('#attach_header').addClass('d-none');
+                table_detail.ajax.reload();
+            } else {
+                $('#m_detail').find('.prs_part').addClass('d-none');
+                $('#m_detail').find('#attach_header').removeClass('d-none');
+                // console.log(row_data.prhfilename);
+                if (row_data.prhfilename) {
+                    $('#attach_header a').removeClass('d-none');
+                    $('#attach_header a').text(row_data.prhfilename);
+                    $('#attach_header a').attr("href", base_url + "RequestPE/download/header/" + row_data.prhid);
+                    $('#attach_header input').addClass('d-none');
+                } else {
+                    $('#attach_header a').addClass('d-none');
+                    $('#attach_header input').removeClass('d-none');
+                }
+            }
+        });
+        $('#m_detail').on('shown.bs.modal', function(event) {
+            table_detail.columns.adjust();
+        });
+    });
+</script>
+
+<?= $this->endSection() ?>

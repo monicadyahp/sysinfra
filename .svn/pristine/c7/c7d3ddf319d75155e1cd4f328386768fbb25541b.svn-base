@@ -1,0 +1,165 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Models\M_Auth;
+
+class C_Auth extends BaseController
+{
+    protected $M_Auth;
+
+    public function __construct()
+    {
+        $this->M_Auth = new M_Auth();
+    }
+
+    public function index()
+    {
+        // Check if session exists and is valid
+        if (session()->get("login")) {
+            $this->check_session_expiration();
+        }
+
+        echo view("auth/login");
+    }
+
+    // to check session based on last time visit
+    private function check_session_expiration()
+    {
+        // Check last login time
+        $lastVisited = session()->get("last_visited");
+
+        // If the current time minus the last login time is more than 2 hours, then
+        if (!$lastVisited || time() - $lastVisited > 7200) {
+            // Session expired, destroy, and redirect to login
+            session()->destroy();
+            return redirect()->to("/");
+        } else {
+            // If not, update last activity time and redirect to controller admin
+            // Update last activity time
+            session()->set("last_visited", time());
+        }
+    }
+
+    public function login()
+    {
+        $username   = $this->request->getPost("username");
+        $password   = $this->request->getPost("password");
+
+        $db_common_postgre = [
+            "DSN"           => "",
+            "hostname"      => "192.9.18.28",
+            "username"      => $username,
+            "password"      => $password,
+            "database"      => "common",
+            "schema"        => "public",
+            "DBDriver"      => "Postgre",
+            "DBPrefix"      => "",
+            "pConnect"      => false,
+            "DBDebug"       => (ENVIRONMENT !== "production"),
+            "charset"       => "utf8",
+            "swapPre"       => "",
+            "failover"      => [],
+            "port"          => 5432,
+            "dateFormat"    => [
+                "date"      => "Y-m-d",
+                "datetime"  => "Y-m-d H:i:s",
+                "time"      => "H:i:s",
+            ],
+        ];
+
+        $db_common_sql = [
+            "DSN"          => "",
+            "hostname"     => "192.9.18.1",
+            "username"     => "gapura",
+            "password"     => "gapura",
+            "database"     => "JINCOMMON",
+            "DBDriver"     => "SQLSRV",
+            "DBPrefix"     => "",
+            "pConnect"     => false,
+            "DBDebug"      => (ENVIRONMENT !== "production"),
+            "charset"      => "UTF-8",
+            "encrypt"      => false,
+            "trustServerCertificate" => false,
+            "pooling"      => false,
+            "failover"     => [],
+            "port"         => 1433,
+        ];
+
+        $db_pe_postgre = [
+            "DSN"           => "",
+            "hostname"      => "192.9.18.28",
+            "username"      => $username,
+            "password"      => $password,
+            "database"      => "jinpedb",
+            "schema"        => "public",
+            "DBDriver"      => "Postgre",
+            "DBPrefix"      => "",
+            "pConnect"      => false,
+            "DBDebug"       => (ENVIRONMENT !== "production"),
+            "charset"       => "utf8",
+            "swapPre"       => "",
+            "failover"      => [],
+            "port"          => 5432,
+            "dateFormat"    => [
+                "date"      => "Y-m-d",
+                "datetime"  => "Y-m-d H:i:s",
+                "time"      => "H:i:s",
+            ],
+        ];
+
+        $db_common = db_connect($db_common_postgre);
+        $db_common->query("SELECT 1"); // already return error if user is invalid
+        $db_common_sql = db_connect($db_common_sql);
+        // Set session data
+        session()->set("db_common_postgre", $db_common_postgre);
+        session()->set("db_pe_postgre", $db_pe_postgre);
+        session()->set("login", true);
+        session()->set("username", $username);
+        session()->set("last_visited", time());
+
+        // Fetch user menu and information
+        $usermenu = $this->M_Auth->get_menu($username);
+        session()->set("user_info", $this->M_Auth->get_user_info($db_common_sql, $username));
+        session()->set("usermenu", $usermenu);
+
+        if (!empty($usermenu)) {
+            // Get the first menu item
+            $firstMenu = $usermenu[0];
+
+            // Define redirect URL based on the first menu item
+            $redirectUrl = base_url($firstMenu->umn_path);
+
+            // Process the rest of the menu items
+            foreach ($usermenu as $menu) {
+                $session_name = "menu_" . strval($menu->umn_menucode);
+                $session_val = [
+                    "add"       => $menu->ums_add,
+                    "edit"      => $menu->ums_edit,
+                    "delete"    => $menu->ums_delete,
+                    "generate"  => $menu->ums_generate,
+                    "post"      => $menu->ums_post,
+                    "print"     => $menu->ums_print
+                ];
+                session()->set($session_name, $session_val);
+            }
+        } else {
+            return $this->response->setJSON([
+                "success"   => false,
+                "error"     => "No menus assigned to your account. Please contact the administrator.",
+            ]);
+        }
+
+        return $this->response->setJSON([
+            "status"        => "success",
+            "message"       => "Login Success!",
+            "redirect_url"  => $redirectUrl
+        ]);
+    }
+
+    public function logout()
+    {
+        session()->destroy();
+        return redirect()->to(base_url());
+    }
+}

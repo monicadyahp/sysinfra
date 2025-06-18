@@ -1,0 +1,518 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+        <!-- Title on the Left -->
+        <!-- <div class="head-label">
+            <h5 class="fw-bold">
+                <span class="text-muted fw-light"><?= htmlspecialchars($active_menu_group) ?> /</span> <?= htmlspecialchars($active_menu_name) ?>
+            </h5>
+        </div> -->
+        <!-- Buttons on the Right -->
+        <div class="dt-action-buttons d-flex pt-3 pt-md-0">
+            <div class="dt-buttons btn-group flex-wrap">
+                <!-- Add New Machine SPM -->
+                <button type="button" class="btn create-new btn-success" data-bs-toggle="modal" data-bs-target="#add_machine_brazing">
+                    <span><i class="ti ti-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add Machine SPM</span></span>
+                </button>
+                <!-- Refresh Button -->
+                <button type="button" class="btn btn-secondary refresh-btn ms-2">
+                    <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-datatable table-responsive pt-0">
+        <table class="datatables-basic table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Action</th>
+                    <th>ID</th>
+                    <th>Machine</th>
+                    <th>Series</th>
+                    <th>Shape</th>
+                    <th>Screw Hole</th>
+                    <th>Process</th>
+                    <th>SPM</th>
+                    <!-- <th>Status</th> -->
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Modal for add record -->
+    <div class="modal fade" id="add_machine_brazing" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Add Machine SPM</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="add_machine_spm" class="row g-3">
+                        <div class="col-12 col-md-12">
+                            <label for="machine_code" class="form-label">Machine Code <span style="color: red">*</span></label>
+                            <select id="machine_code" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="">Select Machine Code</option>
+                                <?php foreach ($machine_data as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="series">Series <span style="color: red">*</span></label>
+                            <input type="text" id="series" name="series" class="form-control" placeholder="Series">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="shape">Shape <span style="color: red">*</span></label>
+                            <select id="shape" name="shape" class="form-control">
+                                <option value="">Select Shape</option>
+                                <option value="Flag">Flag</option>
+                                <option value="Fork">Fork</option>
+                                <option value="Ring">Ring</option>
+                                <option value="Pin">Pin</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="screw_hole">Screw Hole</label>
+                            <select id="screw_hole" name="screw_hole" class="form-control">
+                                <option value="">Select Screw Hole</option>
+                                <option value="Long">Long</option>
+                                <option value="Short">Short</option>
+                                <option value="Spade Tongue">Spade Tongue</option>
+                                <option value="Special Tongue">Special Tongue</option>
+                                <option value="Tongue Lebar">Tongue Lebar</option>
+                                <option value="Tongue Panjang">Tongue Panjang</option>
+                                <option value="Tongue Standard">Tongue Standard</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="process_type">Process Type <span style="color: red">*</span></label>
+                            <select id="process_type" name="process_type" class="form-control">
+                                <option value="">Select Process Type</option>
+                                <option value="Normal">Normal</option>
+                                <option value="Special Control">Special Control</option>
+                                <option value="Special Process">Special Process</option>
+                                <option value="Haritsuketanshi">Haritsuketanshi</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="spm">SPM <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="spm" name="spm" class="form-control" placeholder="SPM">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Save</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for edit record -->
+    <div class="modal fade" id="edit_machine_brazing" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-simple modal-enable-otp modal-dialog-centered">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3 class="mb-2">Edit Machine SPM</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="edit_machine_spm" class="row g-3">
+                        <input type="hidden" id="mbz_id" name="mbz_id">
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="machine_code_edit">Machine Code <span style="color: red">*</span></label>
+                            <select id="machine_code_edit" class="selectpicker w-100" data-style="btn-default" data-live-search="true">
+                                <option value="">Select Machine Code</option>
+                                <?php foreach ($machine_data as $machine) { ?>
+                                    <option value="<?= htmlspecialchars($machine->mchname) ?>"><?= htmlspecialchars($machine->mchname) ?></option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="series_edit">Series <span style="color: red">*</span></label>
+                            <input type="text" id="series_edit" name="series_edit" class="form-control" placeholder="Series">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="shape_edit">Shape <span style="color: red">*</span></label>
+                            <select id="shape_edit" name="shape_edit" class="form-control">
+                                <option value="">Select Shape</option>
+                                <option value="Flag">Flag</option>
+                                <option value="Fork">Fork</option>
+                                <option value="Ring">Ring</option>
+                                <option value="Pin">Pin</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="screw_hole_edit">Screw Hole</label>
+                            <select id="screw_hole_edit" name="screw_hole_edit" class="form-control">
+                                <option value="">Select Screw Hole</option>
+                                <option value="Long">Long</option>
+                                <option value="Short">Short</option>
+                                <option value="Spade Tongue">Spade Tongue</option>
+                                <option value="Special Tongue">Special Tongue</option>
+                                <option value="Tongue Lebar">Tongue Lebar</option>
+                                <option value="Tongue Panjang">Tongue Panjang</option>
+                                <option value="Tongue Standard">Tongue Standard</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="process_type_edit">Process Type <span style="color: red">*</span></label>
+                            <select id="process_type_edit" name="process_type_edit" class="form-control">
+                                <option value="">Select Process Type</option>
+                                <option value="Normal">Normal</option>
+                                <option value="Special Control">Special Control</option>
+                                <option value="Special Process">Special Process</option>
+                                <option value="Haritsuketanshi">Haritsuketanshi</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label class="form-label" for="spm_edit">SPM <span style="color: red">*</span></label>
+                            <input type="number" min="0" step="0.01" id="spm_edit" name="spm_edit" class="form-control" placeholder="SPM">
+                        </div>
+                        <div class="col-12 mt-5 text-center">
+                            <button type="submit" class="btn btn-success me-sm-3 me-1">
+                                <span class="indicator-label">Save</span>
+                                <span class="loading" style="display: none">Please wait...
+                                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                                </span>
+                            </button>
+                            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable
+        var table = $(".datatables-basic").DataTable({
+            "processing": true,
+            "serverSide": false,
+            "ajax": {
+                "url": "<?= base_url('MstMachine/get_data') ?>",
+                "type": "GET",
+                "dataSrc": function(json) {
+                    return json;
+                }
+            },
+            "columns": [{
+                    "data": null,
+                    "render": function(data, type, row) {
+
+                        return `<div class="d-flex justify-content-center gap-2">
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-secondary btnEdit" data-id="${row.mbz_id}" data-mchcode="${row.mbz_mchcode}" 
+                                        data-series="${row.mbz_series}" data-shape="${row.mbz_shape}" data-screwhole="${row.mbz_subshape}" 
+                                        data-processtype="${row.mbz_processtype}" data-spm="${row.mbz_spm}">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-danger btnDelete" data-id="${row.mbz_id}"><i class="fa fa-trash-can"></i></a>
+                                </div>`;
+                    },
+                    "className": "text-center"
+                },
+                {
+                    data: "mbz_id"
+                },
+                {
+                    data: "mbz_mchcode"
+                },
+                {
+                    data: "mbz_series"
+                },
+                {
+                    data: "mbz_shape"
+                },
+                {
+                    data: "mbz_subshape"
+                },
+                {
+                    data: "mbz_processtype"
+                },
+                {
+                    data: "mbz_spm"
+                },
+                // {
+                //     "data": "mbz_status",
+                //     "render": function(data) {
+                //         return data == 1 ? '<span class="badge bg-label-success">Active</span>' : '<span class="badge bg-label-danger">Non Active</span>';
+                //     },
+                //     "className": "text-center"
+                // },
+            ]
+        });
+
+        $("#add_machine_spm").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "machine_code",
+                    message: "Machine Code is required."
+                },
+                {
+                    id: "series",
+                    message: "Series is required."
+                },
+                {
+                    id: "shape",
+                    message: "Shape is required."
+                },
+                {
+                    id: "process_type",
+                    message: "Process Type is required."
+                },
+                {
+                    id: "spm",
+                    message: "SPM is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                machine_code: $("#machine_code").val(),
+                series: $("#series").val(),
+                shape: $("#shape").val(),
+                screw_hole: $("#screw_hole").val(),
+                process_type: $("#process_type").val(),
+                spm: $("#spm").val(),
+                tipe: "add"
+            };
+
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstMachine/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        // Data already exists, show error message
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                        hideLoading();
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>/MstMachine/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                $("#add_machine_brazing").modal("hide");
+                                // Clear the form data
+                                $("#add_machine_spm")[0].reset();
+                                // Reload DataTable
+                                $(".datatables-basic").DataTable().ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                    hideLoading();
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $("#edit_machine_spm").submit(function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const fields = [{
+                    id: "machine_code_edit",
+                    message: "Machine Code is required."
+                },
+                {
+                    id: "series_edit",
+                    message: "Series is required."
+                },
+                {
+                    id: "shape_edit",
+                    message: "Shape is required."
+                },
+                {
+                    id: "process_type_edit",
+                    message: "Process Type is required."
+                },
+                {
+                    id: "spm_edit",
+                    message: "SPM is required."
+                }
+            ];
+
+            for (const field of fields) {
+                if ($(`#${field.id}`).val().trim() === "") {
+                    Swal.fire("Error!", field.message, "error");
+                    return;
+                }
+            }
+
+            showLoading();
+
+            const data = {
+                mbz_id: $("#mbz_id").val(),
+                machine_code: $("#machine_code_edit").val(),
+                series: $("#series_edit").val(),
+                shape: $("#shape_edit").val(),
+                screw_hole: $("#screw_hole_edit").val(),
+                process_type: $("#process_type_edit").val(),
+                spm: $("#spm_edit").val(),
+                tipe: "edit"
+            };
+
+            // Send AJAX request to check if the document exists
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url() ?>MstMachine/cek_data",
+                data: data,
+                success: function(response) {
+                    if (response.exists) {
+                        Swal.fire("Error!", "Data already exists in the database.", "error");
+                    } else {
+                        // Data doesn't exist, proceed with form submission
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url() ?>MstMachine/update_data",
+                            data: data,
+                            success: function(submitResponse) {
+                                Swal.fire({
+                                    title: "Data has been saved",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                $("#edit_machine_brazing").modal("hide");
+                                // Clear the form data
+                                $("#edit_machine_spm")[0].reset();
+                                // Reload DataTable
+                                table.ajax.reload();
+                            },
+                            error: function(submitError) {
+                                Swal.fire("Error!", "An error occurred while submitting the data.", "error");
+                            },
+                            complete: function() {
+                                hideLoading();
+                            }
+                        });
+                    }
+                },
+                error: function(errorData) {
+                    Swal.fire("Error!", "An error occurred while checking the data.", "error");
+                },
+                complete: function() {
+                    hideLoading();
+                }
+            });
+        });
+
+        $(document).on("click", ".btnEdit", function() {
+            var id = $(this).data("id");
+            var mchcode = $(this).data("mchcode");
+            var series = $(this).data("series");
+            var shape = $(this).data("shape");
+            var screwhole = $(this).data("screwhole");
+            var processtype = $(this).data("processtype");
+            var spm = $(this).data("spm");
+
+            // Populate the modal form with the data
+            $("#mbz_id").val(id);
+            $("#machine_code_edit").val(mchcode);
+            // Re-initialize selectpicker to update the display
+            $("#machine_code_edit").selectpicker("destroy").selectpicker();
+            $("#series_edit").val(series);
+            $("#shape_edit").val(shape);
+            $("#screw_hole_edit").val(screwhole);
+            $("#process_type_edit").val(processtype);
+            $("#spm_edit").val(spm);
+
+            // Show the modal
+            $("#edit_machine_brazing").modal('show');
+        });
+
+        // Handle Delete button click
+        $(document).on("click", ".btnDelete", function() {
+            var mbz_id = $(this).data("id");
+            updateStatus(mbz_id, 25); // Update status to 25 (Delete)
+        });
+
+        // Function to update status via AJAX
+        function updateStatus(mbz_id, newStatus) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You will delete the data. Do you want to proceed?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return $.ajax({
+                        url: "<?= base_url('MstMachine/update_status_data') ?>",
+                        type: "POST",
+                        data: {
+                            mbz_id,
+                            new_status: newStatus
+                        },
+                        success: function(response) {
+                            if (!response.success) {
+                                Swal.fire("Error!", response.message, "error");
+                            }
+                            return response;
+                        }
+                    }).catch(() => Swal.fire("Error!", "An error occurred while updating status.", "error"));
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Status Updated",
+                        text: result.value.message,
+                        icon: "success",
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    table.ajax.reload(); // Reload DataTable
+                }
+            });
+        }
+
+        // Refresh button click event
+        $(".refresh-btn").on("click", function() {
+            table.ajax.reload(); // Reload the DataTable
+        });
+    });
+</script>
+
+<?= $this->endSection() ?>

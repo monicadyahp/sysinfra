@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Models\master_brazing;
+
+use CodeIgniter\Model;
+
+class M_MstProdShape extends Model
+{
+    public function get_data()
+    {
+        $query = "  SELECT *
+                    FROM m_prodbraz_setting
+                    WHERE mpsh_status = 1
+                    ORDER BY mpsh_id DESC";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function get_product_data()
+    {
+        $query = "  SELECT partbom_partcode, partbom_partname, partbom_series
+                    FROM m_partbom
+                    ORDER BY partbom_partcode DESC";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function cek_data($product_code, $shape, $screw_hole, $process_type)
+    {
+        // Query to check if the document exists
+        $query = "  SELECT mpsh_productcode, mpsh_shape, mpsh_subshape, mpsh_processtype
+                    FROM m_prodbraz_setting
+                    WHERE mpsh_status 		    = 1
+                        AND mpsh_productcode    = ? 
+                        AND mpsh_shape		    = ? 
+                        AND mpsh_subshape	    = ? 
+                        AND mpsh_processtype	= ?";
+
+        // Executing the raw SQL query with a parameter binding
+        $result = $this->db->query($query, [$product_code, $shape, $screw_hole, $process_type])->getRow();
+
+        // Return true if any row is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function update_data($emplcode, $POST)
+    {
+        $product_code   = $POST["product_code"];
+        $shape          = $POST["shape"];
+        $screw_hole     = $POST["screw_hole"];
+        $process_type   = $POST["process_type"];
+        $tipe           = $POST["tipe"];
+
+        if ($tipe == "add") {
+            $query = "  INSERT INTO m_prodbraz_setting (mpsh_productcode, mpsh_shape, mpsh_subshape, mpsh_processtype, mpsh_status, mpsh_created_user, mpsh_created_at, mpsh_lastuser, mpsh_lastupdate)
+                        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)";
+
+            $params = [$product_code, $shape, $screw_hole, $process_type, $emplcode, $this->currentDateTime, $emplcode, $this->currentDateTime];
+        } else if ($tipe == "edit") {
+            $mpsh_id = $POST["mpsh_id"];
+
+            $query = "  UPDATE m_prodbraz_setting
+                        SET mpsh_productcode    = ?,
+                            mpsh_shape          = ?,
+                            mpsh_subshape       = ?,
+                            mpsh_processtype    = ?,
+                            mpsh_lastuser       = ?,
+                            mpsh_lastupdate     = ?
+                        WHERE mpsh_id           = ?";
+
+            $params = [$product_code, $shape, $screw_hole, $process_type, $emplcode, $this->currentDateTime, $mpsh_id];
+        }
+
+        return $this->db->query($query, $params);
+    }
+
+    public function update_status_data($mpsh_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE m_prodbraz_setting
+                    SET mpsh_status      = ?,
+                        mpsh_lastuser    = ?, 
+                        mpsh_lastupdate  = ?
+                    WHERE mpsh_id        = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $mpsh_id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+}

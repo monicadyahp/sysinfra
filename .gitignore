@@ -1,0 +1,10 @@
+/vendor/
+/writable/
+/public/uploads/
+.env
+.idea/
+.vscode/
+composer.lock
+node_modules/
+*.log
+*.sqlite

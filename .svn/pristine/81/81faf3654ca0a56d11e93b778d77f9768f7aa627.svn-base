@@ -1,0 +1,339 @@
+<?= $this->extend("main/template") ?>
+<?= $this->section("content") ?>
+
+<style>
+    .btn-icon.dots-vertical:hover {
+        background-color: #f3f3f3;
+    }
+</style>
+
+<div class="row g-4 mb-4 d-none">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Session</span>
+                        <div class="d-flex align-items-center my-1">
+                            <h4 class="mb-0 me-2">21,459</h4>
+                            <span class="text-success">(+29%)</span>
+                        </div>
+                        <span>Total Users</span>
+                    </div>
+                    <span class="badge bg-label-primary rounded p-2">
+                        <i class="ti ti-user ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Paid Users</span>
+                        <div class="d-flex align-items-center my-1">
+                            <h4 class="mb-0 me-2">4,567</h4>
+                            <span class="text-success">(+18%)</span>
+                        </div>
+                        <span>Last week analytics </span>
+                    </div>
+                    <span class="badge bg-label-danger rounded p-2">
+                        <i class="ti ti-user-plus ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Active Users</span>
+                        <div class="d-flex align-items-center my-1">
+                            <h4 class="mb-0 me-2">19,860</h4>
+                            <span class="text-danger">(-14%)</span>
+                        </div>
+                        <span>Last week analytics</span>
+                    </div>
+                    <span class="badge bg-label-success rounded p-2">
+                        <i class="ti ti-user-check ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Pending Users</span>
+                        <div class="d-flex align-items-center my-1">
+                            <h4 class="mb-0 me-2">237</h4>
+                            <span class="text-success">(+42%)</span>
+                        </div>
+                        <span>Last week analytics</span>
+                    </div>
+                    <span class="badge bg-label-warning rounded p-2">
+                        <i class="ti ti-user-exclamation ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-end flex-wrap gap-2">
+        <!-- Left Section: Fiscal Year Filter -->
+        <div>
+            <label for="fiscal_year" class="form-label">Fiscal Year</label>
+            <div style="width: 100px">
+                <select id="fiscal_year" class="selectpicker w-100" data-style="btn-default">
+                    <option selected value="ALL">All</option>
+                    <?php
+                    for ($year = $fiscal_year; $year >= $fiscal_year - 9; $year--) {
+                    ?>
+                        <option value="<?= $year ?>"><?= $year ?></option>
+                    <?php
+                    }
+                    ?>
+                </select>
+            </div>
+        </div>
+        <!-- Left Section: Request Type Filter -->
+        <div>
+            <label for="request_type" class="form-label">Request Type</label>
+            <div style="width: 200px">
+                <select id="request_type" class="selectpicker w-100" data-style="btn-default">
+                    <option selected value="ALL">All Request</option>
+                    <option value="PRS">Parts Request</option>
+                    <option value="ERS">Equipment Request</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Right Section: Buttons -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Refresh Button -->
+            <button type="button" id="refresh_btn" class="btn btn-secondary">
+                <span><i class="ti ti-refresh me-sm-1"></i> <span class="d-none d-sm-inline-block">Refresh</span></span>
+            </button>
+
+            <!-- New Request Button -->
+            <div class="dropdown">
+                <button class="btn btn-success" data-bs-toggle="dropdown">
+                    <i class="ti ti-plus me-sm-1"></i>New Request
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="<?= base_url('RequestPE/?new=true&reqtype=PRS') ?>">Parts Request</a></li>
+                    <li><a class="dropdown-item" href="<?= base_url('RequestPE/?new=true&reqtype=ERS') ?>">Equipment Request</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-datatable table-responsive pt-0">
+        <table id="table-listreq" class="datatables-basic table table-hover">
+            <thead>
+                <tr>
+                    <th class="text-nowrap text-center">Action</th>
+                    <th class="text-nowrap">ID</th>
+                    <th class="text-nowrap">Request Number</th>
+                    <th class="text-nowrap">Request Type</th>
+                    <th class="text-nowrap">Section</th>
+                    <th class="text-nowrap">Department</th>
+                    <th class="text-nowrap">Issue Date</th>
+                    <th class="text-nowrap">Req Finish Date</th>
+                    <th class="text-nowrap">Equipment No</th>
+                    <th class="text-nowrap">Equipment Name</th>
+                    <th class="text-nowrap">Activity</th>
+                    <th class="text-nowrap">Process ID</th>
+                    <th class="text-nowrap">Requstor Code</th>
+                    <th class="text-nowrap">Request Section Code</th>
+                    <th class="text-nowrap">Department Initial</th>
+                    <th class="text-nowrap">Fiscal Year</th>
+                    <th class="text-nowrap">Seq Number</th>
+                    <th class="text-nowrap">Ringi No</th>
+                    <th class="text-nowrap">Request Approve Date</th>
+                    <th class="text-nowrap">Request Approve Code</th>
+                    <th class="text-nowrap">PE Approve Date</th>
+                    <th class="text-nowrap">PE Approve Code</th>
+                    <th class="text-nowrap">Cancel Date</th>
+                    <th class="text-nowrap">Cancel User</th>
+                    <th class="text-nowrap">Last Upadate</th>
+                    <th class="text-nowrap">Last User</th>
+                    <th class="text-nowrap">Request Type</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        const base_url = "<?= base_url() ?>";
+
+        let fiscal_year = sessionStorage.getItem('fiscal_year');
+        let request_type = sessionStorage.getItem('request_type');
+        if (fiscal_year) {
+            $('#fiscal_year').selectpicker('val', fiscal_year);
+        }
+        if (request_type) {
+            $('#request_type').selectpicker('val', request_type);
+        }
+
+        // Initialize DataTable
+        let table = $("#table-listreq").DataTable({
+            "order": [],
+            "processing": true,
+            "serverSide": false,
+            "scrollX": true,
+            "ajax": {
+                "url": base_url + 'RequestPE/get_listheader',
+                "data": function(d) {
+                    d.fiscal_year = $('#fiscal_year').val();
+                    d.request_type = $('#request_type').val();
+                },
+                "type": "GET",
+                "dataSrc": ""
+            },
+            "drawCallback": function(settings) {
+                $(".selectpicker").selectpicker();
+            },
+            "columns": [{
+                    data: null,
+                    render: function(data, type, row) {
+                        return `<div class="btn-group dropend">
+                                    <button class="btn btn-icon dots-vertical btn-text-secondary rounded-pill dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu m-0">
+                                        <a href="#" class="dropdown-item">View</a>
+                                        <a href="#" class="dropdown-item">Delete</a>
+                                    </div>
+                                </div>
+                                `;
+                    },
+                    className: "text-center",
+                    visible: false
+                },
+                {
+                    data: "prhid",
+                    visible: false
+                },
+                {
+                    data: "prhreqnumber",
+                    render: function(data, type, row) {
+                        return '<a href="' + base_url + 'RequestPE/?id=' + row.prhid + '"><span>' + data + '</span></a>';
+                    }
+                },
+                {
+                    data: "prhtype",
+                    className: "text-nowrap"
+                },
+                {
+                    data: "sec_shortsectname",
+                    className: "text-nowrap"
+                },
+                {
+                    data: "prhdept",
+                    className: "text-nowrap"
+                },
+                {
+                    data: "prhissuedate"
+                },
+                {
+                    data: "prhreqfinishdate"
+                },
+                {
+                    data: "prhequipmentno"
+                },
+                {
+                    data: "prhequipmentname"
+                },
+                {
+                    data: "processhdname",
+                    render: function(data, type, row) {
+                        return `<span class="badge bg-${row.badgecolor} bg-glow">${data}</span>`;
+                    }
+                },
+                {
+                    data: "prhprocessid",
+                    visible: false
+                },
+                {
+                    data: "prhrequestorcode",
+                    visible: false
+                },
+                {
+                    data: "prhreqsectcode",
+                    visible: false
+                },
+                {
+                    data: "prhdeptinitial",
+                    visible: false
+                },
+                {
+                    data: "prhfy",
+                    visible: false
+                },
+                {
+                    data: "prhseqnumber",
+                    visible: false
+                },
+                {
+                    data: "prhringino",
+                    visible: false
+                },
+                {
+                    data: "prhreqapprovedate",
+                    visible: false
+                },
+                {
+                    data: "prhreqapprovecode",
+                    visible: false
+                },
+                {
+                    data: "prhpeapprovedate",
+                    visible: false
+                },
+                {
+                    data: "prhpeapprovecode",
+                    visible: false
+                },
+                {
+                    data: "prhcanceldate",
+                    visible: false
+                },
+                {
+                    data: "prhcanceluser",
+                    visible: false
+                },
+                {
+                    data: "prhlastupdate",
+                    visible: false
+                },
+                {
+                    data: "prhlastuser",
+                    visible: false
+                },
+                {
+                    data: "prhreqtype",
+                    visible: false
+                }
+            ]
+        });
+
+        $('#refresh_btn').on('click', function() {
+            sessionStorage.setItem('fiscal_year', $('#fiscal_year').val());
+            sessionStorage.setItem('request_type', $('#request_type').val());
+            table.ajax.reload();
+        });
+    });
+</script>
+
+<?= $this->endSection() ?>

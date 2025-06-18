@@ -1,0 +1,97 @@
+<?php
+
+use CodeIgniter\Router\RouteCollection;
+
+/**
+ * @var RouteCollection $routes
+ */
+
+$routes->get('/', 'C_Auth::index');
+
+$routes->group('C_Auth', ['namespace' => 'App\Controllers'], function ($routes) {
+    $routes->post('login', 'C_Auth::login');
+    $routes->get('logout', 'C_Auth::logout');
+});
+
+$routes->get('/Main', 'C_Main::index');
+$routes->get('/OpenMenu/(:num)/(:segment)', 'C_Main::open_menu/$1/$2');
+
+$routes->group('MstMachine', ['namespace' => 'App\Controllers\master_brazing'], function ($routes) {
+    $routes->get('/', 'MstMachine::index');
+    $routes->get('get_data', 'MstMachine::get_data');
+    $routes->post('cek_data', 'MstMachine::cek_data');
+    $routes->post('update_data', 'MstMachine::update_data');
+    $routes->post('update_status_data', 'MstMachine::update_status_data');
+});
+
+$routes->group('MstProdShape', ['namespace' => 'App\Controllers\master_brazing'], function ($routes) {
+    $routes->get('/', 'MstProdShape::index');
+    $routes->get('get_data', 'MstProdShape::get_data');
+    $routes->post('cek_data', 'MstProdShape::cek_data');
+    $routes->post('update_data', 'MstProdShape::update_data');
+    $routes->post('update_status_data', 'MstProdShape::update_status_data');
+});
+
+$routes->group('OEEDataBraz', ['namespace' => 'App\Controllers\oee_brazing'], function ($routes) {
+    $routes->get('/', 'OEEDataBraz::index');
+    $routes->post('get_data', 'OEEDataBraz::get_data');
+    $routes->post('get_machine_header', 'OEEDataBraz::get_machine_header');
+    $routes->post('get_machine_detail', 'OEEDataBraz::get_machine_detail');
+    $routes->post('update_detail', 'OEEDataBraz::update_detail');
+    $routes->post('export_excel', 'OEEDataBraz::export_excel');
+    $routes->post('update_status_data', 'OEEDataBraz::update_status_data');
+    $routes->post('get_data_others', 'OEEDataBraz::get_data_others');
+    $routes->post('cek_data', 'OEEDataBraz::cek_data');
+    $routes->post('update_data', 'OEEDataBraz::update_data');
+    $routes->post('cek_data_others', 'OEEDataBraz::cek_data_others');
+    $routes->post('update_others', 'OEEDataBraz::update_others');
+    $routes->post('update_status_others', 'OEEDataBraz::update_status_others');
+    $routes->post('get_prod_qty', 'OEEDataBraz::get_prod_qty');
+    $routes->post('update_prod_qty', 'OEEDataBraz::update_prod_qty');
+});
+
+$routes->group('OEEDashboardBraz', ['namespace' => 'App\Controllers\oee_brazing'], function ($routes) {
+    $routes->get('/', 'OEEDashboardBraz::index');
+    $routes->post('get_period', 'OEEDashboardBraz::get_period');
+    $routes->post('get_product', 'OEEDashboardBraz::get_product');
+    $routes->post('get_filtered_result', 'OEEDashboardBraz::get_filtered_result');
+});
+
+$routes->group('OEEDataAssy', ['namespace' => 'App\Controllers\oee_assy'], function ($routes) {
+    $routes->get('/', 'OEEDataAssy::index');
+    $routes->post('show_prod_data', 'OEEDataAssy::show_prod_data');
+});
+
+$routes->group('MstMchMold', ['namespace' => 'App\Controllers\master_molding'], function ($routes) {
+    $routes->get('/', 'MstMchMold::index');
+    $routes->get('get_data', 'MstMchMold::get_data');
+    $routes->post('cek_data', 'MstMchMold::cek_data');
+    $routes->post('update_data', 'MstMchMold::update_data');
+    $routes->post('update_status_data', 'MstMchMold::update_status_data');
+});
+
+$routes->group('MstTroubleMold', ['namespace' => 'App\Controllers\master_molding'], function ($routes) {
+    $routes->get('/', 'MstTroubleMold::index');
+    $routes->get('get_data', 'MstTroubleMold::get_data');
+    $routes->post('cek_data', 'MstTroubleMold::cek_data');
+    $routes->post('update_data', 'MstTroubleMold::update_data');
+    $routes->post('update_status_data', 'MstTroubleMold::update_status_data');
+});
+
+$routes->group('RequestPE', ['namespace' => 'App\Controllers\prs_pe'], function ($routes) {
+    $routes->get('/', 'RequestPE::index');
+    $routes->get('get_listheader', 'RequestPE::get_listheader');
+    $routes->get('get_detail', 'RequestPE::get_detail');
+    $routes->post('save_header', 'RequestPE::save_header');
+    $routes->post('post_header', 'RequestPE::post_header');
+    $routes->post('delete_header', 'RequestPE::delete_header');
+    $routes->get('get_partdata', 'RequestPE::get_partdata');
+    $routes->post('save_detail', 'RequestPE::save_detail');
+    $routes->post('delete_detail', 'RequestPE::delete_detail');
+});
+
+$routes->group('OEEReportBraz', ['namespace' => 'App\Controllers\oee_brazing'], function ($routes) {
+    $routes->get('/', 'OEEReportBraz::index');
+    $routes->get('generateDataRptOEE', 'OEEReportBraz::generateDataRptOEE');
+    $routes->post('get_report_data', 'OEEReportBraz::get_report_data');
+});

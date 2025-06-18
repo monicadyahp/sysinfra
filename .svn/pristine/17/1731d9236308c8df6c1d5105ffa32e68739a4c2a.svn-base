@@ -1,0 +1,92 @@
+<?php
+
+namespace App\Models\master_molding;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_MstTroubleMold extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+    }
+
+    public function get_data()
+    {
+        $query = "select mtrb_id, mtrb_code, mtrb_desc, mtrb_lastuser, mtrb_lastupdate, mtrb_status 
+                        from m_mold_trouble
+                        where mtrb_status = 1
+                        order by mtrb_id desc";
+
+        return $this->db->query($query)->getResult();
+    }
+
+    public function cek_data($mtrb_code, $mtrb_desc)
+    {
+        // Query to check if the document exists
+        $query = "  SELECT mtrb_code, mtrb_desc
+                    FROM m_mold_trouble
+                    WHERE mtrb_status 		= 1
+                        AND mtrb_code		= ? 
+                        AND mtrb_desc		= ? ";
+        
+        // Executing the raw SQL query with a parameter binding
+        $result = $this->db->query($query, [$mtrb_code, $mtrb_desc])->getRow();
+
+        // Return true if any row is found, false otherwise
+        return ($result !== null);
+    }
+
+    public function update_data($emplcode, $POST)
+    {
+        $mtrb_code   = $POST["mtrb_code"];
+        $mtrb_desc        = $POST["mtrb_desc"];
+        $tipe           = $POST["tipe"];
+
+        if ($tipe == "add") {
+            $query = "  INSERT INTO m_mold_trouble (mtrb_code, mtrb_desc, mtrb_lastuser, mtrb_lastupdate)
+                        VALUES (?, ?, ?, ?)";
+
+            $params = [$mtrb_code, $mtrb_desc, $emplcode, $this->currentDateTime];
+        } else if ($tipe == "edit") {
+            $mtrb_id= $POST["mtrb_id"];
+
+            $query = "  UPDATE m_mold_trouble
+                        SET mtrb_code     = ?, 
+                            mtrb_desc      = ?, 
+                            mtrb_lastuser       = ?, 
+                            mtrb_lastupdate    = ?
+                        WHERE mtrb_id        = ?";
+
+            $params = [$mtrb_code, $mtrb_desc, $emplcode, $this->currentDateTime, $mtrb_id];
+        }
+
+        return $this->db->query($query, $params);
+    }
+
+    public function update_status_data($mtrb_id, $new_status, $emplcode)
+    {
+        $query = "  UPDATE m_mold_trouble
+                    SET mtrb_status      = ?,
+                    mtrb_lastuser = ?,
+                    mtrb_lastupdate = ?
+                    WHERE mtrb_id        = ?";
+
+        $params = [$new_status, $emplcode, $this->currentDateTime, $mtrb_id];
+
+        $this->db->query($query, $params);
+
+        return $this->db->affectedRows() > 0;
+    }
+}

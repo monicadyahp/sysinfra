@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Models\oee_assy;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set('Asia/Jakarta');
+$currentDateTime = date('Y-m-d H:i:s');
+
+class M_OEEDataAssy extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+    protected $db_pps;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set('Asia/Jakarta');
+        $this->currentDateTime = date('Y-m-d H:i:s');
+        // Connect to the 'db_pps' database configuration
+        $this->db_pps = db_connect('db_pps');
+    }
+    
+    public function get_prod_data($start_date, $end_date)
+    {
+        $end_date = date('Y-m-d', strtotime($start_date . ' +1 day'));
+    
+        // Query to get the last activity's button color for the machine
+        $q = " select convert(varchar(10), case when convert(varchar(5), pscandate, 108) >= '00:00' and 
+                        convert(varchar(5), pscandate, 108) < '07:25' then pscandate - 1 else pscandate end, 111) as pscandate, 
+                pproductcode prodcode, partbom_partname as prodname, mname, ppino, plotnofrom, sum(pprodqty) as total, psplit1, pshift              
+                from tp_prodtrackhd                
+                inner join m_partbom on m_partbom.partbom_productcode = tp_prodtrackhd.pproductcode
+                inner join m_machine on mcode = tp_prodtrackhd.pmachineid          
+                where pscandate between '$start_date 07:20' and '$end_date 07:25' and pflag <> 25 and mlocation in ('auto', 'auto 1', 'auto 2', 'handmade', 'clean room')
+                group by ppino, plotnofrom, partbom_partname, mname, pproductcode, convert(varchar(10), case when convert(varchar(5), pscandate, 108) >= '00:00' 
+                    and convert(varchar(5), pscandate, 108) < '07:25' then pscandate - 1 else pscandate end, 111), psplit1, pshift
+                order by convert(varchar(10), case when convert(varchar(5), pscandate, 108) >= '00:00' 
+                    and convert(varchar(5), pscandate, 108) < '07:25' then pscandate - 1 else pscandate end, 111), ppino, plotnofrom, psplit1, pshift";
+
+        $qres = $this->db_pps->query($q)->getResult();
+
+        return $this->db_pps->query($q)->getResult();
+    }
+    
+    
+}

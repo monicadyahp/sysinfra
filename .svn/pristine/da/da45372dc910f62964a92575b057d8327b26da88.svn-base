@@ -1,0 +1,513 @@
+<?php
+
+namespace App\Models\prs_pe;
+
+use CodeIgniter\Model;
+
+date_default_timezone_set("Asia/Jakarta");
+$currentDateTime = date("Y-m-d H:i:s");
+
+class M_RequestPE extends Model
+{
+    // Declare a class property for currentDateTime
+    protected $currentDateTime;
+    private $db_pe;
+    private $db_pps;
+
+    // Constructor to initialize currentDateTime
+    public function __construct()
+    {
+        parent::__construct();  // Call the parent constructor if needed
+
+        // Set the time zone to Indonesian WIB and initialize currentDateTime
+        date_default_timezone_set("Asia/Jakarta");
+        $this->currentDateTime = date("Y-m-d H:i:s");
+
+        if (!$this->db_pe) {
+            $this->db_pe = db_connect(session()->get("db_pe_postgre"));
+        }
+        if (!$this->db_pps) {
+            $this->db_pps = db_connect("db_pps");
+        }
+    }
+
+    public function get_fiscalyear()
+    {
+        // var_dump(session()->get("db_pe_postgre"));
+        // die();
+        return $this->db_pe->query("SELECT * FROM mfy WHERE CURRENT_DATE BETWEEN startdate AND enddate")->getRow();
+    }
+
+    public function get_listheader($fiscal_year, $request_type)
+    {
+        $filter = $fiscal_year == 'ALL' ? "" : " AND prhfy = $fiscal_year";
+        $filter .= $request_type == "ALL" ? "" : " AND prhreqtype='$request_type'";
+
+        $user_section = session()->get("user_info")["EM_SectionCode"];
+        $position = session()->get("user_info")["EM_PositionCode"];
+        $assman_below = [5, 6, 7, 8, 9, 10, 12, 19, 21];
+        // if user is not System
+        if (!($user_section >= 5400 && $user_section <= 5412)) {
+            // jika ass manager keatas
+            if (!in_array($position, $assman_below)) {
+                $filter .= " AND prhreqsectcode::text LIKE '" . substr($user_section, 0, 2) . "%'";
+            } else {
+                $filter .= " AND prhreqsectcode = $user_section";
+            }
+        }
+
+        return $this->db_pe->query("SELECT pe_requesthd.*, TO_CHAR(prhissuedate, 'YYYY-MM-DD') AS prhissuedate,
+            TO_CHAR(prhreqapprovedate, 'YYYY-MM-DD') AS prhreqapprovedate, TO_CHAR(prhpeapprovedate, 'YYYY-MM-DD') AS prhpeapprovedate, 
+            TO_CHAR(prhcanceldate, 'YYYY-MM-DD') AS prhcanceldate, TO_CHAR(prhlastupdate, 'YYYY-MM-DD') AS prhlastupdate, 
+            TO_CHAR(prhreqfinishdate, 'YYYY-MM-DD') AS prhreqfinishdate, sec_shortsectname, processhdname, badgecolor, yesprocessid
+            FROM pe_requesthd LEFT JOIN tbmst_section ON sec_sectioncode = prhreqsectcode 
+            LEFT JOIN mprocesshdr ON processhdid = prhprocessid 
+            WHERE COALESCE(prhprocessid, 0) <> 25 $filter ORDER BY prhid DESC")->getResult();
+    }
+
+    public function get_header($id)
+    {
+        $filter = "";
+        $user_section = session()->get("user_info")["EM_SectionCode"];
+        $position = session()->get("user_info")["EM_PositionCode"];
+        $assman_below = [5, 6, 7, 8, 9, 10, 12, 19, 21];
+        // if user is not System
+        if (!($user_section >= 5400 && $user_section <= 5412)) {
+            // jika ass manager keatas
+            if (!in_array($position, $assman_below)) {
+                $filter .= " AND prhreqsectcode::text LIKE '" . substr($user_section, 0, 2) . "%'";
+            } else {
+                $filter .= " AND prhreqsectcode = $user_section";
+            }
+        }
+
+        return $this->db_pe->query("SELECT *,
+            CASE 
+                WHEN prhfilename IS NOT NULL AND prhfilename <> '' THEN 
+                    LEFT(prhfilename, 2) || '...' || 
+                    SUBSTRING(SPLIT_PART(prhfilename, '.', 1) FROM LENGTH(SPLIT_PART(prhfilename, '.', 1)) - 2 FOR 3) || 
+                    '.' || 
+                    SPLIT_PART(prhfilename, '.', 2)
+                ELSE prhfilename
+            END AS prhfilename_ellipsis 
+            FROM pe_requesthd 
+            LEFT JOIN tbmst_section ON sec_sectioncode = prhreqsectcode 
+            LEFT JOIN mprocesshdr ON processhdid = prhprocessid
+            WHERE prhid = $id AND COALESCE(prhprocessid, 0) <> 25 $filter")->getRow();
+    }
+
+    public function get_detail($header_id)
+    {
+        if (empty($header_id)) {
+            return [];
+        }
+
+        return $this->db_pe->query("SELECT d.*,
+            e.em_emplname AS prdfclosename, 
+            CASE WHEN EXISTS (SELECT 1 FROM pe_requestpic p WHERE p.prp_requestid = h.prhid AND p.prp_status  <> 25) THEN 1 ELSE NULL END AS pic,
+            CASE WHEN prhtype = 'Part' AND COALESCE(prhdrawprocess, '') = '' THEN NULL ELSE 1 END AS allset, 
+            CASE 
+                WHEN prdfilename IS NOT NULL AND prdfilename <> '' THEN 
+                    LEFT(prdfilename, 2) || '...' || 
+                    SUBSTRING(SPLIT_PART(prdfilename, '.', 1) FROM LENGTH(SPLIT_PART(prdfilename, '.', 1)) - 2 FOR 3) || 
+                    '.' || 
+                    SPLIT_PART(prdfilename, '.', 2)
+                ELSE prdfilename
+            END AS prdfilename_ellipsis,
+            (   -- only for PRS Part, else hidden
+                SELECT COALESCE(SUM(weight * (progress / 100)), 0) total_progress FROM
+                (SELECT max(a.praprogress) progress, b.weight FROM pe_requestactivity a 
+                LEFT JOIN mprocessdet b ON b.procdetcode = a.praprocessid AND b.processsubgroup = h.prhdrawprocess
+                WHERE a.pradetid = d.prdid AND a.prastatus <> 25 GROUP BY a.praprocessid,b.weight)
+            )
+            FROM pe_requestdt d LEFT JOIN pe_requesthd h ON h.prhid = d.prdhdid
+            LEFT JOIN tbmst_employee e ON e.em_emplcode = d.prdfcloseby
+            WHERE d.prdhdid = $header_id AND d.prdstatus <> '25' ORDER BY d.prdid DESC")->getResult();
+    }
+
+    public function get_activities($id)
+    {
+        $activities =
+            $this->db_pe->query("SELECT a.processhdid, a.processhdname AS text_status, b.prhprocessid,
+                CASE 
+                    WHEN a.processhdid = 1 THEN 'by ' || e1.em_emplname || ' (' || b.prhrequestorcode || ')'
+                    WHEN a.processhdid = 2 THEN 'by ' || e2.em_emplname || ' (' || b.prhreqapprovecode || ')'
+                    WHEN a.processhdid = 3 THEN 'by ' || e3.em_emplname || ' (' || b.prhpeapprovecode || ')'
+                    WHEN a.processhdid = 4 THEN 'by ' || e4.em_emplname || ' (' || b.prhpcapprovecode || ')'
+                    ELSE NULL 
+                END AS text_by, 
+                CASE 
+                    WHEN a.processhdid = 1 THEN TO_CHAR(b.prhissuedate, 'DD Mon YYYY') 
+                    WHEN a.processhdid = 2 THEN TO_CHAR(b.prhreqapprovedate, 'DD Mon YYYY') 
+                    WHEN a.processhdid = 3 THEN TO_CHAR(b.prhpeapprovedate, 'DD Mon YYYY') 
+                    WHEN a.processhdid = 4 THEN TO_CHAR(b.prhpcapprovedate, 'DD Mon YYYY') 
+                    ELSE NULL
+                END AS date
+            FROM pe_requesthd b 
+            INNER JOIN mprocesshdr a ON a.processhdid <= b.prhprocessid AND a.processhdid NOT IN (9, 10, 15, 100)
+            LEFT JOIN tbmst_employee e1 ON e1.em_emplcode = b.prhrequestorcode 
+            LEFT JOIN tbmst_employee e2 ON e2.em_emplcode = b.prhreqapprovecode 
+            LEFT JOIN tbmst_employee e3 ON e3.em_emplcode = b.prhpeapprovecode 
+            LEFT JOIN tbmst_employee e4 ON e4.em_emplcode = b.prhpcapprovecode 
+            WHERE b.prhid = $id ORDER BY a.processhdid")->getResultArray();
+
+        if ($activities[0]['prhprocessid'] > 5) {
+            $new_row =
+                $this->db_pe->query("SELECT a.processhdid, a.processhdname AS text_status, b.prhprocessid,
+                    'by ' || e.em_emplname || ' (' || b.prhlastuser || ')' AS text_by, 
+                    TO_CHAR(b.prhlastupdate, 'DD Mon YYYY') AS date
+                FROM pe_requesthd b 
+                LEFT JOIN mprocesshdr a ON a.processhdid = b.prhprocessid
+                LEFT JOIN tbmst_employee e ON e.em_emplcode = CAST(b.prhlastuser AS INT)
+                WHERE b.prhid = $id")->getRowArray();
+
+            array_push($activities, $new_row);
+        }
+        // var_dump($activities);
+        // die();
+
+        return $activities;
+    }
+
+    public function get_designprogress($id, $type)
+    {
+        $header  = $this->get_header($id);
+        if ($type == 'Part') {
+            $result = $this->db_pe->query("SELECT (SELECT COALESCE(SUM(total_progress) / 
+                (SELECT COUNT(prdid) FROM pe_requestdt WHERE prdhdid = $id AND prdstatus <> '25'), 0) AS result
+                FROM (SELECT COALESCE(SUM(weight * (praprogress / 100)), 0) AS total_progress 
+                FROM (SELECT d.prdid, b.processdetname, b.weight, MAX(a.praprogress) AS praprogress FROM pe_requestdt d
+                LEFT JOIN pe_requestactivity a ON a.pradetid = d.prdid
+                LEFT JOIN mprocessdet b ON b.procdetcode = a.praprocessid
+                WHERE prdhdid = $id AND prdstatus <> '25' AND b.processsubgroup = '$header->prhdrawprocess'
+                AND a.prastatus <> 25 AND COALESCE(d.prdfclosedate, NULL) IS NULL
+                GROUP BY d.prdid, b.processdetname, b.weight) subquery GROUP BY prdid, weight) outer_query) +
+                (SELECT ((100.0 * COUNT(CASE WHEN COALESCE(prdfclosedate, NULL) IS NOT NULL THEN prdid END))/
+                COUNT(prdid)) FROM pe_requestdt WHERE prdhdid = $id AND prdstatus <> '25') AS total_progress")->getRow();
+        } else if ($type == 'Project') {
+            $result = $this->db_pe->query("WITH ProcessedData AS (
+                    SELECT praprocessid,
+                        CASE 
+                            WHEN praprocessid = 6111 THEN prhdesigningdetail 
+                            WHEN praprocessid = 6112 THEN prhnewdrawingpart 
+                            WHEN praprocessid = 6113 THEN prhtoolingprocess 
+                            WHEN praprocessid = 6114 THEN prhassembling 
+                            WHEN praprocessid = 6115 THEN prhtrial 
+                            WHEN praprocessid = 6116 THEN prhtoolapproval 
+                            WHEN praprocessid = 6117 THEN prhpreparingdrawing 
+                            WHEN praprocessid = 6118 THEN prhmanualoperatingbook 
+                            ELSE 0 
+                        END AS process_value, MAX(praprogress) / 100 AS max_progress
+                    FROM pe_requestactivity LEFT JOIN pe_requesthd ON prhid = prahdid 
+                    WHERE prahdid = $id AND prastatus <> 25
+                    GROUP BY praprocessid, prhdesigningdetail, prhnewdrawingpart, prhtoolingprocess, prhassembling, prhtrial, prhtoolapproval, 
+                        prhpreparingdrawing, prhmanualoperatingbook
+                )
+                SELECT SUM(process_value * max_progress) AS total_progress FROM ProcessedData")->getRow();
+        } else {
+            $result = $this->db_pe->query("SELECT COALESCE(SUM(weight * (progress / 100)), 0) AS total_progress FROM
+                (SELECT max(a.praprogress) progress, b.weight FROM pe_requestactivity a 
+                LEFT JOIN mprocessdet b ON b.procdetcode = a.praprocessid
+                WHERE a.prahdid = $id AND a.prastatus <> 25 GROUP BY a.praprocessid,b.weight)")->getRow();
+        }
+        return $result->total_progress;
+    }
+
+    public function get_partstatus()
+    {
+        return $this->db_pps->query("SELECT * FROM JSTPEDB.dbo.M_PartStatus ORDER BY PS_ID")->getResult();
+    }
+
+    public function get_reworktype()
+    {
+        return $this->db_pps->query("SELECT * FROM JSTPEDB.dbo.M_ReworkType ORDER BY R_ID")->getResult();
+    }
+
+    public function save_header($data, $attachment)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $empl_code = session()->get("user_info")["EM_EmplCode"];
+
+        $id = $data["prhid"];
+        unset($data["prhid"]);
+
+        // only run when save data for the first time
+        // for generate Request Number
+        if (isset($data["prhreqtype"])) {
+            $info = $this->db_pe->query("SELECT * FROM tbmst_employee 
+                LEFT JOIN tbmst_section ON sec_sectioncode = em_sectioncode 
+                LEFT JOIN mreqinitial ON sectcodestart <= sec_sectioncode AND sectcodeend >= sec_sectioncode
+                WHERE em_emplcode = $empl_code")->getRowArray();
+
+            // initial code departemen belum dibuat  oleh PE
+            if (empty($info["initialcode"])) {
+                return array("status" => "", "message" => "Initial code for your department does not exist, please contact PE.");
+            }
+
+            // get fiscal year
+            $data["prhfy"] = $this->db_pe->table("mfy")
+                ->select("fy")
+                ->where("startdate <=", $data["prhissuedate"])
+                ->where("enddate >=", $data["prhissuedate"])
+                ->get()->getRowArray()["fy"];
+
+            // get department request sequence
+            $query = "SELECT COALESCE(MAX(prhseqnumber), 0) + 1 AS seq FROM pe_requesthd WHERE prhfy = ? AND prhdeptinitial = ? AND prhreqtype = ?";
+            $data["prhseqnumber"] = $this->db_pe->query($query, [$data["prhfy"], $info["initialcode"], $data["prhreqtype"]])->getRowArray()["seq"];
+
+            // generate request number
+            $data["prhreqnumber"] = $info["initialcode"] . "-" . substr($data["prhfy"], -2) . "-" . str_pad($data["prhseqnumber"], 3, "0", STR_PAD_LEFT);
+            if ($data["prhreqtype"] == "ERS") {
+                $data["prhreqnumber"] = "ERS-" . $data["prhreqnumber"];
+            }
+
+            $data["prhreqsectcode"] = $info["em_sectioncode"];
+            $data["prhdeptinitial"] = $info["initialcode"];
+            $data["prhprocessid"] = 1;
+            $data["prhcreateddate"] = date("Y-m-d H:i:s");
+        };
+
+        $data["prhrequestorcode"] = $empl_code;
+        $data["prhlastuser"] = $empl_code;
+        $data["prhlastupdate"] = date("Y-m-d H:i:s");
+
+        // default weight for PRS Project only
+        $project_weight = $this->db_pe->query("SELECT * FROM mprocessdet WHERE processsubgroup = 'Design' ORDER BY procdetcode")->getResult();
+        foreach ($project_weight as $weight) {
+            $data[$weight->weightmapping] = $data["prhtype"] == "Project" ? $weight->weight : null;
+        }
+
+        // Upload attachment
+        if ($attachment && $attachment->isValid() && !$attachment->hasMoved()) {
+            // Check if the uploaded file is a PDF
+            if ($attachment->getClientMimeType() !== 'application/pdf') {
+                return $this->response->setJSON(['status' => '', 'message' => 'Only PDF files are allowed.']);
+            }
+
+            // Define the upload path dynamically
+            if (!isset($data["prhreqtype"])) { // jika data baru
+                $header = $this->get_header($id);
+                $data["prhreqtype"] = $header->prhreqtype;
+            }
+            if (!isset($data["prhfy"])) { // jika data lama (update)
+                $header = $this->get_header($id);
+                $data["prhfy"] = $header->prhfy;
+            }
+            $upload_path = '/mnt/data/attachment/' . $data["prhfy"] . '/' . $data["prhreqtype"];
+
+            // Ensure the directory exists
+            if (!is_dir($upload_path)) {
+                if (!mkdir($upload_path, 0777, true) && !is_dir($upload_path)) {
+                    return $this->response->setJSON(['status' => '', 'message' => sprintf('Directory "%s" was not created', $upload_path)]);
+                }
+            }
+
+            $new_name = $data["prhreqnumber"] . '.' . $attachment->getClientExtension();
+            $file_path = $upload_path . '/' . $new_name;
+            if (file_exists($file_path)) {
+                // remove file if exists 
+                if (!unlink($file_path)) {
+                    return $this->response->setJSON(['status' => '', 'message' => 'Failed to remove existing file.']);
+                }
+            }
+
+            // upload file
+            if ($attachment->move($upload_path, $new_name)) {
+                $data["prhfilename"] = $new_name; // Store the filename
+            } else {
+                return $this->response->setJSON(['status' => '', 'message' => 'File upload failed.']);
+            }
+        }
+
+        $equipmentcode = $this->db_pps->query(
+            "SELECT EQ_Code, EQ_Name, EQ_No FROM JSTPEDB.dbo.TBMST_Equipment 
+            WHERE EQ_Name = :prhequipmentname: AND EQ_No = :prhequipmentno:",
+            ['prhequipmentname' => $data["prhequipmentname"], 'prhequipmentno' => $data["prhequipmentno"]]
+        )->getRow();
+        $data["prhequipmentcode"] = $equipmentcode ? $equipmentcode->EQ_Code : null;
+
+        if (empty($id)) {
+            $this->db_pe->table("pe_requesthd")->insert($data);
+            $id = $this->db_pe->insertID();
+        } else {
+            $this->db_pe->table("pe_requesthd")->where("prhid", $id)->update($data);
+            if (isset($data["prhtype"]) && $data["prhtype"] == 'Project') {
+                $delete_detail = [
+                    "prdstatus" => 25,
+                    "prdlastuser" => $empl_code,
+                    "prdlastupdate" => date("Y-m-d H:i:s")
+                ];
+                $this->db_pe->table("pe_requestdt")->where("prdhdid", $id)->update($delete_detail);
+            }
+        }
+
+        $this->update_header($id);
+
+        return array("status" => "success", "message" => "", "id" => $id);
+    }
+
+    public function post_header($id)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $process_id = $this->db_pe->query("SELECT yesprocessid FROM mprocesshdr LEFT JOIN pe_requesthd ON prhprocessid = processhdid WHERE prhid = $id")->getRow();
+        $empl_code = session()->get("user_info")["EM_EmplCode"];
+        $this->db_pe->table("pe_requesthd")->where("prhid", $id)->update(
+            [
+                "prhprocessid" => $process_id->yesprocessid,
+                "prhlastupdate" => date("Y-m-d H:i:s"),
+                "prhlastuser" => $empl_code
+            ]
+        );
+        return array("status" => "success", "message" => "");
+    }
+
+    public function delete_header($id)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $empl_code = session()->get("user_info")["EM_EmplCode"];
+        $this->db_pe->table("pe_requesthd")->where("prhid", $id)->update(["prhprocessid" => 25, "prhlastupdate" => date("Y-m-d H:i:s"), "prhlastuser" => $empl_code]);
+        return array("status" => "success", "message" => "");
+    }
+
+    public function save_detail($data)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $id = $data["prdid"];
+        unset($data["prdid"]);
+        $data["prdstatus"] = 1;
+        $data["prdlastuser"] = session()->get("user_info")["EM_EmplCode"];
+        $data["prdlastupdate"] = date("Y-m-d H:i:s");
+
+        if (empty($id)) {
+            $this->db_pe->table("pe_requestdt")->insert($data);
+        } else {
+            $this->db_pe->table("pe_requestdt")->where("prdid", $id)->update($data);
+        }
+
+        $this->update_header($data["prdhdid"]);
+        return array("status" => "success", "message" => "");
+    }
+
+    public function delete_detail($id, $hdr_id)
+    {
+        if (!session()->get("login")) {
+            return array("status" => "", "message" => "Your session has expired. Please login again.");
+        }
+
+        $empl_code = session()->get("user_info")["EM_EmplCode"];
+        $this->db_pe->table("pe_requestdt")->where("prdid", $id)->update(["prdstatus" => 25, "prdlastupdate" => date("Y-m-d H:i:s"), "prdlastuser" => $empl_code]);
+        $this->update_header($hdr_id);
+        return array("status" => "success", "message" => "");
+    }
+
+    public function get_partdata($param_search, $prhid, $prdid, $limit, $offset)
+    {
+        if (empty($param_search) && empty($prdid)) {
+            return ['items' => [], 'hasMore' => false];
+        }
+
+        // Example query for when the search term is present
+        if (!empty($param_search)) {
+            $query = $this->db_pe->query("SELECT * FROM msparepart WHERE 
+                mms_partcode NOT IN (SELECT prdpartcode FROM pe_requestdt WHERE prdhdid = $prhid AND prdstatus <> '25') AND
+                (LOWER(mms_drawingnumber) LIKE ? OR LOWER(mms_partname) LIKE ?) AND COALESCE(mms_drawingnumber, '') <> ''
+                LIMIT ? OFFSET ?", ['%' . strtolower($param_search) . '%', '%' . strtolower($param_search) . '%', $limit, $offset]);
+
+            $items = $query->getResultArray();
+
+            // Check if there are more results
+            $hasMore = count($items) === $limit;
+
+            return ['items' => $items, 'hasMore' => $hasMore];
+        }
+
+        // Your existing query when `prdid` is provided
+        $query = $this->db_pe->query("SELECT prdpartcode AS mms_partcode, prdpartname AS mms_partname, 
+            prddrawingno AS mms_drawingnumber, prdpartno AS mms_partnumber 
+            FROM pe_requestdt WHERE prdid = $prdid AND prdstatus <> '25' 
+            LIMIT ? OFFSET ?", [$limit, $offset]);
+
+        $items = $query->getResultArray();
+
+        // Adjust `hasMore` based on the result count
+        $hasMore = count($items) === $limit;
+
+        return ['items' => $items, 'hasMore' => $hasMore];
+    }
+
+    public function get_selectedpart($prdid)
+    {
+        return $this->db_pe->query("SELECT prdpartcode AS mms_partcode, prdpartname AS mms_partname, 
+            prddrawingno AS mms_drawingnumber, prdpartno AS mms_partnumber 
+            FROM pe_requestdt WHERE prdid = $prdid AND prdstatus <> '25'")->getResultArray();
+    }
+
+    public function get_requestdetail($prdid)
+    {
+        return $this->db_pe->query("SELECT * FROM pe_requestdt LEFT JOIN pe_requesthd ON prhid = prdhdid WHERE prdid = $prdid")->getRow();
+    }
+
+    private function update_header($id)
+    {
+        $data_detail = $this->db_pe->query("SELECT COALESCE(COUNT(*), 0) total_kind, COALESCE(SUM(prdqty), 0) total_qty FROM pe_requestdt 
+            WHERE prdhdid = $id AND prdstatus <> '25'")->getRow();
+        $this->db_pe->table("pe_requesthd")->where("prhid", $id)->update(
+            [
+                "prhtotalkind" => $data_detail->total_kind,
+                "prhtotalqty" => $data_detail->total_qty
+            ]
+        );
+    }
+
+    public function get_activity($header_id, $detail_id)
+    {
+        if (empty($header_id) && empty($detail_id)) {
+            return [];
+        }
+
+        if (empty($detail_id)) {
+            // ini belum!
+            return $this->db_pe->query("WITH RankedRows AS (
+                    SELECT a.praactdate, p.processdetname, a.praprogress, a.pralastupdate,
+                    ROW_NUMBER() OVER (PARTITION BY p.processdetname ORDER BY a.pralastupdate DESC) AS RowNum 
+                    FROM pe_requestactivity a 
+                    LEFT JOIN mprocessdet p ON p.procdetcode = a.praprocessid 
+                    LEFT JOIN tbmst_employee e ON e.em_emplcode = a.praemplcode
+                    WHERE prahdid = $header_id AND prastatus <> 25
+                ) SELECT * FROM RankedRows WHERE RowNum = 1 ORDER BY pralastupdate DESC")->getResult();
+        }
+
+        // PRS part
+        return $this->db_pe->query("WITH RankedRows AS (
+                SELECT a.praactdate, p.processdetname, a.praprogress, a.pralastupdate,
+                ROW_NUMBER() OVER (PARTITION BY p.processdetname ORDER BY a.pralastupdate DESC) AS RowNum 
+                FROM pe_requestactivity a
+                LEFT JOIN mprocessdet p ON p.procdetcode = a.praprocessid 
+                LEFT JOIN tbmst_employee e ON e.em_emplcode = a.praemplcode
+                LEFT JOIN pe_requesthd h ON h.prhid = a.prahdid
+                WHERE pradetid = $detail_id AND p.processsubgroup = h.prhdrawprocess AND prastatus <> 25
+            ) SELECT * FROM RankedRows WHERE RowNum = 1 ORDER BY pralastupdate DESC")->getResult();
+    }
+
+    public function get_equipment()
+    {
+        $res = $this->db_pps->query("SELECT te.EQ_Code, te.EQ_Name, te.EQ_No, tes.ES_Name, tet.ET_Name FROM JSTPEDB.dbo.TBMST_Equipment te 
+            LEFT JOIN JSTPEDB.dbo.TBMST_EquipmentSeries tes ON te.EQ_SeriesID = tes.ES_ID 
+            LEFT JOIN JSTPEDB.dbo.TBMST_EquipmentType tet ON te.EQ_TypeID = tet.ET_ID")->getResult();
+        // var_dump($res);
+        // die();
+        return $res;
+    }
+}
