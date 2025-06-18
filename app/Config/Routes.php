@@ -144,56 +144,68 @@ $routes->get('/SoftwareLicense/getEmployeeData', 'SoftwareLicense\SoftwareLicens
 $routes->get('/SoftwareLicense/exportExcel', 'SoftwareLicense\SoftwareLicenseController::exportExcel');
 
 
-// 14-05 transaksi handover
-// Transaksi Handover
-$routes->get('/TransHandover', 'TransHandover\TransHandoverController::index');
-$routes->get('/TransHandover/getHandoverData', 'TransHandover\TransHandoverController::getHandoverData');
-$routes->get('/TransHandover/getHandoverDetailData', 'TransHandover\TransHandoverController::getHandoverDetailData');
-$routes->get('/TransHandover/getHandoverById', 'TransHandover\TransHandoverController::getHandoverById');
-$routes->get('/TransHandover/getHandoverDetailById', 'TransHandover\TransHandoverController::getHandoverDetailById');
-$routes->get('/TransHandover/checkRecordNoExists', 'TransHandover\TransHandoverController::checkRecordNoExists');
-$routes->get('/TransHandover/searchEmployees', 'TransHandover\TransHandoverController::searchEmployees');
-$routes->get('/TransHandover/searchSystemEmployees', 'TransHandover\TransHandoverController::searchSystemEmployees');
-$routes->get('/TransHandover/getEmployeeDetails', 'TransHandover\TransHandoverController::getEmployeeDetails');
-$routes->get('TransHandover/searchAssets', 'TransHandover\TransHandoverController::searchAssets');
-$routes->get('TransHandover/getEquipmentByAssetNo', 'TransHandover\TransHandoverController::getEquipmentByAssetNo');
-$routes->get('TransHandover/searchEquipmentBySerialNumber', 'TransHandover\TransHandoverController::searchEquipmentBySerialNumber');
-$routes->get('TransHandover/getEquipmentBySerialNumber', 'TransHandover\TransHandoverController::getEquipmentBySerialNumber');
-$routes->get('/TransHandover/getEquipmentCategories', 'TransHandover\TransHandoverController::getEquipmentCategories');
-$routes->post('/TransHandover/addHandover', 'TransHandover\TransHandoverController::storeHandover');
-$routes->post('/TransHandover/addHandoverDetail', 'TransHandover\TransHandoverController::storeHandoverDetail');
-$routes->post('/TransHandover/updateHandover', 'TransHandover\TransHandoverController::updateHandover');
-$routes->post('/TransHandover/updateHandoverDetail', 'TransHandover\TransHandoverController::updateHandoverDetail');
-$routes->post('/TransHandover/deleteHandover', 'TransHandover\TransHandoverController::deleteHandover');
-$routes->post('/TransHandover/deleteHandoverDetail', 'TransHandover\TransHandoverController::deleteHandoverDetail');
-$routes->get('/TransHandover/export_pdf', 'TransHandover\TransHandoverController::export_pdf');
+// // 14-05 transaksi handover
+// // Transaksi Handover
+// $routes->get('/TransHandover', 'TransHandover\TransHandoverController::index');
+// $routes->get('/TransHandover/getHandoverData', 'TransHandover\TransHandoverController::getHandoverData');
+// $routes->get('/TransHandover/getHandoverDetailData', 'TransHandover\TransHandoverController::getHandoverDetailData');
+// $routes->get('/TransHandover/getHandoverById', 'TransHandover\TransHandoverController::getHandoverById');
+// $routes->get('/TransHandover/getHandoverDetailById', 'TransHandover\TransHandoverController::getHandoverDetailById');
+// $routes->get('/TransHandover/checkRecordNoExists', 'TransHandover\TransHandoverController::checkRecordNoExists');
+// $routes->get('/TransHandover/searchEmployees', 'TransHandover\TransHandoverController::searchEmployees');
+// $routes->get('/TransHandover/searchSystemEmployees', 'TransHandover\TransHandoverController::searchSystemEmployees');
+// $routes->get('/TransHandover/getEmployeeDetails', 'TransHandover\TransHandoverController::getEmployeeDetails');
+// $routes->get('TransHandover/searchAssets', 'TransHandover\TransHandoverController::searchAssets');
+// $routes->get('TransHandover/getEquipmentByAssetNo', 'TransHandover\TransHandoverController::getEquipmentByAssetNo');
+// $routes->get('TransHandover/searchEquipmentBySerialNumber', 'TransHandover\TransHandoverController::searchEquipmentBySerialNumber');
+// $routes->get('TransHandover/getEquipmentBySerialNumber', 'TransHandover\TransHandoverController::getEquipmentBySerialNumber');
+// $routes->get('/TransHandover/getEquipmentCategories', 'TransHandover\TransHandoverController::getEquipmentCategories');
+// $routes->post('/TransHandover/addHandover', 'TransHandover\TransHandoverController::storeHandover');
+// $routes->post('/TransHandover/addHandoverDetail', 'TransHandover\TransHandoverController::storeHandoverDetail');
+// $routes->post('/TransHandover/updateHandover', 'TransHandover\TransHandoverController::updateHandover');
+// $routes->post('/TransHandover/updateHandoverDetail', 'TransHandover\TransHandoverController::updateHandoverDetail');
+// $routes->post('/TransHandover/deleteHandover', 'TransHandover\TransHandoverController::deleteHandover');
+// $routes->post('/TransHandover/deleteHandoverDetail', 'TransHandover\TransHandoverController::deleteHandoverDetail');
+// $routes->get('/TransHandover/export_pdf', 'TransHandover\TransHandoverController::export_pdf');
 
 
 
-// // 09-05 Handover Transaction
-// $routes->group('TransHandover', ['namespace' => 'App\Controllers\TransHandover'], function ($routes) {
-//     $routes->get('/', 'TransHandoverController::index');
-//     $routes->get('getHandoverData', 'TransHandoverController::getHandoverData');
-//     $routes->get('getHandoverById', 'TransHandoverController::getHandoverById');
-//     $routes->post('storeHandover', 'TransHandoverController::storeHandover');
-//     $routes->post('updateHandover', 'TransHandoverController::updateHandover');
-//     $routes->post('deleteHandover', 'TransHandoverController::deleteHandover');
-//     $routes->get('VerifyRecordNo', 'TransHandoverController::VerifyRecordNo');
-//     $routes->get('getHandoverDetailData', 'TransHandoverController::getHandoverDetailData');
-//     $routes->get('getHandoverDetailById', 'TransHandoverController::getHandoverDetailById');
-//     $routes->post('storeHandoverDetail', 'TransHandoverController::storeHandoverDetail');
-//     $routes->post('updateHandoverDetail', 'TransHandoverController::updateHandoverDetail');
-//     $routes->post('deleteHandoverDetail', 'TransHandoverController::deleteHandoverDetail');
-//     $routes->get('getEmployees', 'TransHandoverController::getEmployees');
-//     $routes->get('searchEmployees', 'TransHandoverController::searchEmployees');
-//     $routes->get('getSystemEmployees', 'TransHandoverController::getSystemEmployees');
-//     $routes->get('getEquipmentByAssetNo', 'TransHandoverController::getEquipmentByAssetNo');
-//     $routes->get('searchEquipmentByAssetNo', 'TransHandoverController::searchEquipmentByAssetNo');
-//     $routes->get('getEquipmentBySerialNumber', 'TransHandoverController::getEquipmentBySerialNumber');
-//     $routes->get('searchEquipmentBySerialNumber', 'TransHandoverController::searchEquipmentBySerialNumber');
-//     $routes->get('GetCategories', 'TransHandoverController::GetCategories');
-// });
+// 09-05 Handover Transaction
+$routes->group('TransHandover', ['namespace' => 'App\Controllers\TransHandover'], function ($routes) {
+    $routes->get('/', 'TransHandoverController::index');
+    $routes->get('getHandoverData', 'TransHandoverController::getHandoverData');
+    $routes->get('getHandoverById', 'TransHandoverController::getHandoverById');
+    $routes->post('storeHandover', 'TransHandoverController::storeHandover');
+    $routes->post('updateHandover', 'TransHandoverController::updateHandover');
+    $routes->post('deleteHandover', 'TransHandoverController::deleteHandover');
+    
+    // Perubahan: Mengganti VerifyRecordNo menjadi checkRecordNoExists agar sesuai dengan nama fungsi di controller lama
+    $routes->get('checkRecordNoExists', 'TransHandoverController::checkRecordNoExists'); 
 
+    $routes->get('getHandoverDetailData', 'TransHandoverController::getHandoverDetailData');
+    $routes->get('getHandoverDetailById', 'TransHandoverController::getHandoverDetailById');
+    $routes->post('storeHandoverDetail', 'TransHandoverController::storeHandoverDetail');
+    $routes->post('updateHandoverDetail', 'TransHandoverController::updateHandoverDetail');
+    $routes->post('deleteHandoverDetail', 'TransHandoverController::deleteHandoverDetail');
+    
+    // Menggunakan getEmployeeDetails agar konsisten dengan penamaan di controller lama
+    $routes->get('getEmployeeDetails', 'TransHandoverController::getEmployeeDetails'); 
+    $routes->get('searchEmployees', 'TransHandoverController::searchEmployees');
+    // Menggunakan searchSystemEmployees agar konsisten dengan penamaan di controller lama
+    $routes->get('searchSystemEmployees', 'TransHandoverController::searchSystemEmployees'); 
+
+    // Menggunakan searchAssets agar konsisten dengan penamaan di controller lama
+    $routes->get('searchAssets', 'TransHandoverController::searchAssets'); 
+    $routes->get('getEquipmentByAssetNo', 'TransHandoverController::getEquipmentByAssetNo');
+    $routes->get('searchEquipmentBySerialNumber', 'TransHandoverController::searchEquipmentBySerialNumber');
+    $routes->get('getEquipmentBySerialNumber', 'TransHandoverController::getEquipmentBySerialNumber');
+    
+    // Menggunakan getEquipmentCategories agar konsisten dengan penamaan di controller lama
+    $routes->get('getEquipmentCategories', 'TransHandoverController::getEquipmentCategories'); 
+
+    // Menambahkan kembali rute untuk export PDF
+    $routes->get('export_pdf', 'TransHandoverController::export_pdf');
+});
 
 // New: Master PC Client
 // app/Config/Routes.php
