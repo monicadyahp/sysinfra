@@ -2,11 +2,11 @@
 
 namespace App\Controllers\TransHandover;
 
-use App\Controllers\BaseController;    
+use App\Controllers\BaseController; 
 use App\Models\transhandover\TransHandoverModel;
-use FPDF; // Tambahkan ini karena fungsi export_pdf menggunakannya
+use FPDF;
 
-require_once APPPATH . 'ThirdParty/fpdf/fpdf.php'; // Pastikan path ini benar untuk library FPDF Anda
+require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
 
 class TransHandoverController extends BaseController {
     
@@ -51,14 +51,14 @@ class TransHandoverController extends BaseController {
         $formattedData = [];
         foreach ($handoverData as $handover) {
             $formattedData[] = [
-                'th_recordno'        => $handover->th_recordno,
-                'th_requestdate'     => $handover->th_requestdate,
-                'th_empno_rep'       => $handover->th_empno_rep,
-                'th_empname_rep'     => $handover->th_empname_rep,
+                'th_recordno'    => $handover->th_recordno,
+                'th_requestdate' => $handover->th_requestdate,
+                'th_empno_rep'   => $handover->th_empno_rep,
+                'th_empname_rep' => $handover->th_empname_rep,
                 'th_sectioncode_rep' => $handover->th_sectioncode_rep,
-                'section_name'       => $handover->section_name,
-                'th_purpose'         => $handover->th_purpose,
-                'th_reason'          => $handover->th_reason,
+                'section_name'   => $handover->section_name,
+                'th_purpose'     => $handover->th_purpose,
+                'th_reason'      => $handover->th_reason,
             ];
         }
         
@@ -105,7 +105,7 @@ class TransHandoverController extends BaseController {
         
         if (empty($id)) {
             return $this->response->setJSON([
-                'status' => false,    
+                'status' => false, 
                 'message' => 'Detail ID is required'
             ]);
         }
@@ -125,20 +125,18 @@ class TransHandoverController extends BaseController {
         }
     }
     
-    // Perubahan: Mengganti VerifyRecordNo menjadi checkRecordNoExists
-    public function checkRecordNoExists() // Sesuai dengan routes dan fungsi lama
+    public function checkRecordNoExists()
     {
         $recordNo = $this->request->getGet('recordNo');
         
         if (empty($recordNo)) {
             return $this->response->setJSON([
-                'status' => false,    
+                'status' => false, 
                 'message' => 'Record number is required'
             ]);
         }
         
-        // Panggil fungsi VerifyRecordNo di model (akan kita sesuaikan nanti di model)
-        $exists = $this->TransHandoverModel->VerifyRecordNo($recordNo); 
+        $exists = $this->TransHandoverModel->checkRecordNoExists($recordNo);
         
         return $this->response->setJSON([
             'status' => true,
@@ -151,7 +149,7 @@ class TransHandoverController extends BaseController {
         $data = $this->request->getPost();
         
         // Validate input
-        if (empty($data['record_no']) || empty($data['request_date']) || empty($data['employee_no']) ||    
+        if (empty($data['record_no']) || empty($data['request_date']) || empty($data['employee_no']) || 
             empty($data['purpose_content'])) {
             return $this->response->setJSON([
                 'status' => false,
@@ -165,14 +163,14 @@ class TransHandoverController extends BaseController {
         if ($existingRecord && $existingRecord->th_status == 25) {
             // The record exists but is marked as deleted, so we'll reactivate it
             $updateData = [
-                'record_no'        => $data['record_no'],
-                'request_date'     => $data['request_date'],
-                'employee_no'      => $data['employee_no'],
-                'employee_name'    => $data['employee_name'],
-                'section_code'     => $data['section_code'],
-                'purpose_content'  => $data['purpose_content'],
-                'reason_content'   => $data['reason_content'],
-                'status'           => 1    // Explicitly set status to 1 (active)
+                'record_no'      => $data['record_no'],
+                'request_date'   => $data['request_date'],
+                'employee_no'    => $data['employee_no'],
+                'employee_name'  => $data['employee_name'],
+                'section_code'   => $data['section_code'],
+                'purpose_content'   => $data['purpose_content'],
+                'reason_content' => $data['reason_content'],
+                'status'         => 1  // Explicitly set status to 1 (active)
             ];
             
             $result = $this->TransHandoverModel->updateDeletedRecord($updateData);
@@ -199,7 +197,6 @@ class TransHandoverController extends BaseController {
         // Check if we're adding by asset or serial number
         $addType = $data['add_type'] ?? 'asset';
         
-        // Perbaikan: Validasi berdasarkan add_type, dan memastikan equipment_name ada jika add_type adalah 'equipment'
         if ($addType === 'asset' && empty($data['asset_no'])) {
             return $this->response->setJSON([
                 'status' => false,
@@ -209,25 +206,6 @@ class TransHandoverController extends BaseController {
             return $this->response->setJSON([
                 'status' => false,
                 'message' => 'Serial number is required.'
-            ]);
-        } else if ($addType === 'equipment' && empty($data['equipment_name'])) { // Tambahan validasi untuk 'equipment'
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Equipment name is required when adding by name.'
-            ]);
-        }
-
-        // Validasi delivered_date dan delivered_sic
-        if (empty($data['delivered_date'])) {
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Delivered date is required.'
-            ]);
-        }
-        if (empty($data['delivered_sic_empno'])) { // Perbaikan: Gunakan delivered_sic_empno
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Delivered SIC is required.'
             ]);
         }
         
@@ -240,7 +218,7 @@ class TransHandoverController extends BaseController {
         $data = $this->request->getPost();
         
         // Validate input
-        if (empty($data['record_no']) || empty($data['request_date']) || empty($data['employee_no']) ||    
+        if (empty($data['record_no']) || empty($data['request_date']) || empty($data['employee_no']) || 
             empty($data['purpose_content'])) {
             return $this->response->setJSON([
                 'status' => false,
@@ -270,39 +248,6 @@ class TransHandoverController extends BaseController {
             ]);
         }
         
-        // Perbaikan: Validasi berdasarkan detail_type
-        $detailType = $data['detail_type'] ?? 'asset';
-        if ($detailType === 'asset' && empty($data['asset_no'])) {
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Asset no is required.'
-            ]);
-        } else if ($detailType === 'serial' && empty($data['serial_number'])) {
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Serial number is required.'
-            ]);
-        } else if ($detailType === 'equipment' && empty($data['equipment_name'])) { // Tambahan validasi untuk 'equipment'
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Equipment name is required when editing by name.'
-            ]);
-        }
-
-        // Validasi delivered_date dan delivered_sic
-        if (empty($data['delivered_date'])) {
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Delivered date is required.'
-            ]);
-        }
-        if (empty($data['delivered_sic_empno'])) { // Perbaikan: Gunakan delivered_sic_empno
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Delivered SIC is required.'
-            ]);
-        }
-
         $result = $this->TransHandoverModel->updateHandoverDetailData($data);
         return $this->response->setJSON($result);
     }
@@ -341,8 +286,24 @@ class TransHandoverController extends BaseController {
         }
     }
     
-    // Perubahan: Mengganti getEmployees menjadi getEmployeeDetails
-    public function getEmployeeDetails() // Sesuai dengan routes dan fungsi lama
+    public function searchEmployees()
+    {
+        $search = $this->request->getGet('search') ?? '';
+        $exclude = $this->request->getGet('exclude') ?? '';
+        
+        $employees = $this->TransHandoverModel->searchEmployees($search, $exclude);
+        return $this->response->setJSON($employees);
+    }
+    
+    public function searchSystemEmployees()
+    {
+        $search = $this->request->getGet('search') ?? '';
+        
+        $employees = $this->TransHandoverModel->searchSystemEmployees($search);
+        return $this->response->setJSON($employees);
+    }
+    
+    public function getEmployeeDetails()
     {
         $employeeId = $this->request->getGet('employeeId');
         
@@ -359,22 +320,12 @@ class TransHandoverController extends BaseController {
         }
     }
     
-    public function searchEmployees()
+    public function searchAssets()
     {
         $search = $this->request->getGet('search') ?? '';
-        $exclude = $this->request->getGet('exclude') ?? '';
         
-        $employees = $this->TransHandoverModel->searchEmployees($search, $exclude);
-        return $this->response->setJSON($employees);
-    }
-    
-    // Perubahan: Mengganti getSystemEmployees menjadi searchSystemEmployees
-    public function searchSystemEmployees() // Sesuai dengan routes dan fungsi lama
-    {
-        $search = $this->request->getGet('search') ?? ''; // Mempertahankan parameter search jika nanti dibutuhkan di model, meskipun saat ini tidak dipakai
-        
-        $employees = $this->TransHandoverModel->getSystemEmployees(); // Panggil fungsi getSystemEmployees di model (akan kita sesuaikan nanti)
-        return $this->response->setJSON($employees);
+        $assets = $this->TransHandoverModel->searchAssets($search);
+        return $this->response->setJSON($assets);
     }
     
     public function getEquipmentByAssetNo()
@@ -403,14 +354,12 @@ class TransHandoverController extends BaseController {
         }
     }
 
-    // Perubahan: Mengganti searchEquipmentByAssetNo menjadi searchAssets
-    public function searchAssets() // Sesuai dengan routes dan fungsi lama
+    public function searchEquipmentBySerialNumber()
     {
         $search = $this->request->getGet('search') ?? '';
         
-        // Panggil fungsi searchEquipmentByAssetNo di model (akan kita sesuaikan nanti)
-        $assets = $this->TransHandoverModel->searchEquipmentByAssetNo($search); 
-        return $this->response->setJSON($assets);
+        $equipment = $this->TransHandoverModel->searchEquipmentBySerialNumber($search);
+        return $this->response->setJSON($equipment);
     }
     
     public function getEquipmentBySerialNumber()
@@ -439,23 +388,13 @@ class TransHandoverController extends BaseController {
         }
     }
     
-    public function searchEquipmentBySerialNumber()
+    public function getEquipmentCategories()
     {
-        $search = $this->request->getGet('search') ?? '';
-        
-        $equipment = $this->TransHandoverModel->searchEquipmentBySerialNumber($search);
-        return $this->response->setJSON($equipment);
-    }
-    
-    // Perubahan: Mengganti GetCategories menjadi getEquipmentCategories
-    public function getEquipmentCategories() // Sesuai dengan routes dan fungsi lama
-    {
-        // Panggil fungsi GetCategories di model (akan kita sesuaikan nanti)
-        $categories = $this->TransHandoverModel->GetCategories(); 
+        $categories = $this->TransHandoverModel->getEquipmentCategories();
         return $this->response->setJSON($categories);
     }
 
-    // Menambahkan fungsi export_pdf dari controller lama
+
     public function export_pdf()
     {
         // Membersihkan buffer output untuk memastikan tidak ada output yang tidak diinginkan sebelum pengiriman PDF
@@ -486,45 +425,45 @@ class TransHandoverController extends BaseController {
         $pdf->Cell($text_width, 5, $text, 0, 9, 'L', true);
 
         // Mengatur warna latar belakang menjadi putih dan warna teks menjadi hitam untuk bagian berikutnya
-        $pdf->SetFillColor(255, 255, 255);    
-        $pdf->SetTextColor(0, 0, 0);    
+        $pdf->SetFillColor(255, 255, 255); 
+        $pdf->SetTextColor(0, 0, 0); 
         
         // Memberikan jarak vertikal dan mengatur font untuk bagian perusahaan dan logo
-        $pdf->Ln(2);    
+        $pdf->Ln(2);  
         $pdf->SetFont('Arial', '', 9);
-        $pdf->SetXY(10, $pdf->GetY());            
-        $pdf->Cell(50, 10, 'PT JST INDONESIA', 0, 1, 'L');            
-        $pdf->Image('assets/img/1.png', 75.5, $pdf->GetY()-13, 5, 5);    
+        $pdf->SetXY(10, $pdf->GetY());         
+        $pdf->Cell(50, 10, 'PT JST INDONESIA', 0, 1, 'L');        
+        $pdf->Image('assets/img/1.png', 75.5, $pdf->GetY()-13, 5, 5);  
 
         // Menambahkan judul utama di bagian tengah
-        $pdf->Ln(2);    
+        $pdf->Ln(2); 
         $pdf->SetFont('Arial', 'B', 15);
-        $pdf->SetXY(10, $pdf->GetY());    
+        $pdf->SetXY(10, $pdf->GetY()); 
         $pdf->Cell(5, 3, 'HANDOVER IT EQUIPMENT', 0, 1, 'L');
 
         // Membuat bagian tabel header untuk System dan Approval/Checked/Prepared
-        $pdf->Ln(2);    
-        $pdf->SetFont('Arial', '', 10);    
-        $pdf->SetXY(10, 40);    
+        $pdf->Ln(2); 
+        $pdf->SetFont('Arial', '', 10); 
+        $pdf->SetXY(10, 40); 
         $pdf->Cell(75, 6, 'System', 1, 0, 'C');
-        $pdf->Ln(2);    
-        $pdf->SetFont('Arial', '', 10);    
-        $pdf->SetXY(10, 46);    
+        $pdf->Ln(2); 
+        $pdf->SetFont('Arial', '', 10); 
+        $pdf->SetXY(10, 46); 
         $pdf->Cell(25, 6, 'Approved', 1, 0, 'C');
         $pdf->Cell(25, 6, 'Checked', 1, 0, 'C');
         $pdf->Cell(25, 6, 'Prepared', 1, 0, 'C');
 
         // Membuat kotak kosong untuk tanda tangan atau tanda centang di kolom Approval, Checked, Prepared
-        $pdf->Ln();    
-        $pdf->SetXY(10, $pdf->GetY());    
-        $pdf->Cell(25, 25, '     ', 1, 0, 'C');    
-        $pdf->Cell(25, 25, '     ', 1, 0, 'C');    
-        $pdf->Cell(25, 25, '     ', 1, 0, 'C');    
+        $pdf->Ln();  
+        $pdf->SetXY(10, $pdf->GetY()); 
+        $pdf->Cell(25, 25, '     ', 1, 0, 'C');  
+        $pdf->Cell(25, 25, '     ', 1, 0, 'C');  
+        $pdf->Cell(25, 25, '     ', 1, 0, 'C');  
 
         // Menghitung posisi untuk kolom Requester di kanan
         $pdf->SetXY($pdf->GetX() + 20 * 3, 50);
-        $cellX = 190;    
-        $cellY = 46;    
+        $cellX = 190; 
+        $cellY = 46; 
 
         // Menghitung posisi X untuk Requester berdasarkan margin kanan
         $widthRequester = 32;
@@ -575,15 +514,15 @@ class TransHandoverController extends BaseController {
         $x0 = $pdf->GetX() - $cellW;
         $y0 = $pdf->GetY();
 
-        // Menulis "(dd mm bakal)" di sebelah kiri dengan posisi X yang sudah disesuaikan
-        $pdf->SetXY($x0, $y0);    // Menetapkan posisi X dan Y yang diinginkan
+        // Menulis "(dd mm yyyy)" di sebelah kiri dengan posisi X yang sudah disesuaikan
+        $pdf->SetXY($x0, $y0);  // Menetapkan posisi X dan Y yang diinginkan
         $pdf->SetFont('Arial','B',7);
-        $pdf->Cell(1, 15, '(dd mm bakal)', 0, 0, 'L'); // 'L' untuk rata kiri
+        $pdf->Cell(1, 15, '(dd mm yyyy)', 0, 0, 'L'); // 'L' untuk rata kiri
 
         $pdf->SetFont('Arial','B',10);
 
         // Menyesuaikan posisi X lebih ke kiri
-        $pdf->SetXY($x0 + 0, $y0);    // Menggeser posisi X lebih ke kiri (ubah nilai -5 sesuai kebutuhan)
+        $pdf->SetXY($x0 + 0, $y0);  // Menggeser posisi X lebih ke kiri (ubah nilai -5 sesuai kebutuhan)
         $pdf->Cell(15, 8, 'Request Date', 0, 0, 'L'); // 'L' untuk rata kiri
 
         
@@ -601,10 +540,10 @@ class TransHandoverController extends BaseController {
         $handoverDetails = $this->TransHandoverModel->getHandoverDetailData($recordNo);
 
         // Menampilkan tanggal request
-        $pdf->SetXY(40, $pdf->GetY());    
+        $pdf->SetXY(40, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
         $requestDate = $handover->th_requestdate ? date('d M Y', strtotime($handover->th_requestdate)) : '-';
-        $pdf->Cell(65, 10, $requestDate, 1, 0, 'L');    
+        $pdf->Cell(65, 10, $requestDate, 1, 0, 'L'); 
 
         // Fungsi untuk membagi teks menjadi dua baris agar muat dalam cell
         function CellTwoLines($pdf, $w, $h, $text, $maxChars = 5, $border = 1, $ln = 0, $align = 'L')
@@ -643,24 +582,24 @@ class TransHandoverController extends BaseController {
         $y0 = $pdf->GetY();
 
         // Menulis "(code - name)" di sebelah kiri dengan posisi X yang sudah disesuaikan
-        $pdf->SetXY($x0, $y0);    // Menetapkan posisi X dan Y yang diinginkan
+        $pdf->SetXY($x0, $y0);  // Menetapkan posisi X dan Y yang diinginkan
         $pdf->SetFont('Arial','B',7);
         $pdf->Cell(1, 15, '(code - name)', 0, 0, 'L'); // 'L' untuk rata kiri
 
         $pdf->SetFont('Arial','B',10);
 
         // Menyesuaikan posisi X lebih ke kiri
-        $pdf->SetXY($x0 + 0, $y0);    // Menggeser posisi X lebih ke kiri (ubah nilai -5 sesuai kebutuhan)
+        $pdf->SetXY($x0 + 0, $y0);  // Menggeser posisi X lebih ke kiri (ubah nilai -5 sesuai kebutuhan)
         $pdf->Cell(15, 8, 'User', 0, 0, 'L'); // 'L' untuk rata kiri
 
 
         // Mengambil data user dari database
         $recordNo = $this->request->getGet('recordNo');
-        $handover = $this->TransHandoverModel->getHandoverById($recordNo);    
+        $handover = $this->TransHandoverModel->getHandoverById($recordNo); 
         $handoverDetails = $this->TransHandoverModel->getHandoverDetailData($recordNo);
         
         // Menampilkan nama user yang telah diformat
-        $pdf->SetXY(140, $pdf->GetY());    
+        $pdf->SetXY(140, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
 
         // Fungsi untuk memformat nama user agar tidak terlalu panjang dan tetap terbaca
@@ -671,40 +610,40 @@ class TransHandoverController extends BaseController {
                     $name = $user_parts[1];
                     $name_parts = explode(' ', $name);
                     $formatted_name = '';
-                    $char_count = strlen($user_parts[0] . ' - ');    
+                    $char_count = strlen($user_parts[0] . ' - '); 
                     foreach ($name_parts as $part) {
                         if (($char_count + strlen($part)) <= 29) {
                             $formatted_name .= $part . ' ';
-                            $char_count += strlen($part) + 1;    
+                            $char_count += strlen($part) + 1;  
                         } else {
                             $formatted_name .= ucfirst(substr($part, 0, 1)) . '.';
-                            break;    
+                            break; 
                         }
                     }
                     return $user_parts[0] . ' - ' . trim($formatted_name);
                 }
             }
-            return $user;    
+            return $user;  
         }
         $userDetails = ($handover->th_empno_rep && $handover->th_empname_rep) ? $handover->th_empno_rep . ' - ' . $handover->th_empname_rep : '-';
         $formattedUserDetails = format_user_code_name($userDetails);
-        $pdf->SetXY(140, $pdf->GetY());    
+        $pdf->SetXY(140, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
         $pdf->Cell(60, 10, $formattedUserDetails, 1, 0, 'L');
 
         // Bagian input data record number dan tanggal
-        $pdf->Ln(10);    
-        $pdf->SetXY(10, $pdf->GetY());    
+        $pdf->Ln(10); 
+        $pdf->SetXY(10, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(30, 7, 'Record No. (*)', 1, 0, 'L');    
+        $pdf->Cell(30, 7, 'Record No. (*)', 1, 0, 'L'); 
 
         // Mengambil data lagi dari database untuk record number
         $recordNo = $this->request->getGet('recordNo');
-        $handover = $this->TransHandoverModel->getHandoverById($recordNo);    
+        $handover = $this->TransHandoverModel->getHandoverById($recordNo); 
         $handoverDetails = $this->TransHandoverModel->getHandoverDetailData($recordNo);
 
         // Menampilkan nomor record dan tanggal
-        $pdf->SetXY(40, $pdf->GetY());    
+        $pdf->SetXY(40, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
         $requestDate = $handover->th_recordno ? $handover->th_recordno : '-';
         $pdf->Cell(65, 7, $requestDate, 1, 0, 'L');
@@ -714,13 +653,13 @@ class TransHandoverController extends BaseController {
             if (strlen($section_name) > 29) {
                 return substr($section_name, 0, 25) . '...';
             }
-            return $section_name;    
+            return $section_name; 
         }
 
         // Menampilkan departemen pemohon
-        $pdf->SetXY(105, $pdf->GetY());    
+        $pdf->SetXY(105, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(35, 7, 'Request By Dept.', 1, 0, 'L');    
+        $pdf->Cell(35, 7, 'Request By Dept.', 1, 0, 'L'); 
         $pdf->SetFont('Arial', 'B', 10);
         
         // Mengambil data record dari parameter GET dan data dari database
@@ -734,14 +673,14 @@ class TransHandoverController extends BaseController {
         $pdf->Cell(60, 7, $formattedSectionName, 1, 0, 'L');
         
         // Menambah jarak dan memulai bagian berikutnya
-        $pdf->Ln(6.9);    
+        $pdf->Ln(6.9); 
         $pdf->SetXY(10, $pdf->GetY());
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(30, 7, 'Purpose', 1, 0, 'L');    
+        $pdf->Cell(30, 7, 'Purpose', 1, 0, 'L'); 
 
         // Mengambil data record ulang untuk bagian Purpose
         $recordNo = $this->request->getGet('recordNo');
-        $handover = $this->TransHandoverModel->getHandoverById($recordNo);    
+        $handover = $this->TransHandoverModel->getHandoverById($recordNo); 
         $handoverDetails = $this->TransHandoverModel->getHandoverDetailData($recordNo);
 
         // Fungsi untuk memotong teks purpose agar tidak terlalu panjang
@@ -749,14 +688,14 @@ class TransHandoverController extends BaseController {
             if (strlen($purpose) > 91) {
                 return substr($purpose, 0, 88) . '...';
             }
-            return $purpose;    
+            return $purpose; 
         }
 
         // Menampilkan purpose yang telah diformat
-        $pdf->SetXY(40, $pdf->GetY());    
-        $formattedPurpose = format_purpose($handover->th_purpose);    
-        $pdf->SetFont('Arial', 'B', 10);    
-        $pdf->Cell(160, 7, $formattedPurpose, 1, 0, 'L');    
+        $pdf->SetXY(40, $pdf->GetY()); 
+        $formattedPurpose = format_purpose($handover->th_purpose);  
+        $pdf->SetFont('Arial', 'B', 10);  
+        $pdf->Cell(160, 7, $formattedPurpose, 1, 0, 'L');  
 
         // Fungsi untuk mendapatkan tinggi teks dalam cell (opsional, bisa digunakan untuk penyesuaian)
         function getTextHeight($pdf, $text, $w, $fontSize = 10) {
@@ -789,10 +728,10 @@ class TransHandoverController extends BaseController {
 
         // Mengambil data record lagi untuk alasan ketidaksesuaian
         $recordNo = $this->request->getGet('recordNo');
-        $handover = $this->TransHandoverModel->getHandoverById($recordNo);    
+        $handover = $this->TransHandoverModel->getHandoverById($recordNo); 
         $handoverDetails = $this->TransHandoverModel->getHandoverDetailData($recordNo);
 
-        $pdf->SetXY(40, $pdf->GetY());    
+        $pdf->SetXY(40, $pdf->GetY()); 
         $pdf->SetFont('Arial', 'B', 10);
 
         // Fungsi untuk memformat alasan agar tidak terlalu panjang dan tetap terbaca
@@ -815,8 +754,8 @@ class TransHandoverController extends BaseController {
         $lines = format_reason($handover->th_reason);
         $text = implode("\n", $lines);
         $width = 160;
-        $totalHeight = 10;    
-        $lineHeight = $totalHeight / count($lines);    
+        $totalHeight = 10; 
+        $lineHeight = $totalHeight / count($lines); 
 
         // Menampilkan alasan ketidaksesuaian dalam MultiCell agar otomatis membungkus teks
         $pdf->SetXY(40, $pdf->GetY());
@@ -824,7 +763,7 @@ class TransHandoverController extends BaseController {
         $pdf->MultiCell($width, $lineHeight, $text, 1, 'L');
 
         // Menambahkan bagian Equipment Requested
-        $pdf->Ln(1);    
+        $pdf->Ln(1);  
         $pdf->SetFont('Arial', 'B', 10);
         $pdf->Cell(14, 28, 'No.', 0, 0, 'L'); // 'L' untuk rata kiri
         $pdf->Cell(43, 28, 'Equipment Name', 0, 0, 'L'); // 'L' untuk rata kiri
@@ -832,11 +771,11 @@ class TransHandoverController extends BaseController {
         $pdf->Cell(2, 43, 'Date', 0, 0, 'L'); // 'L' untuk rata kiri
         $pdf->SetFont('Arial', 'B', 8);
 
-        // Menentukan posisi baru untuk (dd mm bakal), lebih ke kiri
+        // Menentukan posisi baru untuk (dd mm yyyy), lebih ke kiri
         $xOffset = -7; // Sesuaikan nilai ini sesuai kebutuhan (lebih kecil = lebih kiri)
 
-        $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());    // Memindahkan posisi lebih ke kiri
-        $pdf->Cell(23.5, 50, '(dd mm bakal)', 0, 0, 'L'); // Menulis "(dd mm bakal)" lebih ke kiri
+        $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());  // Memindahkan posisi lebih ke kiri
+        $pdf->Cell(23.5, 50, '(dd mm yyyy)', 0, 0, 'L'); // Menulis "(dd mm yyyy)" lebih ke kiri
         
         $pdf->SetFont('Arial', 'B', 10);
         $pdf->Cell(14, 43, 'SIC', 0, 0, 'L'); // 'L' untuk rata kiri
@@ -845,24 +784,24 @@ class TransHandoverController extends BaseController {
         // $pdf->Cell(1, 43, 'SIC', 0, 0, 'L'); // 'L' untuk rata kiri
         $pdf->SetFont('Arial', 'B', 8);
         
-        // Menentukan posisi baru untuk "(dd mm bakal)", lebih ke kiri
+        // Menentukan posisi baru untuk "(dd mm yyyy)", lebih ke kiri
         $xOffset = -6.5; // Sesuaikan nilai ini untuk memindahkan lebih ke kiri atau ke kanan (nilai negatif untuk kiri)
         
-        $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());    // Memindahkan posisi lebih ke kiri
-        $pdf->Cell(10, 50, '(dd mm bakal)', 0, 0, 'L'); // Menulis "(dd mm bakal)" lebih ke kiri
+        $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());  // Memindahkan posisi lebih ke kiri
+        $pdf->Cell(10, 50, '(dd mm yyyy)', 0, 0, 'L'); // Menulis "(dd mm yyyy)" lebih ke kiri
         
         
         $pdf->SetFont('Arial', 'B', 10);
         
-        // Menentukan posisi baru untuk "(dd mm bakal)", lebih ke kiri
+        // Menentukan posisi baru untuk "(dd mm yyyy)", lebih ke kiri
         $xOffset = 13.5; // Sesuaikan nilai ini untuk memindahkan lebih ke kiri atau ke kanan (nilai negatif untuk kiri)
         
-        $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());    // Memindahkan posisi lebih ke kiri
-        $pdf->Cell(14, 43, 'SIC', 0, 0, 'L'); // Menulis "(dd mm bakal)" lebih ke kiri
-        $pdf->Cell(14, 43, 'User', 0, 0, 'L'); // Menulis "(dd mm bakal)" lebih ke kiri
+        $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());  // Memindahkan posisi lebih ke kiri
+        $pdf->Cell(14, 43, 'SIC', 0, 0, 'L'); // Menulis "(dd mm yyyy)" lebih ke kiri
+        $pdf->Cell(14, 43, 'User', 0, 0, 'L'); // Menulis "(dd mm yyyy)" lebih ke kiri
 
         $pdf->SetFont('Arial', '', 10);
-        $pdf->SetXY(10, $pdf->GetY());    
+        $pdf->SetXY(10, $pdf->GetY()); 
         $pdf->Cell(50, 10, 'Equipment Requested', 0, 1, 'L');
 
         // Membuat header tabel equipment list
@@ -871,27 +810,27 @@ class TransHandoverController extends BaseController {
         $pdf->Cell(42, 18, '', 1, 0, 'C');
         $pdf->Cell(40, 18, '', 1, 0, 'C');
         $pdf->Cell(50, 8, 'Delivered', 1, 0, 'C');
-        $pdf->SetXY(100, $pdf->GetY() + 8);    
+        $pdf->SetXY(100, $pdf->GetY() + 8);  
         $pdf->Cell(20, 10, '', 1, 0, 'C');
-        $pdf->SetXY(99, $pdf->GetY());    
-        $pdf->SetFont('Arial', 'B', 8);    
+        $pdf->SetXY(99, $pdf->GetY()); 
+        $pdf->SetFont('Arial', 'B', 8); 
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->SetXY(120, $pdf->GetY());    
+        $pdf->SetXY(120, $pdf->GetY()); 
         $pdf->Cell(15, 10, '', 1, 0, 'C');
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->SetXY(135, $pdf->GetY());    
+        $pdf->SetXY(135, $pdf->GetY());  
         $pdf->Cell(15, 10, '', 1, 0, 'C');
-        $pdf->SetXY(150, $pdf->GetY() - 8);    
+        $pdf->SetXY(150, $pdf->GetY() - 8);  
         $pdf->Cell(50, 8, 'Returned', 1, 0, 'C');
         $pdf->SetXY(150, $pdf->GetY() + 8);
         $pdf->Cell(20, 10, '', 1, 0, 'C');
-        $pdf->SetXY(149, $pdf->GetY());    
-        $pdf->SetFont('Arial', 'B', 8);    
-        $pdf->Cell(22, 16, '', 0, 0, 'C');    
+        $pdf->SetXY(149, $pdf->GetY()); 
+        $pdf->SetFont('Arial', 'B', 8); 
+        $pdf->Cell(22, 16, '', 0, 0, 'C'); 
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->SetXY(170, $pdf->GetY());    
+        $pdf->SetXY(170, $pdf->GetY()); 
         $pdf->Cell(15, 10, '', 1, 0, 'C');
-        $pdf->SetXY(185, $pdf->GetY());    
+        $pdf->SetXY(185, $pdf->GetY());  
         $pdf->Cell(15, 10, '', 1, 0, 'C');
         
         // Menyiapkan data baris-baris equipment request
@@ -899,7 +838,7 @@ class TransHandoverController extends BaseController {
         $pdf->SetFont('Arial', '', 8);
         $handover = $this->TransHandoverModel->getHandoverById($recordNo);
         $totalData = count($handoverDetails);
-        $rowsToFill = 11 - $totalData;    // Menambah baris kosong jika data kurang dari 11
+        $rowsToFill = 11 - $totalData;  // Menambah baris kosong jika data kurang dari 11
         $counter = 1;
 
         // Fungsi untuk membagi teks panjang menjadi beberapa baris agar muat dalam cell        
@@ -921,14 +860,14 @@ class TransHandoverController extends BaseController {
         }
         // Fungsi untuk membagi serial number menjadi potongan kecil
         if (!function_exists('calculateSerialLines')) {
-            function calculateSerialLines($text, $max = 15) {    
-                $t = str_replace(["\r\n", "\r", "\n"], ' ', $text);    
+            function calculateSerialLines($text, $max = 15) {  
+                $t = str_replace(["\r\n", "\r", "\n"], ' ', $text); 
                 $len = strlen($t);
                 $out = [];
                 for ($i = 0; $i < $len; $i += $max) {
-                    $out[] = substr($t, $i, $max);    
+                    $out[] = substr($t, $i, $max); 
                 }
-                return $out;    
+                return $out; 
             }
         }
         // Fungsi untuk memformat nama agar tidak terlalu panjang dan tetap terbaca
@@ -976,7 +915,7 @@ class TransHandoverController extends BaseController {
                 return trim($output);
             }
         }
-        
+    
         // Mengisi data baris untuk setiap item equipment request
         $pdf->SetFont('Arial','',10);
         $lineH = 6;
@@ -985,11 +924,11 @@ class TransHandoverController extends BaseController {
             'equip_name'=>42,
             'serial'=>40,
             'deliv_date'=>20,
-            'deliv_sic'=>15,    
-            'deliv_user'=>15,    
+            'deliv_sic'=>15,   
+            'deliv_user'=>15,  
             'return_date'=>20,
-            'return_sic'=>15,    
-            'return_user'=>15,    
+            'return_sic'=>15,  
+            'return_user'=>15, 
         ];
 
         $i=1;
@@ -1002,9 +941,9 @@ class TransHandoverController extends BaseController {
             
             // Menghitung jumlah baris teks untuk nama equipment dan serial number
             $eL = calculateLines($pdf, $d->hd_equipmentname, $cw['equip_name']);
-            $sL = calculateSerialLines($d->hd_serialnumber, 15);    
+            $sL = calculateSerialLines($d->hd_serialnumber, 15);  
             $maxL = max(count($eL), count($sL));
-            $rh = $maxL * $lineH;    // Menghitung tinggi baris yang lebih kecil
+            $rh = $maxL * $lineH;  // Menghitung tinggi baris yang lebih kecil
             
             // Menulis nomor urut
             $pdf->Cell($cw['no'], $rh, $i++, 1, 0, 'C');
@@ -1018,8 +957,8 @@ class TransHandoverController extends BaseController {
             $offsetY = ($rh - $totalTextHeight) / 2;
         
             foreach ($eL as $ln => $txt) {
-                $pdf->SetXY($x0, $y0 + $ln * $lineH + $offsetY);    
-                $pdf->Cell($cw['equip_name'], $lineH, $txt, 0, 0, 'L');    
+                $pdf->SetXY($x0, $y0 + $ln * $lineH + $offsetY);  
+                $pdf->Cell($cw['equip_name'], $lineH, $txt, 0, 0, 'L');  
             }
             // Menggambar kotak di sekitar data equipment
             $pdf->Rect($x0, $y0, $cw['equip_name'], $rh);
@@ -1030,7 +969,7 @@ class TransHandoverController extends BaseController {
             $ys = $pdf->GetY();
             $snLines = count($sL);
             $snHeight = $snLines * $lineH;
-            $offsetY = ($rh - $snHeight) / 2;    
+            $offsetY = ($rh - $snHeight) / 2;   
             
             foreach ($sL as $ln => $txt) {
                 $pdf->SetXY($xs, $ys + $offsetY + $ln * $lineH);
@@ -1057,7 +996,7 @@ class TransHandoverController extends BaseController {
             
             // Untuk kolom "Return User"
             // Pastikan Anda memiliki kolom 'hd_returnedname_user' di model Anda (atau sesuaikan jika nama kolom berbeda)
-            $pdf->Cell($cw['return_user'], $rh, format_name($handover->th_empname_rep), 1, 0, 'C'); // Menggunakan th_empname_rep karena hd_returnedname_user tidak ada di skema
+            $pdf->Cell($cw['return_user'], $rh, format_name($d->hd_returnedname_user ?? ''), 1, 0, 'C');
             // *** Akhir Bagian yang diperbaiki ***
             
             $pdf->Ln($rh);
@@ -1065,26 +1004,26 @@ class TransHandoverController extends BaseController {
         
         
         // Menghitung total tinggi data equipment untuk menentukan jumlah baris kosong yang perlu diisi
-        $paperHeight = 145;    
-        $marginTop = 20;    
-        $marginBottom = 10;    
-        $usableHeight = $paperHeight - $marginTop - $marginBottom;    
-        $lineHeight = $lineH;    
+        $paperHeight = 145; 
+        $marginTop = 20; 
+        $marginBottom = 10; 
+        $usableHeight = $paperHeight - $marginTop - $marginBottom; 
+        $lineHeight = $lineH; 
 
         $totalDataHeight = 0;
         foreach ($handoverDetails as $d) {
             $eL = calculateLines($pdf, $d->hd_equipmentname, $cw['equip_name']);
-            $sL = calculateSerialLines($pdf, $d->hd_serialnumber, 15);
+            $sL = calculateSerialLines($d->hd_serialnumber, 15);
             $maxL = max(count($eL), count($sL));
-            $rh = $maxL * $lineH;    
+            $rh = $maxL * $lineH; 
 
-            $totalDataHeight += $rh;    
+            $totalDataHeight += $rh; 
         }
 
         // Menghitung sisa ruang kosong dan mengisi baris kosong agar tabel tampak rapi
         $remainingHeight = $usableHeight - $totalDataHeight;
         $emptyRows = floor($remainingHeight / $lineHeight);
-        $fill = max(0, $emptyRows);    
+        $fill = max(0, $emptyRows); 
 
         for ($k = 0; $k < $fill; $k++) {
             $h = $lineH;
@@ -1103,7 +1042,7 @@ class TransHandoverController extends BaseController {
         // Penutup bagian tabel dan catatan footer
         $pdf->Ln(2);
         $pdf->SetXY(10, $pdf->GetY());
-        $pdf->SetFont('Arial', '', 8);    // Mengatur ukuran font menjadi 6
+        $pdf->SetFont('Arial', '', 8);  // Mengatur ukuran font menjadi 6
         $pdf->Cell(50, 10, '(*) fill by System Dept.', 0, 0, 'L');
 
         // Menetapkan posisi untuk "Form Sheet"

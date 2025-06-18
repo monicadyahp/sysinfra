@@ -1240,7 +1240,6 @@ class SwitchManagedController extends BaseController
                 }
             }
 
-
             // Set column widths
             foreach (range('A', $sheet->getHighestColumn()) as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
