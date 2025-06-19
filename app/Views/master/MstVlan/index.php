@@ -80,6 +80,12 @@
             </span>
             Add VLAN
         </button>
+        <button type="button" class="btn btn-success me-2" id="exportVlanExcelBtn">
+            <span class="btn-label">
+                <i class="fa fa-file-excel"></i>
+            </span>
+            Export Excel
+        </button>
     </p>
 
     <div class="card-datatable table-responsive pt-0">
@@ -686,6 +692,26 @@ $(document).ready(function() {
             }
         });
     });
-});
+
+    // Handle click for the new "Export Excel" button
+    $('#exportVlanExcelBtn').on('click', function() {
+        Swal.fire({
+            title: 'Generating Excel Report...',
+            text: 'Please wait, your report is being generated.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        window.location.href = base_url + '/exportExcel';
+        // Close Swal after a short delay (give time for file download to initiate)
+        setTimeout(() => {
+            Swal.close();
+        }, 2000); // Adjust delay if download is very slow to start
+    });
+    
+}); // Ini adalah penutup dari $(document).ready(function() { ... });
+
+
 </script>
 <?= $this->endSection() ?>

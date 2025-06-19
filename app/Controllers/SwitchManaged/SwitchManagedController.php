@@ -469,45 +469,43 @@ class SwitchManagedController extends BaseController
             // Fetch all main switch records
             $mainSwitchesQuery = $this->db->table('public.tbmst_switch_managed')
                                          ->select('sm_id, sm_id_switch, sm_asset_no, sm_asset_name,
-                                                   sm_received_date, sm_age, sm_ip, sm_location,
-                                                   sm_lastupdate, sm_lastuser')
+                                                   sm_received_date, sm_age, sm_ip, sm_location') // Menghapus sm_lastupdate, sm_lastuser
                                          ->orderBy('sm_id_switch', 'ASC') // Order by ID Switch for better grouping
                                          ->get();
             $mainSwitches = $mainSwitchesQuery->getResultArray();
 
             // Prepare user and VLAN data for lookup
-            $dbCommon = \Config\Database::connect('jincommon');
+            // Bagian ini dihapus karena kolom 'Last User' tidak lagi disertakan dalam Excel
+            // $dbCommon = \Config\Database::connect('jincommon');
+            // $allUserIds = [];
+            // foreach ($mainSwitches as $switch) {
+            //     if (is_numeric($switch['sm_lastuser'])) {
+            //         $allUserIds[] = $switch['sm_lastuser'];
+            //     }
+            // }
+            // $employeeNames = [];
+            // $userAccessNames = [];
+            // if (!empty($allUserIds)) {
+            //     $employeeQuery = $dbCommon->table('tbmst_employee')
+            //                              ->select('em_emplname, em_emplcode')
+            //                              ->whereIn('em_emplcode', array_unique($allUserIds))
+            //                              ->get();
+            //     foreach ($employeeQuery->getResultArray() as $emp) {
+            //         $employeeNames[$emp['em_emplcode']] = $emp['em_emplname'];
+            //     }
+            //     $userAccessIdsToFetch = array_diff(array_unique($allUserIds), array_keys($employeeNames));
+            //     if (!empty($userAccessIdsToFetch)) {
+            //         $userAccessQuery = $dbCommon->table('tbua_useraccess')
+            //                                      ->select('ua_username, ua_userid')
+            //                                      ->whereIn('ua_userid', $userAccessIdsToFetch)
+            //                                      ->get();
+            //         foreach ($userAccessQuery->getResultArray() as $user) {
+            //             $userAccessNames[$user['ua_userid']] = $user['ua_username'];
+            //         }
+            //     }
+            // }
 
-            $allUserIds = [];
-            foreach ($mainSwitches as $switch) {
-                if (is_numeric($switch['sm_lastuser'])) {
-                    $allUserIds[] = $switch['sm_lastuser'];
-                }
-            }
-
-            $employeeNames = [];
-            $userAccessNames = [];
-            if (!empty($allUserIds)) {
-                $employeeQuery = $dbCommon->table('tbmst_employee')
-                                         ->select('em_emplname, em_emplcode')
-                                         ->whereIn('em_emplcode', array_unique($allUserIds))
-                                         ->get();
-                foreach ($employeeQuery->getResultArray() as $emp) {
-                    $employeeNames[$emp['em_emplcode']] = $emp['em_emplname'];
-                }
-
-                $userAccessIdsToFetch = array_diff(array_unique($allUserIds), array_keys($employeeNames));
-                if (!empty($userAccessIdsToFetch)) {
-                    $userAccessQuery = $dbCommon->table('tbua_useraccess')
-                                                 ->select('ua_username, ua_userid')
-                                                 ->whereIn('ua_userid', $userAccessIdsToFetch)
-                                                 ->get();
-                    foreach ($userAccessQuery->getResultArray() as $user) {
-                        $userAccessNames[$user['ua_userid']] = $user['ua_username'];
-                    }
-                }
-            }
-
+            // Data VLAN masih dibutuhkan untuk kolom 'VLAN Name'
             $vlanData = $this->db->table('public.tbmst_vlan')
                                  ->select('tv_id_vlan, tv_name')
                                  ->get()
@@ -521,7 +519,7 @@ class SwitchManagedController extends BaseController
 
             // Header for the entire report
             $sheet->setCellValue('A1', 'SWITCH MANAGED REPORT');
-            $sheet->mergeCells('A1:U1'); // Adjust based on total columns
+            $sheet->mergeCells('A1:O1'); // Disesuaikan: 9 kolom utama + 6 kolom detail = 15 kolom total (A-O)
             $sheet->getStyle('A1')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 18],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -535,8 +533,8 @@ class SwitchManagedController extends BaseController
             // Set main header row
             $mainHeaders = [
                 'No.', 'ID', 'ID Switch', 'Asset No', 'Asset Name', 'Received Date', 'Age (Years)',
-                'IP', 'Location', 'Last Update (Main)', 'Last User (Main)',
-                'No.', 'Port', 'Type', 'VLAN ID', 'VLAN Name', 'Status', 'Last Update (Detail)', 'Last User (Detail)'
+                'IP', 'Location', // Menghapus 'Last Update (Main)', 'Last User (Main)'
+                'No. (Port)', 'Port', 'Type', 'VLAN ID', 'VLAN Name', 'Status' // Menghapus 'Last Update (Detail)', 'Last User (Detail)'
             ];
             $headerStartRow = 4;
             $sheet->fromArray($mainHeaders, NULL, 'A' . $headerStartRow);
@@ -548,7 +546,7 @@ class SwitchManagedController extends BaseController
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFCDE8F3']], // Light Blue
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
             ];
-            $sheet->getStyle('A' . $headerStartRow . ':' . $sheet->getHighestColumn() . $headerStartRow)->applyFromArray($headerStyle);
+            $sheet->getStyle('A' . $headerStartRow . ':O' . $headerStartRow)->applyFromArray($headerStyle); // Disesuaikan rentang ke 'O'
 
 
             // Define alternating row styles (base styles)
@@ -572,17 +570,18 @@ class SwitchManagedController extends BaseController
             $mainSwitchNo = 1;
 
             foreach ($mainSwitches as $mainSwitch) {
-                // Populate last_user display name for main switch
-                $mainSwitchUserId = $mainSwitch['sm_lastuser'];
-                $mainSwitch['last_user_display'] = $employeeNames[$mainSwitchUserId] ?? ($userAccessNames[$mainSwitchUserId] ?? $mainSwitchUserId);
+                // Baris ini dihapus karena sm_lastuser tidak lagi diambil dari database
+                // $mainSwitchUserId = $mainSwitch['sm_lastuser'];
+                // $mainSwitch['last_user_display'] = $employeeNames[$mainSwitchUserId] ?? ($userAccessNames[$mainSwitchUserId] ?? $mainSwitchUserId);
 
-                // Format dates
+                // Format dates (hanya sm_received_date yang relevan)
                 $mainSwitch['sm_received_date'] = $mainSwitch['sm_received_date'] ? (new Time($mainSwitch['sm_received_date']))->toDateString() : '';
-                $mainSwitch['sm_lastupdate'] = $mainSwitch['sm_lastupdate'] ? (new Time($mainSwitch['sm_lastupdate']))->toDateTimeString() : '';
+                // Baris ini dihapus karena sm_lastupdate tidak lagi diambil dari database
+                // $mainSwitch['sm_lastupdate'] = $mainSwitch['sm_lastupdate'] ? (new Time($mainSwitch['sm_lastupdate']))->toDateTimeString() : '';
 
                 // Fetch detail ports for the current main switch
                 $detailPortsQuery = $this->db->table('public.tbmst_switch_managed_detail')
-                                             ->select('smd_id, smd_port, smd_type, smd_vlan_id, smd_vlan_name, smd_status, smd_lastupdate, smd_lastuser')
+                                             ->select('smd_id, smd_port, smd_type, smd_vlan_id, smd_vlan_name, smd_status') // Menghapus smd_lastupdate, smd_lastuser
                                              ->where('smd_header_id_switch', $mainSwitch['sm_id'])
                                              ->orderBy('smd_port', 'ASC')
                                              ->get();
@@ -603,27 +602,26 @@ class SwitchManagedController extends BaseController
                         $this->calculateAge($mainSwitch['sm_received_date']),
                         $mainSwitch['sm_ip'],
                         $mainSwitch['sm_location'],
-                        $mainSwitch['sm_lastupdate'],
-                        $mainSwitch['last_user_display'],
-                        '', '', '', '', '', '', '', '' // Empty columns for detail data
+                        // Menghapus 'Last Update (Main)' dan 'Last User (Main)'
+                        '', '', '', '', '', '', // Kolom kosong untuk data detail (sekarang 6 kolom)
                     ];
                     $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
 
                     // Apply alternating row style
                     $styleToApply = ($rowNum % 2 === 0) ? $styleEvenRow : $styleOddRow;
-                    $sheet->getStyle('A' . $rowNum . ':' . $sheet->getHighestColumn() . $rowNum)->applyFromArray($styleToApply);
+                    $sheet->getStyle('A' . $rowNum . ':O' . $rowNum)->applyFromArray($styleToApply); // Disesuaikan rentang ke 'O'
 
                     // Apply specific column background colors
-                    $sheet->getStyle('A' . $rowNum . ':K' . $rowNum)->applyFromArray(['fill' => $mainColumnFill]);
-                    $sheet->getStyle('L' . $rowNum . ':S' . $rowNum)->applyFromArray(['fill' => $detailColumnFill]); // Apply detail color even if empty
+                    $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray(['fill' => $mainColumnFill]); // Disesuaikan ke 'I'
+                    $sheet->getStyle('J' . $rowNum . ':O' . $rowNum)->applyFromArray(['fill' => $detailColumnFill]); // Disesuaikan ke 'J-O'
 
                     $rowNum++;
                 } else {
                     $detailNo = 1;
                     foreach ($detailPorts as $detail) {
-                        // Populate last_user display name for detail port
-                        $detailUserId = $detail['smd_lastuser'];
-                        $detail['last_user_display'] = $employeeNames[$detailUserId] ?? ($userAccessNames[$detailUserId] ?? $detailUserId);
+                        // Baris ini dihapus karena smd_lastuser tidak lagi diambil dari database
+                        // $detailUserId = $detail['smd_lastuser'];
+                        // $detail['last_user_display'] = $employeeNames[$detailUserId] ?? ($userAccessNames[$detailUserId] ?? $detailUserId);
 
                         // Resolve VLAN Name from lookup if smd_vlan_name is empty or null
                         $resolvedVlanName = $detail['smd_vlan_name'];
@@ -632,12 +630,12 @@ class SwitchManagedController extends BaseController
                         }
                         $detail['resolved_vlan_name'] = strtoupper($resolvedVlanName);
 
-                        // Format last update for detail
-                        $detail['smd_lastupdate'] = $detail['smd_lastupdate'] ? (new Time($detail['smd_lastupdate']))->toDateTimeString() : '';
+                        // Baris ini dihapus karena smd_lastupdate tidak lagi diambil dari database
+                        // $detail['smd_lastupdate'] = $detail['smd_lastupdate'] ? (new Time($detail['smd_lastupdate']))->toDateTimeString() : '';
 
 
                         $rowData = [
-                            $mainSwitchNo, // Main switch no (will be merged)
+                            $mainSwitchNo, // Nomor switch utama (akan digabung)
                             $mainSwitch['sm_id'],
                             $mainSwitch['sm_id_switch'],
                             $mainSwitch['sm_asset_no'],
@@ -646,32 +644,29 @@ class SwitchManagedController extends BaseController
                             $this->calculateAge($mainSwitch['sm_received_date']),
                             $mainSwitch['sm_ip'],
                             $mainSwitch['sm_location'],
-                            $mainSwitch['sm_lastupdate'],
-                            $mainSwitch['last_user_display'],
-                            // Detail columns
-                            $detailNo++,
+                            // Menghapus 'Last Update (Main)' dan 'Last User (Main)'
+                            // Kolom Detail
+                            $detailNo++, // Ini menjadi 'No. (Port)'
                             $detail['smd_port'],
                             $detail['smd_type'],
                             $detail['smd_vlan_id'],
                             $detail['resolved_vlan_name'],
                             $detail['smd_status'] == 1 ? 'Active' : 'Inactive',
-                            $detail['smd_lastupdate'],
-                            $detail['last_user_display']
+                            // Menghapus smd_lastupdate, smd_lastuser
                         ];
                         $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
 
                         // Apply alternating row style
                         $styleToApply = ($rowNum % 2 === 0) ? $styleEvenRow : $styleOddRow;
-                        $sheet->getStyle('A' . $rowNum . ':' . $sheet->getHighestColumn() . $rowNum)->applyFromArray($styleToApply);
+                        $sheet->getStyle('A' . $rowNum . ':O' . $rowNum)->applyFromArray($styleToApply); // Disesuaikan rentang ke 'O'
 
                         // Apply specific column background colors
-                        $sheet->getStyle('A' . $rowNum . ':K' . $rowNum)->applyFromArray(['fill' => $mainColumnFill]);
-                        $sheet->getStyle('L' . $rowNum . ':S' . $rowNum)->applyFromArray(['fill' => $detailColumnFill]);
+                        $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray(['fill' => $mainColumnFill]); // Disesuaikan ke 'I'
+                        $sheet->getStyle('J' . $rowNum . ':O' . $rowNum)->applyFromArray(['fill' => $detailColumnFill]); // Disesuaikan ke 'J-O'
 
                         // Apply special style for 'Inactive' status in detail
                         if ($detail['smd_status'] == 0) {
-                            $sheet->getStyle('P' . $rowNum)->applyFromArray(['fill' => $statusInactiveFill]);
-                            $sheet->getStyle('Q' . $rowNum)->applyFromArray(['fill' => $statusInactiveFill]);
+                            $sheet->getStyle('O' . $rowNum)->applyFromArray($statusInactiveFill); // Disesuaikan ke 'O'
                         }
 
                         $rowNum++;
@@ -679,7 +674,7 @@ class SwitchManagedController extends BaseController
 
                     // Merge cells for main switch data across its detail rows
                     $endMergeRow = $rowNum - 1;
-                    $mergeColumns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+                    $mergeColumns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']; // Kolom A sampai I untuk data utama
                     foreach ($mergeColumns as $col) {
                         $sheet->mergeCells($col . $startMergeRow . ':' . $col . $endMergeRow);
                         $sheet->getStyle($col . $startMergeRow)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
@@ -1026,8 +1021,7 @@ class SwitchManagedController extends BaseController
             // Fetch main switch record by sm_id
             $mainSwitch = $this->db->table('public.tbmst_switch_managed')
                                    ->select('sm_id, sm_id_switch, sm_asset_no, sm_asset_name,
-                                             sm_received_date, sm_age, sm_ip, sm_location,
-                                             sm_lastupdate, sm_lastuser')
+                                             sm_received_date, sm_age, sm_ip, sm_location') // Removed sm_lastupdate, sm_lastuser
                                    ->where('sm_id', $sm_id)
                                    ->get()
                                    ->getRowArray();
@@ -1038,51 +1032,16 @@ class SwitchManagedController extends BaseController
             }
 
             // Fetch detail ports for the current main switch
+            // Fetch detail ports for the current main switch
             $detailPortsQuery = $this->db->table('public.tbmst_switch_managed_detail')
-                                         ->select('smd_id, smd_port, smd_type, smd_vlan_id, smd_vlan_name, smd_status, smd_lastupdate, smd_lastuser')
-                                         ->where('smd_header_id_switch', $mainSwitch['sm_id'])
-                                         ->orderBy('smd_port', 'ASC')
-                                         ->get();
+                ->select('smd_id, smd_header_id_switch, smd_port, smd_type, smd_vlan_id, smd_vlan_name, smd_status') // **Tambahkan smd_header_id_switch**
+                ->where('smd_header_id_switch', $mainSwitch['sm_id'])
+                ->orderBy('smd_port', 'ASC')
+                ->get();
             $detailPorts = $detailPortsQuery->getResultArray();
 
-            // Prepare user and VLAN data for lookup
-            $dbCommon = \Config\Database::connect('jincommon');
-
-            // Collect all user IDs from main switch and detail ports
-            $allUserIds = [];
-            if (is_numeric($mainSwitch['sm_lastuser'])) {
-                $allUserIds[] = $mainSwitch['sm_lastuser'];
-            }
-            foreach ($detailPorts as $detail) {
-                if (is_numeric($detail['smd_lastuser'])) {
-                    $allUserIds[] = $detail['smd_lastuser'];
-                }
-            }
-            $allUserIds = array_unique(array_filter($allUserIds, 'is_numeric'));
-
-            $employeeNames = [];
-            $userAccessNames = [];
-            if (!empty($allUserIds)) {
-                $employeeQuery = $dbCommon->table('tbmst_employee')
-                                         ->select('em_emplname, em_emplcode')
-                                         ->whereIn('em_emplcode', $allUserIds)
-                                         ->get();
-                foreach ($employeeQuery->getResultArray() as $emp) {
-                    $employeeNames[$emp['em_emplcode']] = $emp['em_emplname'];
-                }
-
-                $userAccessIdsToFetch = array_diff($allUserIds, array_keys($employeeNames));
-                if (!empty($userAccessIdsToFetch)) {
-                    $userAccessQuery = $dbCommon->table('tbua_useraccess')
-                                                 ->select('ua_username, ua_userid')
-                                                 ->whereIn('ua_userid', $userAccessIdsToFetch)
-                                                 ->get();
-                    foreach ($userAccessQuery->getResultArray() as $user) {
-                        $userAccessNames[$user['ua_userid']] = $user['ua_username'];
-                    }
-                }
-            }
-
+            // Prepare VLAN data for lookup (only VLAN data is needed as user fields are removed)
+            // Removed code for fetching employeeNames and userAccessNames as 'Last User' is no longer in the Excel
             $vlanData = $this->db->table('public.tbmst_vlan')
                                  ->select('tv_id_vlan, tv_name')
                                  ->get()
@@ -1095,7 +1054,7 @@ class SwitchManagedController extends BaseController
 
             // Header for the entire report
             $sheet->setCellValue('A1', 'SWITCH MANAGED CONFIGURATION REPORT');
-            $sheet->mergeCells('A1:K1'); // Adjusted range for main data headers
+            $sheet->mergeCells('A1:H1'); // Adjusted range: A-H (8 columns for main data)
             $sheet->getStyle('A1')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 18],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -1107,7 +1066,7 @@ class SwitchManagedController extends BaseController
 
             // Main Switch Details Header
             $sheet->setCellValue('A3', 'Main Switch Details');
-            $sheet->mergeCells('A3:K3');
+            $sheet->mergeCells('A3:H3'); // Adjusted range: A-H
             $sheet->getStyle('A3')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 14],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -1117,7 +1076,7 @@ class SwitchManagedController extends BaseController
             // Main Switch Data Headers
             $mainHeaders = [
                 'ID', 'ID Switch', 'Asset No', 'Asset Name', 'Received Date', 'Age (Years)',
-                'IP', 'Location', 'Last Update', 'Last User'
+                'IP', 'Location' // Removed 'Last Update', 'Last User'
             ];
             $mainHeaderStartRow = 4;
             $sheet->fromArray($mainHeaders, NULL, 'A' . $mainHeaderStartRow);
@@ -1129,13 +1088,11 @@ class SwitchManagedController extends BaseController
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFCDE8F3']], // Light Blue
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
             ];
-            $sheet->getStyle('A' . $mainHeaderStartRow . ':J' . $mainHeaderStartRow)->applyFromArray($headerStyle); // J for main headers
+            $sheet->getStyle('A' . $mainHeaderStartRow . ':H' . $mainHeaderStartRow)->applyFromArray($headerStyle); // Adjusted range to 'H'
 
             // Populate main switch data
-            $mainSwitchUserId = $mainSwitch['sm_lastuser'];
-            $mainSwitch['last_user_display'] = $employeeNames[$mainSwitchUserId] ?? ($userAccessNames[$mainSwitchUserId] ?? $mainSwitchUserId);
+            // Removed logic to get and display 'last_user_display' and 'sm_lastupdate' as they are no longer selected
             $mainSwitch['sm_received_date'] = $mainSwitch['sm_received_date'] ? (new Time($mainSwitch['sm_received_date']))->toDateString() : '';
-            $mainSwitch['sm_lastupdate'] = $mainSwitch['sm_lastupdate'] ? (new Time($mainSwitch['sm_lastupdate']))->toDateTimeString() : '';
 
             $mainRowData = [
                 $mainSwitch['sm_id'],
@@ -1146,12 +1103,10 @@ class SwitchManagedController extends BaseController
                 $this->calculateAge($mainSwitch['sm_received_date']),
                 $mainSwitch['sm_ip'],
                 $mainSwitch['sm_location'],
-                $mainSwitch['sm_lastupdate'],
-                $mainSwitch['last_user_display'],
             ];
             $mainDataRowStart = $mainHeaderStartRow + 1;
             $sheet->fromArray($mainRowData, NULL, 'A' . $mainDataRowStart);
-            $sheet->getStyle('A' . $mainDataRowStart . ':J' . $mainDataRowStart)->applyFromArray([
+            $sheet->getStyle('A' . $mainDataRowStart . ':H' . $mainDataRowStart)->applyFromArray([ // Adjusted range to 'H'
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
             ]);
 
@@ -1163,7 +1118,7 @@ class SwitchManagedController extends BaseController
             // Port Details Header
             $portHeaderStartRow = $mainDataRowStart + 3;
             $sheet->setCellValue('A' . $portHeaderStartRow, 'Port Configurations');
-            $sheet->mergeCells('A' . $portHeaderStartRow . ':G' . $portHeaderStartRow); // Adjusted range for port headers
+            $sheet->mergeCells('A' . $portHeaderStartRow . ':G' . $portHeaderStartRow); // Adjusted range for port headers (A-G for port data)
             $sheet->getStyle('A' . $portHeaderStartRow)->applyFromArray([
                 'font' => ['bold' => true, 'size' => 14],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -1172,13 +1127,13 @@ class SwitchManagedController extends BaseController
 
             // Port Data Headers
             $portHeaders = [
-                'No.', 'ID Detail', 'Port', 'Type', 'VLAN ID', 'VLAN Name', 'Status', 'Last Update', 'Last User'
+                'No.', 'ID Detail', 'Header ID', 'Port', 'Type', 'VLAN ID', 'VLAN Name', 'Status' // Header ID ditambahkan
             ];
             $portDataHeaderRow = $portHeaderStartRow + 1;
             $sheet->fromArray($portHeaders, NULL, 'A' . $portDataHeaderRow);
 
             // Apply style to port header
-            $sheet->getStyle('A' . $portDataHeaderRow . ':I' . $portDataHeaderRow)->applyFromArray($headerStyle); // I for port headers
+            $sheet->getStyle('A' . $portDataHeaderRow . ':H' . $portDataHeaderRow)->applyFromArray($headerStyle); // Rentang disesuaikan ke 'H'
 
             $rowNum = $portDataHeaderRow + 1;
             $detailNo = 1;
@@ -1188,22 +1143,18 @@ class SwitchManagedController extends BaseController
             if (empty($detailPorts)) {
                 // If no ports, add a single row indicating no data
                 $rowData = [
-                    '', '', '', '', '', '', 'No Ports Configured', '', ''
+                    '', '', '', '', '', '', '', 'No Ports Configured' // Sekarang 8 kolom
                 ];
                 $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
-                $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray([
+                $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray([ // Rentang disesuaikan ke 'H'
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
                     'font' => ['italic' => true, 'color' => ['argb' => 'FF808080']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                 ]);
-                $sheet->mergeCells('A' . $rowNum . ':I' . $rowNum);
+                $sheet->mergeCells('A' . $rowNum . ':H' . $rowNum); // Rentang disesuaikan ke 'H'
                 $rowNum++;
             } else {
                 foreach ($detailPorts as $detail) {
-                    // Populate last_user display name for detail port
-                    $detailUserId = $detail['smd_lastuser'];
-                    $detail['last_user_display'] = $employeeNames[$detailUserId] ?? ($userAccessNames[$detailUserId] ?? $detailUserId);
-
                     // Resolve VLAN Name from lookup if smd_vlan_name is empty or null
                     $resolvedVlanName = $detail['smd_vlan_name'];
                     if (empty($resolvedVlanName) && !empty($detail['smd_vlan_id'])) {
@@ -1211,34 +1162,31 @@ class SwitchManagedController extends BaseController
                     }
                     $detail['resolved_vlan_name'] = strtoupper($resolvedVlanName);
 
-                    // Format last update for detail
-                    $detail['smd_lastupdate'] = $detail['smd_lastupdate'] ? (new Time($detail['smd_lastupdate']))->toDateTimeString() : '';
-
                     $rowData = [
                         $detailNo++,
                         $detail['smd_id'],
+                        $detail['smd_header_id_switch'], // Header ID ditambahkan di sini
                         $detail['smd_port'],
                         $detail['smd_type'],
                         $detail['smd_vlan_id'],
                         $detail['resolved_vlan_name'],
                         $detail['smd_status'] == 1 ? 'Active' : 'Inactive',
-                        $detail['smd_lastupdate'],
-                        $detail['last_user_display']
                     ];
                     $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
 
                     $styleToApply = ($detailNo % 2 === 0) ? ['fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFF0F0F0']]] : ['fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFFFFF']]];
-                    $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray($styleToApply);
-                    $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->applyFromArray(['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]]]);
+                    $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray($styleToApply); // Rentang disesuaikan ke 'H'
+                    $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray(['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]]]); // Rentang disesuaikan ke 'H'
 
                     // Apply special style for 'Inactive' status in detail
                     if ($detail['smd_status'] == 0) {
-                        $sheet->getStyle('G' . $rowNum)->applyFromArray($statusInactiveFill);
+                        $sheet->getStyle('H' . $rowNum)->applyFromArray($statusInactiveFill); // Disesuaikan ke 'H'
                     }
 
                     $rowNum++;
                 }
             }
+
 
             // Set column widths
             foreach (range('A', $sheet->getHighestColumn()) as $col) {

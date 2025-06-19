@@ -125,24 +125,16 @@ $routes->post('/SoftwareLicense/delete', 'SoftwareLicense\SoftwareLicenseControl
 $routes->get('/SoftwareLicense/getPOData', 'SoftwareLicense\SoftwareLicenseController::getPOData');
 $routes->post('/SoftwareLicense/checkDuplicate', 'SoftwareLicense\SoftwareLicenseController::checkDuplicate');
 $routes->get('/SoftwareLicense/getNextId', 'SoftwareLicense\SoftwareLicenseController::getNextId');
-
-// --- Rute untuk Licensed PC ---
 $routes->get('/SoftwareLicense/getLicensedPcs/(:num)', 'SoftwareLicense\SoftwareLicenseController::getLicensedPcs/$1');
-// !!! NEW ROUTE !!!
 $routes->get('/SoftwareLicense/countLicensedPcs/(:num)', 'SoftwareLicense\SoftwareLicenseController::countLicensedPcs/$1');
-// !!! END NEW ROUTE !!!
 $routes->post('/SoftwareLicense/addLicensedPc', 'SoftwareLicense\SoftwareLicenseController::addLicensedPc');
 $routes->post('/SoftwareLicense/editLicensedPc', 'SoftwareLicense\SoftwareLicenseController::editLicensedPc');
 $routes->post('/SoftwareLicense/updateLicensedPc', 'SoftwareLicense\SoftwareLicenseController::updateLicensedPc');
 $routes->post('/SoftwareLicense/deleteLicensedPc', 'SoftwareLicense\SoftwareLicenseController::deleteLicensedPc');
-// Ganti dengan ini:
 $routes->get('/SoftwareLicense/getEquipmentData', 'SoftwareLicense\SoftwareLicenseController::getEquipmentData'); // <-- UBAH RUTE INI!
 $routes->get('/SoftwareLicense/getEmployeeData', 'SoftwareLicense\SoftwareLicenseController::getEmployeeData');
-// Existing routes...
-
-// --- Rute untuk Export Excel ---
 $routes->get('/SoftwareLicense/exportExcel', 'SoftwareLicense\SoftwareLicenseController::exportExcel');
-
+$routes->get('/SoftwareLicense/exportExcelById/(:num)', 'SoftwareLicense\SoftwareLicenseController::exportExcelById/$1');
 
 // // 14-05 transaksi handover
 // // Transaksi Handover
@@ -279,6 +271,7 @@ $routes->post('/MstVlan/update', 'MstVlan\MstVlanController::update'); // Update
 $routes->post('/MstVlan/delete', 'MstVlan\MstVlanController::delete'); // Delete data
 $routes->post('/MstVlan/checkDuplicateName', 'MstVlan\MstVlanController::checkDuplicateName'); // Check for duplicate VLAN Name
 $routes->post('/MstVlan/checkDuplicateVlanId', 'MstVlan\MstVlanController::checkDuplicateVlanId'); // Check for duplicate User-Input VLAN ID
+$routes->get('/MstVlan/exportExcel', 'MstVlan\MstVlanController::exportExcel'); // New route for exporting all to Excel
 
 /////////////////////////////
 
@@ -290,21 +283,13 @@ $routes->post('/MstSwitchManaged/edit', 'SwitchManaged\SwitchManagedController::
 $routes->post('/MstSwitchManaged/update', 'SwitchManaged\SwitchManagedController::update');
 $routes->post('/MstSwitchManaged/delete', 'SwitchManaged\SwitchManagedController::delete');
 $routes->post('/MstSwitchManaged/checkDuplicate', 'SwitchManaged\SwitchManagedController::checkDuplicate');
-
-// Rute baru untuk Export Excel
 $routes->get('/MstSwitchManaged/exportExcel', 'SwitchManaged\SwitchManagedController::exportExcel'); // Existing route for exporting all to Excel
 $routes->get('/MstSwitchManaged/exportExcelById/(:num)', 'SwitchManaged\SwitchManagedController::exportExcelById/$1'); // New route for exporting Excel by ID
-
-// Rute untuk finder m_itequipment (if you want to use existing equipment data)
 $routes->get('/MstSwitchManaged/getEquipmentData', 'SwitchManaged\SwitchManagedController::getEquipmentData');
-
-// --- NEW: Rute untuk Switch Managed Detail ---
 $routes->get('/MstSwitchManaged/getSwitchDetailPorts/(:num)', 'SwitchManaged\SwitchManagedController::getSwitchDetailPorts/$1'); // Get details for a specific switch (by sm_id_switch)
 $routes->get('/MstSwitchManaged/countSwitchDetailPorts/(:num)', 'SwitchManaged\SwitchManagedController::countSwitchDetailPorts/$1'); // Count details for a specific switch
 $routes->post('/MstSwitchManaged/addSwitchDetailPort', 'SwitchManaged\SwitchManagedController::addSwitchDetailPort');
 $routes->post('/MstSwitchManaged/editSwitchDetailPort', 'SwitchManaged\SwitchManagedController::editSwitchDetailPort');
 $routes->post('/MstSwitchManaged/updateSwitchDetailPort', 'SwitchManaged\SwitchManagedController::updateSwitchDetailPort');
 $routes->post('/MstSwitchManaged/deleteSwitchDetailPort', 'SwitchManaged\SwitchManagedController::deleteSwitchDetailPort');
-
-// NEW: Rute untuk mendapatkan data VLAN
 $routes->get('/MstSwitchManaged/getVlanData', 'SwitchManaged\SwitchManagedController::getVlanData');

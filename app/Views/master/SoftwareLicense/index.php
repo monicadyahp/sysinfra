@@ -888,6 +888,9 @@ $(document).ready(function() {
                                 <a href="javascript:;" class="btn btn-icon btn-outline-info view-licensed-pc-btn" data-id="${row.id}" data-qty="${row.product_qty}" title="View Licensed PCs">
                                     <i class="fa fa-computer"></i>
                                 </a>
+                                <a href="javascript:;" class="btn btn-icon btn-outline-success print-excel-by-id-btn" data-id="${row.id}" title="Print Excel for this License">
+                                    <i class="fa fa-file-excel"></i>
+                                </a>
                                 <a href="javascript:;" class="btn btn-icon btn-outline-danger delete-btn" data-id="${row.id}" title="Delete Software License">
                                     <i class="fa fa-trash-can"></i>
                                 </a>
@@ -1265,6 +1268,28 @@ $(document).ready(function() {
         $('#licensedPcsListModal').modal('show'); // Show the modal after initiating data load
     });
     // MODIFIKASI SELESAI
+
+    // NEW: Handle click on the new "Print Excel" button in the main table
+    $('#tabelSoftwareLicense').on('click', '.print-excel-by-id-btn', function() {
+        const id = $(this).data('id');
+        if (id) {
+            Swal.fire({
+                title: 'Generating Excel Report...',
+                text: 'Please wait, your report is being generated.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            window.location.href = base_url + '/SoftwareLicense/exportExcelById/' + id;
+            // Close Swal after a short delay (give time for file download to initiate)
+            setTimeout(() => {
+                Swal.close();
+            }, 2000); // Adjust delay if download is very slow to start
+        } else {
+            Swal.fire('Error', 'Software License ID not found for this entry.', 'error');
+        }
+    });
 
     $('#tabelSoftwareLicense').on('click', '.edit-btn', function () {
         var id = $(this).data('id');

@@ -790,7 +790,6 @@ class TransHandoverController extends BaseController {
         $pdf->SetXY($pdf->GetX() + $xOffset, $pdf->GetY());  // Memindahkan posisi lebih ke kiri
         $pdf->Cell(10, 50, '(dd mm yyyy)', 0, 0, 'L'); // Menulis "(dd mm yyyy)" lebih ke kiri
         
-        
         $pdf->SetFont('Arial', 'B', 10);
         
         // Menentukan posisi baru untuk "(dd mm yyyy)", lebih ke kiri

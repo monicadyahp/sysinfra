@@ -5,6 +5,11 @@ namespace App\Controllers\MstVlan;
 use App\Controllers\BaseController;
 use App\Models\mstvlan\MstVlanModel;
 use CodeIgniter\I18n\Time;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class MstVlanController extends BaseController
 {
@@ -406,5 +411,107 @@ class MstVlanController extends BaseController
         $isDuplicate = $this->MstVlanModel->checkDuplicateVlanId($vlanIdInput, $id);
 
         return $this->response->setJSON(['existVlanId' => $isDuplicate]);
+    }
+
+    /**
+     * Export all VLAN data to Excel.
+     */
+    public function exportExcel()
+    {
+        if (!session()->get('login')) {
+            return redirect()->to('/login');
+        }
+
+        try {
+            // Fetch all VLAN records. Exclude 'tv_lastuser' and 'tv_lastupdate' as requested.
+            $vlanData = $this->db->table('public.tbmst_vlan')
+                                 ->select('tv_id AS id, tv_id_vlan AS vlan_id, tv_name AS name')
+                                 ->orderBy('tv_id_vlan', 'ASC') // Order by VLAN ID for better readability
+                                 ->get()
+                                 ->getResultArray();
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('VLAN Report');
+
+            // Header for the entire report
+            $sheet->setCellValue('A1', 'VLAN MANAGEMENT REPORT');
+            $sheet->mergeCells('A1:C1'); // Merge across 3 columns (No., VLAN ID, VLAN Name)
+            $sheet->getStyle('A1')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 18],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $sheet->getRowDimension(1)->setRowHeight(30);
+
+            // Empty row for spacing
+            $sheet->getRowDimension(2)->setRowHeight(15);
+
+            // Set main header row
+            $mainHeaders = [
+                'No.', 'VLAN ID', 'VLAN Name'
+            ];
+            $headerStartRow = 4;
+            $sheet->fromArray($mainHeaders, NULL, 'A' . $headerStartRow);
+
+            // Apply style to header
+            $headerStyle = [
+                'font' => ['bold' => true, 'color' => ['argb' => 'FF000000']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFCDE8F3']], // Light Blue
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
+            ];
+            $sheet->getStyle('A' . $headerStartRow . ':C' . $headerStartRow)->applyFromArray($headerStyle); // Apply style to A-C
+
+            // Define alternating row styles
+            $styleEvenRow = [
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFF0F0F0']], // Very light gray
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
+            ];
+            $styleOddRow = [
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFFFFF']], // White
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
+            ];
+
+            $rowNum = $headerStartRow + 1; // Start data from row after headers
+            $recordNo = 1;
+
+            foreach ($vlanData as $vlan) {
+                $rowData = [
+                    $recordNo++,
+                    $vlan['vlan_id'],
+                    $vlan['name']
+                ];
+                $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
+
+                // Apply alternating row style
+                $styleToApply = ($rowNum % 2 === 0) ? $styleEvenRow : $styleOddRow;
+                $sheet->getStyle('A' . $rowNum . ':C' . $rowNum)->applyFromArray($styleToApply); // Apply style to A-C
+
+                $rowNum++;
+            }
+
+            // Set column widths
+            foreach (range('A', $sheet->getHighestColumn()) as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            // Add auto filter to header
+            $sheet->setAutoFilter('A' . $headerStartRow . ':' . $sheet->getHighestColumn() . $headerStartRow);
+
+            $filename = 'VLAN_Report_' . date('Ymd_His') . '.xlsx';
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit();
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error exporting VLAN data to Excel: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)
+                                  ->setJSON(['error' => true, 'message' => 'Could not export data to Excel: ' . $e->getMessage()]);
+        }
     }
 }

@@ -1217,4 +1217,224 @@ class SoftwareLicenseController extends BaseController
         }
     }
 
+    /**
+     * Export a single software license record and its licensed PCs to Excel.
+     */
+    public function exportExcelById(int $tl_id)
+    {
+        if (!session()->get('login')) {
+            return redirect()->to('/login');
+        }
+
+        try {
+            // Fetch main software license record by tl_id
+            $license = $this->db->table('t_license')
+                                ->select('tl_id AS id, tl_type AS type, tl_license_type_category AS license_category,
+                                          UPPER(tl_refnumber) AS ref_number, tl_po_number AS po_number,
+                                          UPPER(tl_licensepartner) AS license_partner, tl_orderdate AS order_date,
+                                          tl_startdate AS start_date, tl_enddate AS end_date,
+                                          UPPER(tl_productname) AS product_name, tl_productdesc AS product_desc,
+                                          tl_productqty AS product_qty, UPPER(tl_productkey) AS product_key,
+                                          tl_organization AS organization') // Removed tl_last_update, tl_last_user
+                                ->where('tl_id', $tl_id)
+                                ->get()
+                                ->getRowArray();
+
+            if (!$license) {
+                return $this->response->setStatusCode(404)
+                                      ->setJSON(['error' => true, 'message' => 'Software License record not found for the given ID.']);
+            }
+
+            // Fetch licensed PCs for the current main license
+            $licensedPcsQuery = $this->db->table('t_licensedetail')
+                                         ->select('ld_pcnama, ld_assetno, ld_pc_id, ld_serialnumber, ld_employee_code, ld_position_code, ld_status') // Removed ld_lastupdate, ld_lastuser
+                                         ->where('tl_id', $license['id'])
+                                         ->orderBy('ld_pcnama', 'ASC')
+                                         ->get();
+            $licensedPcs = $licensedPcsQuery->getResultArray();
+
+            // Prepare employee and position data for lookup
+            $employeeData = $this->dbCommon->table('tbmst_employee')
+                ->select('em_emplcode, em_emplname')
+                ->get()
+                ->getResultArray();
+            $employees = array_column($employeeData, 'em_emplname', 'em_emplcode');
+
+            $positionData = $this->dbCommon->table('tbmst_position')
+                ->select('pm_code, pm_positionname')
+                ->get()
+                ->getResultArray();
+            $positions = array_column($positionData, 'pm_positionname', 'pm_code');
+
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('License ID ' . $license['id']);
+
+            // Header for the entire report
+            $sheet->setCellValue('A1', 'SOFTWARE LICENSE CONFIGURATION REPORT');
+            $sheet->mergeCells('A1:L1'); // Adjusted range (12 columns for main data)
+            $sheet->getStyle('A1')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 18],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $sheet->getRowDimension(1)->setRowHeight(30);
+
+            // Empty row for spacing
+            $sheet->getRowDimension(2)->setRowHeight(15);
+
+            // Main License Details Header
+            $sheet->setCellValue('A3', 'Main License Details');
+            $sheet->mergeCells('A3:L3'); // Adjusted range
+            $sheet->getStyle('A3')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 14],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'C7D9FE']], // Light Blue
+            ]);
+
+            // Main License Data Headers
+            $mainHeaders = [
+                'ID', 'License Type', 'License Category', 'Ref. Number / Subs ID', 'PO Number',
+                'License Partner', 'Order Date', 'Start Date', 'End Date', 'Product Name',
+                'Product Qty', 'Product Desc', 'Product Key', 'Organization'
+            ];
+            $mainHeaderStartRow = 4;
+            $sheet->fromArray($mainHeaders, NULL, 'A' . $mainHeaderStartRow);
+
+            // Apply style to main header
+            $headerStyle = [
+                'font' => ['bold' => true, 'color' => ['argb' => 'FF000000']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFCDE8F3']], // Light Blue
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
+            ];
+            $sheet->getStyle('A' . $mainHeaderStartRow . ':N' . $mainHeaderStartRow)->applyFromArray($headerStyle); // Adjusted range to 'N' for 14 columns
+
+            // Populate main license data
+            $mainRowData = [
+                $license['id'],
+                $license['type'],
+                $license['license_category'],
+                $license['ref_number'],
+                $license['po_number'],
+                $license['license_partner'],
+                $license['order_date'] ? (new Time($license['order_date']))->toDateString() : '',
+                $license['start_date'] ? (new Time($license['start_date']))->toDateString() : '',
+                $license['end_date'] ? (new Time($license['end_date']))->toDateString() : '',
+                $license['product_name'],
+                (float)$license['product_qty'],
+                $license['product_desc'],
+                $license['product_key'],
+                $license['organization']
+            ];
+            $mainDataRowStart = $mainHeaderStartRow + 1;
+            $sheet->fromArray($mainRowData, NULL, 'A' . $mainDataRowStart);
+            $sheet->getStyle('A' . $mainDataRowStart . ':N' . $mainDataRowStart)->applyFromArray([ // Adjusted range to 'N'
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
+            ]);
+
+            // Apply special style if Product Qty is less than 3
+            if ((float)$license['product_qty'] < 3) {
+                $redCellStyle = [
+                    'font' => ['color' => ['rgb' => '000000']], // black font
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FF8E88']], // Red background (ARGB format)
+                ];
+                $sheet->getStyle('K' . $mainDataRowStart)->applyFromArray($redCellStyle); // Column K is Product Qty
+            }
+
+
+            // Empty row for spacing between main and detail
+            $sheet->getRowDimension($mainDataRowStart + 1)->setRowHeight(15);
+
+            // Licensed PCs Header
+            $pcHeaderStartRow = $mainDataRowStart + 3;
+            $sheet->setCellValue('A' . $pcHeaderStartRow, 'Licensed PCs');
+            $sheet->mergeCells('A' . $pcHeaderStartRow . ':H' . $pcHeaderStartRow); // Adjusted range for PC headers (A-H)
+            $sheet->getStyle('A' . $pcHeaderStartRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 14],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'D1FEB8']], // Light Green
+            ]);
+
+            // PC Data Headers
+            $pcHeaders = [
+                'No.', 'PC Asset Name', 'PC Asset Number', 'PC Asset ID', 'PC Asset Serial Number',
+                'User', 'Position', 'Status' // Removed Last Update, Last User
+            ];
+            $pcDataHeaderRow = $pcHeaderStartRow + 1;
+            $sheet->fromArray($pcHeaders, NULL, 'A' . $pcDataHeaderRow);
+
+            // Apply style to PC header
+            $sheet->getStyle('A' . $pcDataHeaderRow . ':H' . $pcDataHeaderRow)->applyFromArray($headerStyle); // Adjusted range to 'H' for 8 columns
+
+            $rowNum = $pcDataHeaderRow + 1;
+            $pcNo = 1;
+            $overlicensedFill = ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFE0B2']]; // Light orange for overlicensed/inactive
+
+            $productQty = (float)$license['product_qty']; // Ensure this is a float
+
+            if (empty($licensedPcs)) {
+                // If no PCs, add a single row indicating no data
+                $rowData = [
+                    '', '', '', '', '', '', '', 'No PCs Licensed' // Now 8 columns
+                ];
+                $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
+                $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray([ // Adjusted range to 'H'
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]],
+                    'font' => ['italic' => true, 'color' => ['argb' => 'FF808080']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                ]);
+                $sheet->mergeCells('A' . $rowNum . ':H' . $rowNum); // Adjusted range to 'H'
+                $rowNum++;
+            } else {
+                foreach ($licensedPcs as $pcIndex => $pc) {
+                    $rowData = [
+                        $pcNo++,
+                        $pc['ld_pcnama'],
+                        $pc['ld_assetno'],
+                        $pc['ld_pc_id'],
+                        $pc['ld_serialnumber'],
+                        $employees[$pc['ld_employee_code']] ?? '',
+                        $positions[$pc['ld_position_code']] ?? '',
+                        $pc['ld_status'] == 1 ? 'Active' : 'Inactive'
+                    ];
+                    $sheet->fromArray($rowData, NULL, 'A' . $rowNum);
+
+                    // Apply alternating row style
+                    $styleToApply = ($pcIndex % 2 === 0) ? ['fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFF0F0F0']]] : ['fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFFFFF']]];
+                    $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray($styleToApply); // Adjusted range to 'H'
+                    $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray(['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]]]); // Adjusted range to 'H'
+
+                    // Apply special style for overlicensed PCs (if their index exceeds product_qty)
+                    // and for Inactive status
+                    if ($pcIndex >= $productQty || $pc['ld_status'] == 0) {
+                        $sheet->getStyle('A' . $rowNum . ':H' . $rowNum)->applyFromArray($overlicensedFill);
+                    }
+
+                    $rowNum++;
+                }
+            }
+
+            // Set column widths
+            foreach (range('A', $sheet->getHighestColumn()) as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            $filename = 'Software_License_ID_' . $license['id'] . '_' . date('Ymd_His') . '.xlsx';
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit();
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error exporting Software License data to Excel by ID: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)
+                                  ->setJSON(['error' => true, 'message' => 'Could not export data to Excel: ' . $e->getMessage()]);
+        }
+    }
+
 }

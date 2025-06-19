@@ -1,9 +1,13 @@
----
 <?= $this->extend("main/template") ?>
 <?= $this->section('content') ?>
 
 <style>
     /* Readonly style */
+    /* Ensure backdrop is correctly handled for overlapping modals */
+    .modal-backdrop.fade.show {
+        opacity: 0.5; /* Default backdrop opacity */
+        z-index: 1040; /* Bootstrap default */
+    }
     input[readonly], textarea[readonly], select[readonly] {
         background-color: #e9ecef; /* Light gray to indicate readonly */
         cursor: not-allowed;
@@ -24,7 +28,7 @@
     /* Adjust column widths for better display in tables */
     #tabelSwitchManaged th:nth-child(1), #tabelSwitchManaged td:nth-child(1) { width: 5%; } /* No. */
     #tabelSwitchManaged th:nth-child(2), #tabelSwitchManaged td:nth-child(2) { width: 15%; } /* Action */
-    #tabelSwitchManaged th:nth-child(3), #tabelSwitchManaged td:nth-child(3) { width: 5%; }  /* ID */
+    #tabelSwitchManaged th:nth-child(3), #tabelSwitchManaged td:nth-child(3) { width: 5%; } /* ID */
     #tabelSwitchManaged th:nth-child(4), #tabelSwitchManaged td:nth-child(4) { width: 10%; } /* ID Switch */
     #tabelSwitchManaged th:nth-child(5), #tabelSwitchManaged td:nth-child(5) { width: 10%; } /* Asset No */
     #tabelSwitchManaged th:nth-child(6), #tabelSwitchManaged td:nth-child(6) { width: 15%; } /* Asset Name */
@@ -154,7 +158,7 @@
             <thead class="table-light">
                 <tr>
                     <th style="width: 5%">No.</th>
-                    <th style="width: 15%">Action</th> 
+                    <th style="width: 15%">Action</th>
                     <th>ID</th>
                     <th>ID Switch</th>
                     <th>Asset No</th>
@@ -215,8 +219,8 @@
                             <div class="col-md-4">
                                 <label for="add_ip" class="form-label">IP</label>
                                 <input type="text" class="form-control" id="add_ip" name="ip"
-                                       pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-                                       title="Please enter a valid IPv4 address (e.g., 192.168.1.1)">
+                                            pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                            title="Please enter a valid IPv4 address (e.g., 192.168.1.1)">
                                 <div class="invalid-feedback" id="add_ip_error"></div>
                             </div>
                             <div class="col-md-4">
@@ -279,8 +283,8 @@
                             <div class="col-md-4">
                                 <label for="edit_ip" class="form-label">IP</label>
                                 <input type="text" class="form-control" id="edit_ip" name="ip"
-                                       pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-                                       title="Please enter a valid IPv4 address (e.g., 192.168.1.1)">
+                                            pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                            title="Please enter a valid IPv4 address (e.g., 192.168.1.1)">
                                 <div class="invalid-feedback" id="edit_ip_error"></div>
                             </div>
                             <div class="col-md-4">
@@ -369,8 +373,7 @@
                                     </span>
                                     Add Port Detail
                                 </button>
-                                <!-- <span id="portDetailInfoInModal" style="display: none;"></span> -->
-                            </div>
+                                </div>
                             <div id="customDetailStatusFilterWrapper" style="display: none;">
                             <label for="filterDetailStatus" class="form-label mb-0 me-2">Status:</label>
                             <select id="filterDetailStatus" class="form-select form-select-sm" style="width: auto;">
@@ -408,7 +411,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="addSwitchPortDetailModal" data-bs-backdrop="false" tabindex="-1" aria-labelledby="addSwitchPortDetailModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addSwitchPortDetailModal" tabindex="-1" aria-labelledby="addSwitchPortDetailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -469,7 +472,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="editSwitchPortDetailModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="editSwitchPortDetailModalLabel" aria-hidden="true">
+    <div class="modal fade" id="editSwitchPortDetailModal" tabindex="-1" aria-labelledby="editSwitchPortDetailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -765,7 +768,7 @@ $(document).ready(function() {
 
         // Baris ini dihapus karena id_switch tidak lagi required untuk mengaktifkan tombol save
         // if ($(formId).find('#add_id_switch').val() || $(formId).find('#edit_id_switch').val()) {
-        //     filled = true;
+        //      filled = true;
         // }
 
         $(`${submitBtnId}`).prop('disabled', !(filled && isValidIp));
@@ -1331,25 +1334,25 @@ $(document).ready(function() {
 
         // Fetch count of ports
         // $.ajax({
-        //     url: base_url + '/countSwitchDetailPorts/' + id_switch,
-        //     type: 'GET',
-        //     success: function(response) {
-        //         if (response.status) {
-        //             const currentPortCount = response.count;
-        //             let infoText = `Total Ports: ${currentPortCount} configured.`;
-        //             $('#portDetailInfoInModal').html(infoText).show();
-        //             $('.add-port-detail-btn').prop('disabled', false); // Enable Add Port button
-        //         } else {
-        //             $('#portDetailInfoInModal').text(`Error loading port count.`).show();
-        //             $('.add-port-detail-btn').prop('disabled', false);
-        //             Swal.fire('Error', response.error || 'Failed to get port count.', 'error');
-        //         }
-        //     },
-        //     error: function(xhr, status, error) {
-        //         $('#portDetailInfoInModal').text(`Error loading port count.`).show();
-        //         $('.add-port-detail-btn').prop('disabled', false);
-        //         Swal.fire('Error', 'Request failed to get port count: ' + (xhr.responseJSON ? xhr.responseJSON.message : error), 'error');
-        //     }
+        //      url: base_url + '/countSwitchDetailPorts/' + id_switch,
+        //      type: 'GET',
+        //      success: function(response) {
+        //          if (response.status) {
+        //              const currentPortCount = response.count;
+        //              let infoText = `Total Ports: ${currentPortCount} configured.`;
+        //              $('#portDetailInfoInModal').html(infoText).show();
+        //              $('.add-port-detail-btn').prop('disabled', false); // Enable Add Port button
+        //          } else {
+        //              $('#portDetailInfoInModal').text(`Error loading port count.`).show();
+        //              $('.add-port-detail-btn').prop('disabled', false);
+        //              Swal.fire('Error', response.error || 'Failed to get port count.', 'error');
+        //          }
+        //      },
+        //      error: function(xhr, status, error) {
+        //          $('#portDetailInfoInModal').text(`Error loading port count.`).show();
+        //          $('.add-port-detail-btn').prop('disabled', false);
+        //          Swal.fire('Error', 'Request failed to get port count: ' + (xhr.responseJSON ? xhr.responseJSON.message : error), 'error');
+        //      }
         // });
 
         // Load the actual port detail data
@@ -1493,7 +1496,11 @@ $(document).ready(function() {
 
         // Menampilkan kembali switchDetailListModal di belakang editSwitchPortDetailModal
         $('#switchDetailListModal').modal('show'); 
-        
+        // Mengatur z-index untuk modal kedua (editSwitchPortDetailModal) dan backdropnya
+        $('.modal-backdrop').first().css('z-index', 1040); // Pastikan backdrop pertama di z-index default
+        $('#editSwitchPortDetailModal').css('z-index', 1051); // Modal kedua di atas modal pertama dan backdrop
+        $('#editSwitchPortDetailModal').data('bs.modal')._backdrop.css('z-index', 1050); // Backdrop untuk modal kedua di antara kedua modal
+
         $.ajax({
             url: base_url + '/editSwitchDetailPort',
             type: 'POST',
@@ -1505,13 +1512,11 @@ $(document).ready(function() {
                     $('#edit_detail_header_id_switch').val(d.smd_header_id_switch);
                     $('#edit_port').val(d.smd_port);
                     $('#edit_type').val(d.smd_type);
-                    // Populate display field for VLAN ID
                     $('#edit_vlan_id_display').val(d.smd_vlan_id);
-                    $('#edit_vlan_id').val(d.smd_vlan_id); // Hidden field
-                    $('#edit_vlan_name').val(d.smd_vlan_name); // Populated with resolved name
+                    $('#edit_vlan_id').val(d.smd_vlan_id);
+                    $('#edit_vlan_name').val(d.smd_vlan_name);
                     $('#edit_detail_status').val(d.smd_status);
 
-                    // Clear previous invalid states
                     $('#editSwitchPortDetailForm').find('.is-invalid').removeClass('is-invalid');
                     $('#editSwitchPortDetailForm').find('.invalid-feedback').text('').hide();
 
@@ -1650,17 +1655,16 @@ $(document).ready(function() {
     $('.search-vlan-btn').on('click', function() {
         // Capture the ID of the modal that opened this VLAN finder
         currentCallingDetailModal = $(this).closest('.modal').attr('id');
+        const $parentModal = $(`#${currentCallingDetailModal}`);
 
-        // Hide the parent detail modal before opening the VLAN search modal
-        // This is crucial to prevent overlapping and ensure correct focus management.
-        if (currentCallingDetailModal === 'addSwitchPortDetailModal') {
-            $('#addSwitchPortDetailModal').modal('hide');
-        } else if (currentCallingDetailModal === 'editSwitchPortDetailModal') {
-            $('#editSwitchPortDetailModal').modal('hide');
-        } else if (currentCallingDetailModal === 'switchDetailListModal') {
-            // If the VLAN search is initiated directly from the main detail list modal (unlikely for now, but good practice)
-            $('#switchDetailListModal').modal('hide');
+        // We no longer hide the parent modal, but adjust z-index to layer them.
+        if (currentCallingDetailModal === 'addSwitchPortDetailModal' || currentCallingDetailModal === 'editSwitchPortDetailModal') {
+            // Ensure the main detail modal is above its backdrop
+            $('#switchDetailListModal').css('z-index', 1041);
+            // Set the z-index of the add/edit modal to be below the VLAN search modal, but still visible
+            $parentModal.css('z-index', 1042);
         }
+        // The VLAN search modal will get the highest z-index by default when opened
 
         // Destroy and reinitialize VLAN table
         if ($.fn.DataTable.isDataTable('#vlanTable')) {
@@ -1680,11 +1684,9 @@ $(document).ready(function() {
             paging: true, lengthChange: true, searching: true
         });
 
-        // Small delay to ensure the parent modal is fully hidden before showing the new one
-        setTimeout(() => { $('#vlanSearchModal').modal('show'); }, 100);
+        // Show the VLAN search modal. Bootstrap handles its z-index automatically (higher than parent modals by default).
+        $('#vlanSearchModal').modal('show');
     });
-
-    // ... kode Anda sebelumnya ...
 
     $('#vlanTable tbody').on('click', 'tr', function() {
         if (!vlanTable) return;
@@ -1730,18 +1732,18 @@ $(document).ready(function() {
         $('#vlanSearchModal').modal('hide');
     });
 
-// ... sisa kode Anda ...
-
     $('#vlanSearchModal').on('hidden.bs.modal', function() {
         // Reopen the correct parent modal after VLAN search is closed
         if (currentCallingDetailModal === 'addSwitchPortDetailModal') {
-            // TIDAK PERLU MERESET LAGI DI SINI, KARENA DATA SUDAH DIISI DI ATAS
-            // Cukup tampilkan modal induk
+            // Kembalikan z-index modal anak ke normal saat VLAN modal ditutup
+            $('#addSwitchPortDetailModal').css('z-index', 1050); // Default Bootstrap z-index for modal
             $('#addSwitchPortDetailModal').modal('show');
         } else if (currentCallingDetailModal === 'editSwitchPortDetailModal') {
-            // TIDAK PERLU MERESET LAGI DI SINI
+            // Kembalikan z-index modal anak ke normal saat VLAN modal ditutup
+            $('#editSwitchPortDetailModal').css('z-index', 1050); // Default Bootstrap z-index for modal
             $('#editSwitchPortDetailModal').modal('show');
         } else if (currentCallingDetailModal === 'switchDetailListModal') {
+            $('#switchDetailListModal').css('z-index', 1050); // Default Bootstrap z-index for modal
             $('#switchDetailListModal').modal('show');
         }
         currentCallingDetailModal = ''; // Reset context
@@ -1749,27 +1751,12 @@ $(document).ready(function() {
 
     // Reset VLAN fields and readonly state when add/edit detail modals are shown
     $('#addSwitchPortDetailModal').on('shown.bs.modal', function() {
-        // HAPUS LOGIKA RESET INI JIKA ANDA INGIN MEMPERTAHANKAN DATA SETELAH PEMILIHAN VLAN
-        // KARENA INI AKAN MENGHAPUS NILAI YANG BARU SAJA DISET DARI VLAN FINDER JIKA VLAN ID KOSONG
-        /*
-        if ($(this).find('#add_vlan_id').val() === '') { // Hanya mereset jika VLAN ID masih kosong
-            $('#add_vlan_id_display').val('').prop('readonly', true).removeClass('bg-light');
-            $('#add_vlan_name').val('').prop('readonly', true).removeClass('bg-light');
-        }
-        */
         // Biarkan bagian ini jika Anda ingin menghilangkan pesan error sebelumnya
         $('#add_vlan_id_error').text('').hide();
         $('#add_vlan_id_display').removeClass('is-invalid');
     });
 
     $('#editSwitchPortDetailModal').on('shown.bs.modal', function() {
-        // HAPUS LOGIKA RESET INI JUGA
-        /*
-        if ($(this).find('#edit_vlan_id').val() === '') { // Hanya mereset jika VLAN ID masih kosong
-            $('#edit_vlan_id_display').val('').prop('readonly', true).removeClass('bg-light');
-            $('#edit_vlan_name').val('').prop('readonly', true).removeClass('bg-light');
-        }
-        */
         // Biarkan bagian ini jika Anda ingin menghilangkan pesan error sebelumnya
         $('#edit_vlan_id_error').text('').hide();
         $('#edit_vlan_id_display').removeClass('is-invalid');
