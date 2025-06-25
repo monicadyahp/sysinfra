@@ -82,15 +82,13 @@
 
     /* Adjust column widths for flexibility in editLicensedPcTable */
     #editLicensedPcTable thead th:nth-child(1),
-    #editLicensedPcTable tbody td:nth-child(1) { width: 10%; } /* Action */
+    #editLicensedPcTable tbody td:nth-child(1) { width: 10%; } /* Asset Name */
     #editLicensedPcTable thead th:nth-child(2),
-    #editLicensedPcTable tbody td:nth-child(2) { width: 15%; } /* Asset Name */
+    #editLicensedPcTable tbody td:nth-child(2) { width: 15%; } /* Asset No */
     #editLicensedPcTable thead th:nth-child(3),
-    #editLicensedPcTable tbody td:nth-child(3) { width: 10%; } /* Asset No */
+    #editLicensedPcTable tbody td:nth-child(3) { width: 10%; } /* Asset ID */
     #editLicensedPcTable thead th:nth-child(4),
-    #editLicensedPcTable tbody td:nth-child(4) { width: 10%; } /* Asset ID */
-    #editLicensedPcTable thead th:nth-child(5),
-    #editLicensedPcTable tbody td:nth-child(5) { width: 15%; } /* Serial Number */
+    #editLicensedPcTable tbody td:nth-child(4) { width: 10%; } /* Serial Number */
 
     /* Styles for editLicensedPcInfoInModal */
     #editLicensedPcInfoInModal {
@@ -385,8 +383,8 @@
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="edit_po_number" name="po_number" required>
                                         <button class="btn btn-outline-secondary edit-search-po-btn" type="button"
-                                                    data-bs-toggle="modal" data-bs-target="#poNumberListModal">
-                                                    <i class="fa fa-search"></i>
+                                                     data-bs-toggle="modal" data-bs-target="#poNumberListModal">
+                                                     <i class="fa fa-search"></i>
                                         </button>
                                     </div>
                                     <div class="invalid-feedback" id="edit_po_number_error"></div>
@@ -881,20 +879,20 @@ $(document).ready(function() {
                 className: 'text-center',
                 render: function(data, type, row) {
                     return `
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="javascript:;" class="btn btn-icon btn-outline-primary edit-btn" data-id="${row.id}" title="Edit Software License">
-                                    <i class="fa fa-pen-to-square"></i>
-                                </a>
-                                <a href="javascript:;" class="btn btn-icon btn-outline-info view-licensed-pc-btn" data-id="${row.id}" data-qty="${row.product_qty}" title="View Licensed PCs">
-                                    <i class="fa fa-computer"></i>
-                                </a>
-                                <a href="javascript:;" class="btn btn-icon btn-outline-success print-excel-by-id-btn" data-id="${row.id}" title="Print Excel for this License">
-                                    <i class="fa fa-file-excel"></i>
-                                </a>
-                                <a href="javascript:;" class="btn btn-icon btn-outline-danger delete-btn" data-id="${row.id}" title="Delete Software License">
-                                    <i class="fa fa-trash-can"></i>
-                                </a>
-                            </div>`;
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-primary edit-btn" data-id="${row.id}" title="Edit Software License">
+                                        <i class="fa fa-pen-to-square"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-info view-licensed-pc-btn" data-id="${row.id}" data-qty="${row.product_qty}" title="View Licensed PCs">
+                                        <i class="fa fa-computer"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-success print-excel-by-id-btn" data-id="${row.id}" title="Print Excel for this License">
+                                        <i class="fa fa-file-excel"></i>
+                                    </a>
+                                    <a href="javascript:;" class="btn btn-icon btn-outline-danger delete-btn" data-id="${row.id}" title="Delete Software License">
+                                        <i class="fa fa-trash-can"></i>
+                                    </a>
+                                </div>`;
                 }
             },
             { data: 'id' },
@@ -1061,15 +1059,23 @@ $(document).ready(function() {
 
             $(row).removeClass('overlicensed-row');
             lastUpdateCell.removeClass('latest-update-cell'); // Pastikan menghapus kelas sebelumnya
-            if (currentLicensedCount > currentLicenseQty) {
-                const numOverlicensed = currentLicensedCount - currentLicenseQty;
-                if (index < numOverlicensed) {
-                    $(row).addClass('overlicensed-row');
+            // Modifikasi kondisi untuk menerapkan overlicensed-row
+            // if (currentLicensedCount > currentLicenseQty) { // <-- Logic asli
+            //     const numOverlicensed = currentLicensedCount - currentLicenseQty;
+            //     if (index < numOverlicensed) {
+            //         $(row).addClass('overlicensed-row');
+            //         if (index === currentLicenseQty) { // Ini logika yang aneh, akan selalu index 0 untuk overlicensed pertama
+            //             lastUpdateCell.addClass('latest-update-cell');
+            //         }
+            //     }
+            // }
 
-                    if (index === currentLicenseQty) {
-                        lastUpdateCell.addClass('latest-update-cell');
-                    }
-                }
+            // Logika baru: jika index row saat ini (setelah diurutkan) lebih besar atau sama dengan product_qty
+            // ini menandakan bahwa PC tersebut "overlicensed" jika statusnya aktif.
+            // Atau jika statusnya 25 (soft-deleted), kita juga bisa menandainya.
+            // Karena kita hanya mengambil ld_status = 1, maka hanya overlicensed yang perlu diperhatikan
+            if (index >= currentLicenseQty) { // HANYA untuk row yang index-nya melebihi kuantitas
+                $(row).addClass('overlicensed-row');
             }
         },
         language: {
@@ -1109,7 +1115,22 @@ $(document).ready(function() {
             }
         },
         columns: [
-
+            // { // Kolom action dihilangkan dari tabel editLicensedPcTable
+            //     data: null,
+            //     className: 'text-center',
+            //     orderable: false,
+            //     render: function(data, type, row) {
+            //         return `
+            //             <div class="d-flex justify-content-center gap-2">
+            //                 <a href="javascript:;" class="btn btn-icon btn-outline-primary edit-licensed-pc-btn" data-id="${row.ld_id}" title="Edit Licensed PC">
+            //                     <i class="fa fa-pen-to-square"></i>
+            //                 </a>
+            //                 <a href="javascript:;" class="btn btn-icon btn-outline-danger delete-licensed-pc-btn" data-id="${row.ld_id}" title="Delete Licensed PC">
+            //                     <i class="fa fa-trash-can"></i>
+            //                 </a>
+            //             </div>`;
+            //     }
+            // },
             { data: 'ld_pcnama', render: d => d ? d.toUpperCase() : '' },
             { data: 'ld_assetno', render: d => d ? d.toUpperCase() : '' },
             { data: 'ld_pc_id', render: d => d ? d.toString() : '' },
@@ -1138,15 +1159,16 @@ $(document).ready(function() {
                 }
             }
         ],
-        // Pengurutan berdasarkan kolom Last Update (indeks 7) secara menurun
-        order: [[6, 'desc']], // Ubah indeks kolom pengurutan dari 7 menjadi 6 (karena kolom action hilang)
+        // Pengurutan berdasarkan kolom Last Update (indeks 6) secara menurun, karena kolom action sudah dihilangkan
+        order: [[6, 'desc']], // UBAH INDEX KOLOM PENGURUTAN (dulunya 7)
         rowCallback: function(row, data, index) {
             // Apply overlicensed-row class based on live data (from this table itself)
             const currentLicensedCount = editLicensedPcTable.rows({ filter: 'applied' }).count();
             const currentLicenseQty = selectedSoftwareLicenseQty; // Use the globally updated quantity
 
             $(row).removeClass('overlicensed-row');
-            if (currentLicensedCount > currentLicenseQty && index >= currentLicenseQty) {
+            // Logika baru untuk overlicensed
+            if (index >= currentLicenseQty) { // HANYA untuk row yang index-nya melebihi kuantitas
                 $(row).addClass('overlicensed-row');
             }
         },
@@ -1312,9 +1334,9 @@ $(document).ready(function() {
                     const d = response.data;
                     $('#edit_td_id').val(d.id);
                     $('#edit_license_id').val(d.license_id);
-                    $('#edit_license_type').val(d.license_type);
-                    $('#edit_license_type_category').val(d.license_type_category);
-                    $('#edit_ref_num_subs_id').val(d.ref_num_subs_id);
+                    $('#edit_license_type').val(d.type); // UBAH DARI d.license_type ke d.type
+                    $('#edit_license_type_category').val(d.license_category);
+                    $('#edit_ref_num_subs_id').val(d.ref_number); // UBAH DARI d.ref_num_subs_id ke d.ref_number
 
                     // PO fields initial state from DB
                     $('#edit_po_number').val(d.po_number);
@@ -1728,35 +1750,35 @@ $(document).ready(function() {
         const id = $(this).data('id');
         Swal.fire({
             title: 'Are you sure?',
-            text: "This will permanently delete the record and all associated licensed PCs!",
+            text: "They will no longer appear.", // Ubah pesan konfirmasi
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it',
-            cancelButtonText: 'No, keep it'
+            confirmButtonText: 'Yes, Delete.', // Ubah teks tombol konfirmasi
+            cancelButtonText: 'No, Cancel.' // Ubah teks tombol cancel
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: base_url + '/SoftwareLicense/delete',
+                    url: base_url + '/SoftwareLicense/delete', // Memanggil fungsi delete di controller
                     type: 'POST',
                     data: { id: id },
                     success: function(response) {
                         if (response.status) {
                             Swal.fire({
-                                title: 'Deleted!',
-                                text: 'Record has been deleted.',
+                                title: 'Status Updated!', // Ubah judul notifikasi
+                                text: 'The license and its associated PCs have been set to inactive.', // Ubah teks notifikasi
                                 icon: 'success',
-                                timer: 1500, // Menutup otomatis setelah 1.5 detik
+                                timer: 2000, // Menutup otomatis setelah 2 detik
                                 showConfirmButton: false // Menghilangkan tombol "Ok"
                             });
-                            table.ajax.reload();
+                            table.ajax.reload(); // Reload tabel utama
                             if (selectedSoftwareLicenseId === id) {
                                 selectedSoftwareLicenseId = null;
                                 selectedSoftwareLicenseQty = 0;
                             }
                         } else {
-                            Swal.fire('Error', response.error || 'Delete failed', 'error');
+                            Swal.fire('Error', response.error || 'Failed to change status.', 'error'); // Ubah pesan error
                         }
                     },
                     error: function(xhr, status, error) {
@@ -1900,7 +1922,7 @@ $(document).ready(function() {
                         if (selectedSoftwareLicenseId !== null) { // Pastikan ID masih ada
                             // Fetch ulang data lisensi yang baru diupdate
                             $.ajax({
-                                url: base_url + '/SoftwareLicense/edit', // Gunakan endpoint edit untuk fetch data lengkap
+                                url: base_url + '/SoftwareLicense/edit', // Menggunakan endpoint edit untuk fetch data lengkap
                                 type: 'POST',
                                 data: { id: selectedSoftwareLicenseId }, // Gunakan ID yang sudah di-set
                                 success: function(responseFetch) {
@@ -2181,8 +2203,20 @@ $(document).ready(function() {
                 currentLicensedPcsCountAjaxRequest = null; // Clear request on success
                 if (response.status) {
                     const currentCount = response.count;
-                    // PASTIKAN liveProductQty DIPARSE SEBAGAI ANGKA
-                    const liveProductQty = parseFloat(response.product_qty); // Menggunakan parseFloat untuk numeric(18,2)
+                    const liveProductQty = parseFloat(response.product_qty);
+                    
+                    // NEW: Tambahkan pengecekan license_status dari respons
+                    if (response.license_status == 25) {
+                        $('#licensedPcInfoInModal').html(`ID No: ${tl_id} <span class="text-danger">(This License is Inactive)</span>`).show();
+                        $('.add-pc-btn').prop('disabled', true); // Disable add PC if main license is inactive
+                        licensedPcTable.clear().draw(); // Pastikan tabel PC kosong jika lisensi utama inactive
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'License Inactive',
+                            text: 'This software license is currently inactive. You cannot add or manage PCs for it.',
+                        });
+                        return; // Hentikan proses jika lisensi inactive
+                    }
 
                     selectedSoftwareLicenseQty = liveProductQty; // Update the global quantity
 
@@ -2191,7 +2225,6 @@ $(document).ready(function() {
                     if (excess > 0) {
                         infoText += ` <span class="text-danger">(Overlicensed by ${excess} PCs!)</span>`;
                     } else if (excess < 0) {
-                        // Tambahkan logika untuk menampilkan berapa banyak lagi lisensi yang bisa digunakan
                         infoText += ` <span class="text-success">(Available: ${Math.abs(excess)} PCs)</span>`;
                     }
                     $('#licensedPcInfoInModal').html(infoText).show();
@@ -2242,11 +2275,19 @@ $(document).ready(function() {
                 currentLicensedPcsCountAjaxRequest = null;
                 if (response.status) {
                     const currentCount = response.count;
-                    // Use product_qty passed to this function, which should be fresh from the main license data
-                    const liveProductQty = parseFloat(product_qty);
+                    const liveProductQty = parseFloat(response.product_qty); // Use product_qty from response for accuracy
 
-                    // Update selectedSoftwareLicenseQty if needed (though it should be set by the main table click)
-                    selectedSoftwareLicenseQty = liveProductQty;
+                    // NEW: Tambahkan pengecekan license_status dari respons
+                    if (response.license_status == 25) {
+                        $('#editLicensedPcInfoInModal').html(`ID No: ${tl_id} <span class="text-danger">(This License is Inactive)</span>`).show();
+                        $('.add-pc-to-edit-modal-btn').prop('disabled', true); // Disable add PC if main license is inactive
+                        editLicensedPcTable.clear().draw(); // Pastikan tabel PC kosong jika lisensi utama inactive
+                        // Tidak perlu Swal.fire di sini karena user sedang di modal edit utama
+                        return; // Hentikan proses jika lisensi inactive
+                    }
+
+
+                    selectedSoftwareLicenseQty = liveProductQty; // Update selectedSoftwareLicenseQty globally
 
                     let infoText = `ID No: ${tl_id} (${currentCount}/${liveProductQty} PCs Licensed)`;
                     const excess = currentCount - liveProductQty;
@@ -2356,70 +2397,91 @@ $(document).ready(function() {
         }
 
 
-    // Fungsi handler umum untuk menutup EditLicensedPcModal dan membuka LicensedPcsListModal
-    function handleCloseEditLicensedPcModal() {
-        console.log("Closing editLicensedPcModal...");
-        const editLicensedPcModalElement = document.getElementById('editLicensedPcModal');
-        const editLicensedPcModalInstance = bootstrap.Modal.getInstance(editLicensedPcModalElement);
+        // Fungsi handler umum untuk menutup EditLicensedPcModal dan membuka LicensedPcsListModal
+        function handleCloseEditLicensedPcModal(shouldReopenParent = true, licenseIdToReload = null) { // Tambahkan parameter opsional
+            console.log("Closing editLicensedPcModal...");
+            const editLicensedPcModalElement = document.getElementById('editLicensedPcModal');
+            const editLicensedPcModalInstance = bootstrap.Modal.getInstance(editLicensedPcModalElement);
 
-        if (editLicensedPcModalInstance) {
-            $(editLicensedPcModalElement).off('hidden.bs.modal.reopen'); // Hapus event listener sebelumnya
+            if (editLicensedPcModalInstance) {
+                $(editLicensedPcModalElement).off('hidden.bs.modal.reopen'); // Hapus event listener sebelumnya
 
-            $(editLicensedPcModalElement).one('hidden.bs.modal.reopen', function () {
-                console.log("editLicensedPcModal is hidden. selectedSoftwareLicenseId:", selectedSoftwareLicenseId);
-                if (selectedSoftwareLicenseId !== null) {
-                    console.log("Attempting to show licensedPcsListModal...");
-                    setTimeout(() => {
-                        const licensedPcsListModalElement = document.getElementById('licensedPcsListModal');
-                        const licensedPcsListModalInstance = bootstrap.Modal.getInstance(licensedPcsListModalElement);
+                $(editLicensedPcModalElement).one('hidden.bs.modal.reopen', function () {
+                    console.log("editLicensedPcModal is hidden. selectedSoftwareLicenseId:", selectedSoftwareLicenseId, "shouldReopenParent:", shouldReopenParent);
+                    // Pastikan licenseIdToReload tidak null sebelum mencoba membuka modal parent
+                    if (shouldReopenParent && licenseIdToReload !== null) {
+                        console.log("Attempting to show licensedPcsListModal...");
+                        setTimeout(() => {
+                            const licensedPcsListModalElement = document.getElementById('licensedPcsListModal');
+                            const licensedPcsListModalInstance = bootstrap.Modal.getInstance(licensedPcsListModalElement);
 
-                        if (licensedPcsListModalInstance) {
-                            licensedPcsListModalInstance.show();
-                        } else {
-                            new bootstrap.Modal(licensedPcsListModalElement).show();
-                        }
-                        // Pastikan data di licenseDetailOverviewTable dan licensedPcTable di-refresh
-                        // PENTING: Lakukan fetch ulang data lisensi utama dari server untuk memastikan `Last Update` dan `Last User` akurat
-                        $.ajax({
-                            url: base_url + '/SoftwareLicense/edit', // Menggunakan endpoint edit untuk fetch data lengkap
-                            type: 'POST',
-                            data: { id: selectedSoftwareLicenseId },
-                            success: function(responseFetch) {
-                                if (responseFetch.status) {
-                                    const updatedLicenseData = responseFetch.data;
-                                    selectedSoftwareLicenseQty = parseFloat(updatedLicenseData.product_qty);
-                                    licenseDetailOverviewTable.clear().rows.add([updatedLicenseData]).draw();
-                                    loadLicensedPcs(selectedSoftwareLicenseId); // Refresh tabel PC juga
-                                } else {
-                                    console.error('Failed to re-fetch license data for modal reopening:', responseFetch.message);
-                                    loadLicensedPcs(selectedSoftwareLicenseId); // Setidaknya refresh tabel PC
-                                }
-                            },
-                            error: function(xhrFetch, statusFetch, errorFetch) {
-                                console.error('AJAX error re-fetching license data for modal reopening:', errorFetch);
-                                loadLicensedPcs(selectedSoftwareLicenseId); // Setidaknya refresh tabel PC
+                            if (licensedPcsListModalInstance) {
+                                licensedPcsListModalInstance.show();
+                            } else {
+                                new bootstrap.Modal(licensedPcsListModalElement).show();
                             }
-                        });
-                    }, 100);
-                } else {
-                    console.log("selectedSoftwareLicenseId is null, cannot show licensedPcsListModal.");
-                }
-            });
+                            // PENTING: Lakukan fetch ulang data lisensi utama dari server untuk memastikan `Last Update` dan `Last User` akurat
+                            $.ajax({
+                                url: base_url + '/SoftwareLicense/edit', // Menggunakan endpoint edit untuk fetch data lengkap
+                                type: 'POST',
+                                data: { id: licenseIdToReload }, // Gunakan ID yang diteruskan
+                                success: function(responseFetch) {
+                                    if (responseFetch.status) {
+                                        const updatedLicenseData = responseFetch.data;
+                                        selectedSoftwareLicenseQty = parseFloat(updatedLicenseData.product_qty);
+                                        licenseDetailOverviewTable.clear().rows.add([updatedLicenseData]).draw(); // Perbarui tabel detail lisensi
+                                        loadLicensedPpcs(licenseIdToReload); // Refresh tabel PC juga
+                                    } else {
+                                        console.error('Failed to re-fetch license data for modal reopening:', responseFetch.message);
+                                        loadLicensedPpcs(licenseIdToReload); // Setidaknya refresh tabel PC jika data lisensi utama gagal dimuat
+                                    }
+                                },
+                                error: function(xhrFetch, statusFetch, errorFetch) {
+                                    console.error('AJAX error re-fetching license data for modal reopening:', errorFetch);
+                                    loadLicensedPcs(licenseIdToReload); // Setidaknya refresh tabel PC jika AJAX gagal
+                                }
+                            });
+                        }, 100);
+                    } else if (licenseIdToReload === null) {
+                        console.log("licenseIdToReload is null, cannot show licensedPcsListModal.");
+                    } else {
+                        console.log("Parent modal explicitly prevented from reopening.");
+                    }
+                    isAnotherModalOpenOnTop = false; // Reset flag setelah logika pembukaan parent selesai
+                });
 
-            editLicensedPcModalInstance.hide();
-        } else {
-            console.warn("Could not get Bootstrap modal instance for editLicensedPcModal. Trying jQuery hide.");
-            $('#editLicensedPcModal').modal('hide');
-            $('#editLicensedPcModal').one('hidden.bs.modal.reopen-fallback', function () {
-                if (selectedSoftwareLicenseId !== null) {
-                    setTimeout(() => {
-                        $('#licensedPcsListModal').modal('show');
-                        loadLicensedPcs(selectedSoftwareLicenseId);
-                    }, 100);
-                }
-            });
+                editLicensedPcModalInstance.hide();
+            } else {
+                console.warn("Could not get Bootstrap modal instance for editLicensedPcModal. Trying jQuery hide.");
+                $('#editLicensedPcModal').modal('hide');
+                $('#editLicensedPcModal').one('hidden.bs.modal.reopen-fallback', function () {
+                    if (shouldReopenParent && licenseIdToReload !== null) {
+                        setTimeout(() => {
+                            $('#licensedPcsListModal').modal('show');
+                            // Lakukan fetch data lisensi utama dan refresh tabel PC di sini juga (sama seperti di atas)
+                            $.ajax({
+                                url: base_url + '/SoftwareLicense/edit',
+                                type: 'POST',
+                                data: { id: licenseIdToReload },
+                                success: function(responseFetch) {
+                                    if (responseFetch.status) {
+                                        const updatedLicenseData = responseFetch.data;
+                                        selectedSoftwareLicenseQty = parseFloat(updatedLicenseData.product_qty);
+                                        licenseDetailOverviewTable.clear().rows.add([updatedLicenseData]).draw();
+                                        loadLicensedPpcs(licenseIdToReload);
+                                    } else {
+                                        loadLicensedPpcs(licenseIdToReload);
+                                    }
+                                },
+                                error: function(xhrFetch, statusFetch, errorFetch) {
+                                    loadLicensedPpcs(licenseIdToReload);
+                                }
+                            });
+                        }, 100);
+                    }
+                });
+            }
         }
-    }
 
     // Event listener untuk tombol "X" di header modal Add Licensed PC
     $('#closeAddLicensedPcModalHeader').on('click', function() {
@@ -2627,10 +2689,8 @@ $(document).ready(function() {
                         timer: 1500,
                         showConfirmButton: false
                     }).then(() => {
-                        // Tutup modal editLicensedPcModal
-                        $('#editLicensedPcModal').modal('hide');
-                        // Reload tabel PC di dalam Licensed Pcs List Modal
-                        loadLicensedPcs(tl_id); // Panggil fungsi untuk me-refresh data PC
+                        // Panggil fungsi penutup modal dengan parameter true dan tl_id
+                        handleCloseEditLicensedPcModal(true, tl_id);
                         // Flag isAnotherModalOpenOnTop akan di-reset oleh handleCloseEditLicensedPcModal
                         // yang dipanggil saat modal ditutup.
                     });
@@ -2670,35 +2730,36 @@ $(document).ready(function() {
     // Handle Delete Licensed PC button click
     $('#licensedPcTable').on('click', '.delete-licensed-pc-btn', function() {
         const ld_id = $(this).data('id');
-        const tl_id = selectedSoftwareLicenseId;
+        const tl_id = selectedSoftwareLicenseId; // Pastikan ini adalah ID lisensi induk
 
         Swal.fire({
             title: 'Are you sure?',
-            text: "This will permanently remove this PC from the license!",
+            text: "It will no longer appear in the licensed PCs list", // Ubah pesan konfirmasi
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it',
-            cancelButtonText: 'No, keep it'
+            confirmButtonText: 'Yes, Delete.', // Ubah teks tombol konfirmasi
+            cancelButtonText: 'No, Cancel.' // Ubah teks tombol cancel
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: base_url + '/SoftwareLicense/deleteLicensedPc',
+                    url: base_url + '/SoftwareLicense/deleteLicensedPc', // Memanggil fungsi soft delete di controller
                     type: 'POST',
                     data: { ld_id: ld_id },
                     success: function(response) {
                         if (response.status) {
                             Swal.fire({
-                                title: 'Deleted!',
-                                text: 'Licensed PC has been removed.',
+                                title: 'Status Updated!', // Ubah judul notifikasi
+                                text: 'Licensed PC has been set to inactive.', // Ubah teks notifikasi
                                 icon: 'success',
-                                timer: 1500, // Menutup otomatis setelah 1.5 detik
+                                timer: 2000, // Menutup otomatis setelah 2 detik
                                 showConfirmButton: false // Menghilangkan tombol "Ok"
                             });
-                            loadLicensedPcs(tl_id);
+                            // Refresh tabel PC setelah soft delete
+                            loadLicensedPcs(tl_id); // Panggil fungsi untuk me-refresh data PC
                         } else {
-                            Swal.fire('Error', response.error || 'Delete failed', 'error');
+                            Swal.fire('Error', response.error || 'Failed to change status.', 'error'); // Ubah pesan error
                         }
                     },
                     error: function(xhr, status, error) {

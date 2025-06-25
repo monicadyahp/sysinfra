@@ -55,8 +55,9 @@ class MstVlanController extends BaseController
             // Select tv_id (auto-increment PK) as 'id', tv_id_vlan (user-inputtable) as 'vlan_id'
             // tv_lastuser is selected as 'last_user_id_from_db' because it's an integer ID that needs resolution
             $query = $this->db->table('public.tbmst_vlan')
-                             ->select('tv_id AS id, tv_id_vlan AS vlan_id, tv_name AS name,
-                                     tv_lastupdate AS last_update, tv_lastuser AS last_user_id_from_db');
+                ->select('tv_id AS id, tv_id_vlan AS vlan_id, tv_name AS name,
+                        tv_lastupdate AS last_update, tv_lastuser AS last_user_id_from_db')
+                ->where('tv_status', 1); // <--- INI TAMBAHAN
 
             $query->orderBy('tv_lastupdate', 'DESC');
 
@@ -178,6 +179,7 @@ class MstVlanController extends BaseController
             'tv_id_vlan' => $vlanIdInput, // Will be null if empty($vlanIdInput)
             'tv_name'    => $vlanName,    // Will be null if empty($vlanName)
             'tv_lastuser' => $lastUser,
+            'tv_status' => 1, // <--- INI TAMBAHAN (opsional, sudah di-handle model)
         ];
 
         // Define validation rules only for the fields that are expected to be present
@@ -370,15 +372,16 @@ class MstVlanController extends BaseController
     {
         $id = $this->request->getPost('id');
         try {
+            // Panggilan ini sekarang akan memicu soft delete di MstVlanModel
             $this->MstVlanModel->delete($id);
-            return $this->response->setJSON(['status' => true, 'message' => 'Record deleted successfully.']);
+            return $this->response->setJSON(['status' => true, 'message' => 'Record has been deactivated successfully.']); // <--- UBAH PESAN INI
         } catch (\Exception $e) {
-            log_message('error', 'Delete VLAN error: ' . $e->getMessage());
+            log_message('error', 'Deactivate VLAN error: ' . $e->getMessage()); // <--- UBAH PESAN LOG INI
             return $this->response->setStatusCode(500)
-                                 ->setJSON(['status' => false, 'error' => $e->getMessage()]);
+                                  ->setJSON(['status' => false, 'error' => 'Failed to deactivate record: ' . $e->getMessage()]); // <--- UBAH PESAN INI
         }
     }
-
+    
     /**
      * Checks for duplicate VLAN names.
      * @param string $vlanName The VLAN name to check.

@@ -22,6 +22,7 @@ class SwitchManagedModel extends Model
         'sm_age',
         'sm_ip',
         'sm_location',
+        'sm_status', // BARIS BARU INI
         'sm_lastuser', // This will store an integer ID
         'sm_lastupdate',
     ];
@@ -144,6 +145,7 @@ class SwitchManagedModel extends Model
                                   smd.smd_vlan_id, smd.smd_vlan_name, smd.smd_status,
                                   smd.smd_lastupdate, smd.smd_lastuser')
                         ->where('smd.smd_header_id_switch', $sm_id_switch)
+                        ->whereIn('smd.smd_status', [0, 1]) // BARIS INI TELAH DIUBAH!
                         ->orderBy('smd.smd_port', 'ASC') // Order by port number
                         ->get()
                         ->getResultArray();
@@ -222,25 +224,68 @@ class SwitchManagedModel extends Model
                         ->update($updateData);
     }
 
+    public function delete($id = null, bool $purge = false)
+    {
+        if ($id === null) {
+            return false;
+        }
 
-    /**
-     * Delete a port detail record from tbmst_switch_managed_detail.
+        // Dapatkan ID pengguna yang login dari sesi, jika tidak ada, gunakan 1 sebagai default
+        $loggedInUserId = session()->get('user_id');
+        $lastUser = $loggedInUserId ?? 1;
+
+        $updateData = [
+            'sm_status'      => 25, // Kunci: Ubah status menjadi 25
+            'sm_lastuser'    => $lastUser, // Perbarui pengguna terakhir yang mengubah
+            'sm_lastupdate'  => Time::now()->toDateTimeString(), // Perbarui timestamp
+        ];
+
+        // Lakukan update pada tabel utama (tbmst_switch_managed)
+        return $this->db->table($this->table)
+                        ->where($this->primaryKey, $id) // Cari berdasarkan primary key (sm_id)
+                        ->update($updateData); // Lakukan operasi update
+    }
+
+/**
+     * Changes the status of a port detail record to 25 (deleted/inactive) instead of permanently deleting it.
      */
     public function deleteSwitchDetailPort(int $smd_id)
     {
+        // Dapatkan ID pengguna yang login dari sesi, jika tidak ada, gunakan 1 sebagai default
+        $loggedInUserId = session()->get('user_id');
+        $lastUser = $loggedInUserId ?? 1;
+
+        $updateData = [
+            'smd_status'     => 25, // Kunci: Ubah status menjadi 25
+            'smd_lastuser'   => $lastUser, // Perbarui pengguna terakhir yang mengubah
+            'smd_lastupdate' => Time::now()->toDateTimeString(), // Perbarui timestamp
+        ];
+
+        // Lakukan update pada tabel detail (tbmst_switch_managed_detail)
         return $this->db->table($this->switchDetailTable)
-                        ->where($this->switchDetailPrimaryKey, $smd_id)
-                        ->delete();
+                        ->where($this->switchDetailPrimaryKey, $smd_id) // Cari berdasarkan primary key (smd_id)
+                        ->update($updateData); // Lakukan operasi update
     }
 
-    /**
-     * Delete all port details for a specific switch (by sm_id_switch).
+/**
+     * Changes the status of all port details for a specific switch to 25 (deleted/inactive).
      */
     public function deleteSwitchDetailPortsByHeaderId(int $sm_id_switch)
     {
+        // Dapatkan ID pengguna yang login dari sesi, jika tidak ada, gunakan 1 sebagai default
+        $loggedInUserId = session()->get('user_id');
+        $lastUser = $loggedInUserId ?? 1;
+
+        $updateData = [
+            'smd_status'     => 25, // Kunci: Ubah status menjadi 25
+            'smd_lastuser'   => $lastUser, // Perbarui pengguna terakhir yang mengubah
+            'smd_lastupdate' => Time::now()->toDateTimeString(), // Perbarui timestamp
+        ];
+
+        // Lakukan update massal pada tabel detail (tbmst_switch_managed_detail)
         return $this->db->table($this->switchDetailTable)
-                        ->where('smd_header_id_switch', $sm_id_switch)
-                        ->delete();
+                        ->where('smd_header_id_switch', $sm_id_switch) // Cari semua detail dengan header ID ini
+                        ->update($updateData); // Lakukan operasi update
     }
 
     /**

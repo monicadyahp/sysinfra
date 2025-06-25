@@ -81,8 +81,9 @@ class SwitchManagedController extends BaseController
         try {
             $query = $this->db->table('public.tbmst_switch_managed')
                                ->select('sm_id AS id, sm_id_switch AS id_switch, sm_asset_no AS asset_no, sm_asset_name AS asset_name,
-                                        sm_received_date AS received_date, sm_age AS age, sm_ip AS ip, sm_location AS location,
-                                        sm_lastupdate AS last_update, sm_lastuser AS last_user_id_from_db')
+                                         sm_received_date AS received_date, sm_age AS age, sm_ip AS ip, sm_location AS location,
+                                         sm_lastupdate AS last_update, sm_lastuser AS last_user_id_from_db')
+                               ->where('sm_status', 1) // BARIS INI HARUS ADA
                                ->orderBy('sm_lastupdate', 'DESC');
 
             $data = $query->get()->getResultArray();

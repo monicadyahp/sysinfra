@@ -517,12 +517,12 @@ $(document).ready(function() {
         const id = $(this).data('id'); // Get the auto-increment PK of the VLAN to delete
         Swal.fire({
             title: 'Are you sure?',
-            text: "You won't be able to revert this!",
+            text: "This record will be deactivated and no longer shown.", // <--- PERUBAHAN DI SINI
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
+            confirmButtonText: 'Yes, deactivate it!' // <--- PERUBAHAN DI SINI
         }).then((result) => {
             if (result.isConfirmed) { // If user confirms deletion
                 $.ajax({
@@ -533,14 +533,14 @@ $(document).ready(function() {
                         if (response.status) {
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Deleted!',
+                                title: 'Deactivated!', // <--- Mungkin Anda juga ingin mengubah ini
                                 text: response.message,
                                 timer: 1500,
                                 showConfirmButton: false
                             });
                             tabelVlan.ajax.reload(); // Reload DataTable to reflect changes
                         } else {
-                            Swal.fire('Error', response.error || 'Delete failed', 'error');
+                            Swal.fire('Error', response.error || 'Deactivation failed', 'error'); // <--- Ubah pesan error juga
                         }
                     },
                     error: function(xhr, status, error) {

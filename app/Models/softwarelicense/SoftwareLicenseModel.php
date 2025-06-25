@@ -13,7 +13,7 @@ class SoftwareLicenseModel extends Model
     protected $allowedFields     = [
         'tl_id',
         'tl_type',
-        'tl_license_type_category', // Add this line
+        'tl_license_type_category',
         'tl_refnumber',
         'tl_po_number',
         'tl_licensepartner',
@@ -27,6 +27,7 @@ class SoftwareLicenseModel extends Model
         'tl_organization',
         'tl_last_update',
         'tl_last_user',
+        'tl_status', // BARIS INI DITAMBAHKAN
     ];
 
     protected $useTimestamps = true;
@@ -51,39 +52,42 @@ class SoftwareLicenseModel extends Model
     public function getLicensedPcsByLicenseId(int $tl_id)
     {
         return $this->db->table($this->licensedDetailTable)
-                        ->where('tl_id', $tl_id)
-                        ->get()
-                        ->getResultArray();
+                         ->where('tl_id', $tl_id)
+                         ->where('ld_status', 1) // TAMBAHKAN KONDISI INI: Hanya tampilkan yang berstatus 1 (aktif)
+                         ->get()
+                         ->getResultArray();
     }
 
     /**
      * Menghitung jumlah PC berlisensi berdasarkan tl_id.
+     * Hanya menghitung yang berstatus 1 (aktif).
      */
     public function countLicensedPcsByLicenseId(int $tl_id): int
     {
         return $this->db->table($this->licensedDetailTable)
-                        ->where('tl_id', $tl_id)
-                        ->countAllResults();
+                         ->where('tl_id', $tl_id)
+                         ->where('ld_status', 1) // TAMBAHKAN KONDISI INI: Hanya hitung yang berstatus 1 (aktif)
+                         ->countAllResults();
     }
 
     /**
      * Menambahkan PC baru ke t_licensedetail.
+     * Default status adalah 1.
      */
     public function addLicensedPc(array $data)
     {
         $insertData = [
-            'tl_id'           => $data['tl_id'],
-            'ld_pcnama'       => $data['ld_pcnama'],
-            'ld_assetno'      => $data['ld_assetno'],
-            'ld_pc_id'        => $data['ld_pc_id'] ?? null, // Pastikan ini null jika tidak ada e_id
-            'ld_po_number'    => $data['ld_po_number'] ?? null, // Perubahan: Include ld_po_number
-            'ld_status'       => $data['ld_status'] ?? 1, // Perubahan: Include ld_status
-            'ld_lastuser'     => $data['ld_lastuser'],
-            'ld_lastupdate'   => $data['ld_lastupdate'],
-            'ld_serialnumber' => $data['ld_serialnumber'],
-            // DUA BARIS INI UNTUK MENYIMPAN DATA EMPLOYEE KE t_licensedetail
+            'tl_id'            => $data['tl_id'],
+            'ld_pcnama'        => $data['ld_pcnama'],
+            'ld_assetno'       => $data['ld_assetno'],
+            'ld_pc_id'         => $data['ld_pc_id'] ?? null,
+            'ld_po_number'     => $data['ld_po_number'] ?? null,
+            'ld_status'        => $data['ld_status'] ?? 1, // Pastikan ini diset 1 secara default jika tidak dikirim
+            'ld_lastuser'      => $data['ld_lastuser'],
+            'ld_lastupdate'    => $data['ld_lastupdate'],
+            'ld_serialnumber'  => $data['ld_serialnumber'],
             'ld_employee_code' => $data['ld_employee_code'] ?? null,
-            'ld_position_code' => $data['ld_position_code'] ?? null,            
+            'ld_position_code' => $data['ld_position_code'] ?? null,
         ];
 
         $this->db->table($this->licensedDetailTable)->insert($insertData);
@@ -92,14 +96,16 @@ class SoftwareLicenseModel extends Model
 
     /**
      * Mengambil satu record PC berlisensi dari t_licensedetail.
+     * Hanya mengambil yang berstatus 1 (aktif).
      */
     public function getLicensedPcById(int $ld_id)
     {
         return $this->db->table($this->licensedDetailTable)
-                        ->select('ld_id, tl_id, ld_pcnama, ld_assetno, ld_pc_id, ld_po_number, ld_status, ld_lastuser, ld_lastupdate, ld_serialnumber, ld_employee_code, ld_position_code') // Tambah ini
-                        ->where($this->licensedDetailPrimaryKey, $ld_id)
-                        ->get()
-                        ->getRowArray();
+                            ->select('ld_id, tl_id, ld_pcnama, ld_assetno, ld_pc_id, ld_po_number, ld_status, ld_lastuser, ld_lastupdate, ld_serialnumber, ld_employee_code, ld_position_code')
+                            ->where($this->licensedDetailPrimaryKey, $ld_id)
+                            ->where('ld_status', 1) // TAMBAHKAN KONDISI INI: Hanya ambil yang berstatus 1 (aktif)
+                            ->get()
+                            ->getRowArray();
     }
 
     /**
@@ -108,53 +114,86 @@ class SoftwareLicenseModel extends Model
     public function updateLicensedPc(int $ld_id, array $data)
     {
         $updateData = [
-            'tl_id'           => $data['tl_id'],
-            'ld_pcnama'       => $data['ld_pcnama'],
-            'ld_assetno'      => $data['ld_assetno'],
-            'ld_pc_id'        => $data['ld_pc_id'] ?? null, // Pastikan ini null jika tidak ada e_id
-            'ld_po_number'    => $data['ld_po_number'] ?? null, // Perubahan: Include ld_po_number
-            'ld_status'       => $data['ld_status'] ?? 1, // Perubahan: Include ld_status
-            'ld_lastuser'     => $data['ld_lastuser'],
-            'ld_lastupdate'   => $data['ld_lastupdate'],
-            'ld_serialnumber' => $data['ld_serialnumber'],
-            // DUA BARIS INI UNTUK MENYIMPAN DATA EMPLOYEE KE t_licensedetail
+            'tl_id'            => $data['tl_id'],
+            'ld_pcnama'        => $data['ld_pcnama'],
+            'ld_assetno'       => $data['ld_assetno'],
+            'ld_pc_id'         => $data['ld_pc_id'] ?? null,
+            'ld_po_number'     => $data['ld_po_number'] ?? null,
+            'ld_status'        => $data['ld_status'] ?? 1, // Pastikan ini diset 1 secara default jika tidak dikirim
+            'ld_lastuser'      => $data['ld_lastuser'],
+            'ld_lastupdate'    => $data['ld_lastupdate'],
+            'ld_serialnumber'  => $data['ld_serialnumber'],
             'ld_employee_code' => $data['ld_employee_code'] ?? null,
-            'ld_position_code' => $data['ld_position_code'] ?? null,            
+            'ld_position_code' => $data['ld_position_code'] ?? null,
         ];
         
         return $this->db->table($this->licensedDetailTable)
-                        ->where($this->licensedDetailPrimaryKey, $ld_id)
-                        ->update($updateData);
+                         ->where($this->licensedDetailPrimaryKey, $ld_id)
+                         ->update($updateData);
     }
 
     /**
-     * Menghapus record PC berlisensi dari t_licensedetail.
+     * Melakukan soft delete (mengubah status menjadi 25) record PC berlisensi dari t_licensedetail.
+     * BUKAN MENGHAPUS FISIK.
      */
-    public function deleteLicensedPc(int $ld_id)
+    public function softDeleteLicensedPc(int $ld_id) // UBAH NAMA METHOD DARI deleteLicensedPc
     {
+        $updateData = [
+            'ld_status'     => 25, // Set status menjadi 25 (tidak muncul)
+            'ld_lastuser'   => session()->get('user_id') ?? 1, // Update last user
+            'ld_lastupdate' => \CodeIgniter\I18n\Time::now()->toDateTimeString(), // Update last update
+        ];
         return $this->db->table($this->licensedDetailTable)
-                        ->where($this->licensedDetailPrimaryKey, $ld_id)
-                        ->delete();
+                         ->where($this->licensedDetailPrimaryKey, $ld_id)
+                         ->update($updateData);
     }
 
     /**
-     * Menghapus semua record PC berlisensi dari t_licensedetail berdasarkan tl_id.
+     * Melakukan soft delete (mengubah status menjadi 25) semua record PC berlisensi dari t_licensedetail berdasarkan tl_id.
+     * BUKAN MENGHAPUS FISIK.
      */
-    public function deleteLicensedPcsByLicenseId(int $tl_id)
+    public function softDeleteLicensedPcsByLicenseId(int $tl_id) // UBAH NAMA METHOD DARI deleteLicensedPcsByLicenseId
     {
+        $updateData = [
+            'ld_status'     => 25, // Set status menjadi 25 (tidak muncul)
+            'ld_lastuser'   => session()->get('user_id') ?? 1, // Update last user
+            'ld_lastupdate' => \CodeIgniter\I18n\Time::now()->toDateTimeString(), // Update last update
+        ];
         return $this->db->table($this->licensedDetailTable)
-                        ->where('tl_id', $tl_id)
-                        ->delete();
+                         ->where('tl_id', $tl_id)
+                         ->update($updateData);
     }
+
+    /**
+     * Menimpa metode delete bawaan Model CodeIgniter untuk melakukan soft delete.
+     * Mengubah status tl_status menjadi 25.
+     */
+    public function delete($id = null, bool $purge = false)
+    {
+        if ($id === null) {
+            return false;
+        }
+
+        $updateData = [
+            'tl_status'      => 25, // Set status menjadi 25 (tidak muncul)
+            'tl_last_user'   => session()->get('user_id') ?? 1, // Update last user
+            'tl_last_update' => \CodeIgniter\I18n\Time::now(), // Update last update
+        ];
+
+        return $this->update($id, $updateData); // Panggil metode update() dari base model
+    }
+
 
     /**
      * Mengecek duplikasi asset_no di t_licensedetail untuk tl_id tertentu.
+     * Hanya memeriksa yang berstatus 1 (aktif).
      */
     public function checkDuplicateLicensedPcAssetNo(int $tl_id, string $asset_no, ?int $ld_id = null)
     {
         $builder = $this->db->table($this->licensedDetailTable)
-                            ->where('tl_id', $tl_id)
-                            ->where('ld_assetno', $asset_no);
+                             ->where('tl_id', $tl_id)
+                             ->where('ld_assetno', $asset_no)
+                             ->where('ld_status', 1); // TAMBAHKAN KONDISI INI: Hanya cek duplikasi pada data aktif
 
         if ($ld_id !== null) {
             $builder->where($this->licensedDetailPrimaryKey . ' !=', $ld_id);
@@ -166,6 +205,7 @@ class SoftwareLicenseModel extends Model
     /**
      * Memeriksa apakah data PC di t_licensedetail cocok persis dengan entri di m_itequipment
      * berdasarkan Asset Number, Asset Name, Serial Number, dan Asset ID.
+     * (Tidak ada perubahan di sini terkait status).
      */
     public function isLicensedPcFromFinder(string $ldAssetNo, string $ldPcNama, string $ldSerialNumber, $ldPcId): bool
     {
