@@ -1,3 +1,5 @@
+//26-06 awal switch managed views
+
 <?= $this->extend("main/template") ?>
 <?= $this->section('content') ?>
 
@@ -1337,7 +1339,7 @@ $(document).ready(function() {
                         <option value="">All</option>
                         <option value="1">Active</option>
                         <option value="0">Inactive</option>
-                        </select>
+                    </select>
                 </div>
             `;
             const $statusFilter = $($statusFilterHtml);
