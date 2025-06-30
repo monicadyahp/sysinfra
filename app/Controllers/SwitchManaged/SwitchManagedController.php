@@ -315,7 +315,6 @@ class SwitchManagedController extends BaseController
         return (bool)$builder->countAllResults();
     }
 
-
     public function update()
     {
         $post = $this->request->getPost();

@@ -1,5 +1,3 @@
-//26-06 awal switch managed views
-
 <?= $this->extend("main/template") ?>
 <?= $this->section('content') ?>
 
@@ -138,6 +136,58 @@
     }
     .overlicensed-row td {
         color: #d35400;
+    }
+
+    /* --- NEW / REVISED CSS FOR SWITCHDETAILTABLE CONTROLS --- */
+    /* CONTAINER TOP UNTUK FILTER DAN LENGTH */
+    #switchDetailTable_wrapper .top {
+        display: flex; /* Menggunakan Flexbox */
+        justify-content: space-between; /* Untuk memisahkan elemen kiri dan kanan */
+        align-items: center; /* Menyelaraskan vertikal */
+        padding: 0 1.25rem; /* Menambahkan padding horizontal yang sama dengan tabel utama */
+        flex-wrap: wrap; /* Izinkan wrapping jika ruang tidak cukup */
+        margin-bottom: 1rem; /* Ruang di bawah kontrol */
+    }
+
+    /* GRUP KONTROL KIRI (Show entries + Status) */
+    #switchDetailTable_wrapper .left-controls-group {
+        display: flex;
+        align-items: baseline; /* UBAH KE baseline */
+        gap: 15px;
+    }
+
+    /* Gaya untuk dropdown DataTables default (Show entries) */
+    #switchDetailTable_wrapper .dataTables_length {
+        margin-bottom: 0 !important;
+        display: flex;
+        align-items: baseline; /* UBAH KE baseline */
+        gap: 5px;
+    }
+    #switchDetailTable_wrapper .dataTables_length label {
+        margin-bottom: 0 !important;
+    }
+
+    /* Gaya untuk dropdown Status kustom */
+    #switchDetailTable_wrapper .status-filter-wrapper {
+        display: flex;
+        align-items: baseline; /* UBAH KE baseline */
+        gap: 5px;
+        margin-bottom: 0 !important;
+    }
+    #switchDetailTable_wrapper .status-filter-wrapper label {
+        margin-bottom: 0 !important;
+    }
+
+    /* Gaya untuk filter (search) di kanan */
+    #switchDetailTable_wrapper .dataTables_filter {
+        margin-left: auto; /* Dorong ke kanan */
+        margin-bottom: 0 !important;
+    }
+    #switchDetailTable_wrapper .dataTables_filter label {
+        margin-bottom: 0 !important;
+    }
+    #switchDetailTable_wrapper .dataTables_filter input {
+        margin-left: 0.5rem; /* Jarak dari label "Search:" */
     }
 </style>
 
@@ -365,46 +415,35 @@
                     </div>
 
                     <hr class="my-4">
-                    <h5 class="mb-3">Port Configurations</h5>
-                    <div class="mb-4 action-buttons" style="padding-left: 15px; padding-right: 15px;">
-                        <div class="row mb-3">
-                            <div class="col-md-9 d-flex gap-3 flex-column">
-                                <button type="button" class="btn btn-primary add-port-detail-btn" style="width: 220px;" data-bs-toggle="modal" data-bs-target="#addSwitchPortDetailModal">
-                                    <span class="btn-label">
-                                        <i class="fa fa-plus"></i>
-                                    </span>
-                                    Add Port Detail
-                                </button>
-                                </div>
-                            <div id="customDetailStatusFilterWrapper" style="display: none;">
-                            <label for="filterDetailStatus" class="form-label mb-0 me-2">Status:</label>
-                            <select id="filterDetailStatus" class="form-select form-select-sm" style="width: auto;">
-                                <option value="">All</option>
-                                <option value="1">Active</option>
-                                <option value="0">Inactive</option>
-                            </select>
+                        <h5 class="mb-3">Port Configurations</h5>
+                        <div class="mb-4 action-buttons" style="padding-left: 15px; padding-right: 15px;">
+                            <button type="button" class="btn btn-primary add-port-detail-btn" style="width: 220px;" data-bs-toggle="modal" data-bs-target="#addSwitchPortDetailModal">
+                                <span class="btn-label">
+                                    <i class="fa fa-plus"></i>
+                                </span>
+                                Add Port Detail
+                            </button>
                         </div>
+                        <div class="table-responsive">
+                            <table class="datatables-basic table table-bordered" id="switchDetailTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>ID Detail</th>
+                                        <th>Header ID</th>
+                                        <th>Port</th>
+                                        <th>Type</th>
+                                        <th>VLAN ID</th>
+                                        <th>VLAN Name</th>
+                                        <th>Status</th>
+                                        <th>Last Update</th>
+                                        <th>Last User</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                    <div class="table-responsive">
-                    <table class="datatables-basic table table-bordered" id="switchDetailTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Action</th>
-                                <th>ID Detail</th>
-                                <th>Header ID</th> <th>Port</th>
-                                <th>Type</th>
-                                <th>VLAN ID</th>
-                                <th>VLAN Name</th>
-                                <th>Status</th>
-                                <th>Last Update</th>
-                                <th>Last User</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1229,6 +1268,7 @@ $(document).ready(function() {
 
 
     // --- NEW: Initialize Switch Detail Ports DataTable ---
+    // --- NEW: Initialize Switch Detail Ports DataTable ---
     switchDetailTable = $('#switchDetailTable').DataTable({
         scrollX: true,
         pageLength: 5,
@@ -1267,18 +1307,13 @@ $(document).ready(function() {
             { data: 'smd_type', title: 'Type' },
             { data: 'smd_vlan_id', title: 'VLAN ID' },
             { data: 'smd_vlan_name', title: 'VLAN Name', render: d => d ? d.toUpperCase() : '' },
-            // Perhatikan perubahan pada bagian 'data' dan 'render'
             {
                 data: 'smd_status', // Tetap gunakan data asli (1 atau 0) untuk filter
                 title: 'Status',
-                // Gunakan 'render' untuk tampilan HTML
                 render: function(data, type, row) {
-                    // Jika type adalah 'filter' atau 'sort', kembalikan data mentah (1 atau 0)
-                    // Ini memastikan DataTables memfilter dan mengurutkan berdasarkan nilai asli.
                     if (type === 'filter' || type === 'sort') {
                         return data;
                     }
-                    // Untuk tampilan normal, kembalikan HTML badge
                     return data == 1 ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
                 }
             },
@@ -1293,79 +1328,67 @@ $(document).ready(function() {
         order: [[2, 'asc']], // order by Header ID (index 2) ascending
 
         rowCallback: function(row, data, index) {
-            // Apply a class if status is Inactive
-            // KODE INI BERJALAN DI CLIENT-SIDE.
-            // Data dengan smd_status 0 akan tetap ditampilkan tetapi dengan warna berbeda.
-            // Data dengan smd_status 25 sudah tidak akan ada di sini karena difilter di server-side.
             if (data.smd_status == 0) {
-                $(row).addClass('overlicensed-row'); // Reusing this class for inactive status
+                $(row).addClass('overlicensed-row');
             } else {
                 $(row).removeClass('overlicensed-row');
             }
         },
-        language: { "sSearch": "Search:", "sEmptyTable": "No port details configured for this switch.", "sZeroRecords": "No matching records found" },
-        // **PENTING: DOM string yang disederhanakan.**
-        // Kita hanya akan menyisakan 'f' (filter/search) yang akan dibuat DataTables secara otomatis di sisi kanan.
-        // Untuk sisi kiri, kita akan membuat kontainer kustom sepenuhnya.
-        dom: '<"top d-flex justify-content-between align-items-center"<"custom-left-controls">f>rt<"bottom d-flex justify-content-between align-items-center"ip><"clear">',
+        language: { 
+            "sSearch": "Search:", 
+            "sEmptyTable": "No port details configured for this switch.", 
+            "sZeroRecords": "No matching records found",
+            // Ini penting: DataTables akan mengambil label "Show entries" dari sini jika 'l' digunakan
+            "sLengthMenu": "Show _MENU_ entries" 
+        },
+        
+        // *** DOM STRING YANG DIREVISI ***
+        // '<"top"': Mulai div 'top'
+        //   '<"left-controls-group"': Mulai div untuk grup kiri
+        //     'l': Place DataTables' default length dropdown ('Show _MENU_ entries') here
+        //     '<"status-filter-wrapper">': Place our custom status filter wrapper here
+        //   '>': Tutup 'left-controls-group'
+        //   'f': Place DataTables' default filter/search input here
+        // '>': Tutup div 'top'
+        // 'rtip': sisanya tabel, info, pagination
+        dom: '<"top"<"left-controls-group"l<"status-filter-wrapper">>f>rt<"bottom"ip><"clear">',
+
         initComplete: function() {
             const api = this.api();
 
-            // 1. Temukan kontainer kustom di sisi kiri yang kita definisikan di 'dom'
-            const $customLeftControls = $(this).closest('.dataTables_wrapper').find('.custom-left-controls').first();
+            // 1. Ambil elemen .status-filter-wrapper yang sudah dibuat oleh DataTables DOM string
+            const $statusFilterContainer = $(this).closest('.dataTables_wrapper').find('.status-filter-wrapper').first();
 
-            // 2. Buat elemen "Show entries" secara manual
-            const $lengthDropdownHtml = `
-                <div class="dataTables_length" id="switchDetailTable_length">
-                    <label>Show 
-                        <select name="switchDetailTable_length" aria-controls="switchDetailTable" class="form-select form-select-sm">
-                            <option value="5">5</option>
-                            <option value="10">10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-                        entries
-                    </label>
-                </div>
+            // 2. Buat HTML untuk dropdown Status
+            const statusFilterHtmlContent = `
+                <label class="form-label mb-0 me-2">Status:</label>
+                <select id="filterDetailStatus" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">All</option>
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
             `;
-            const $lengthDropdown = $($lengthDropdownHtml);
+            
+            // 3. Masukkan HTML dropdown Status ke dalam containernya
+            $statusFilterContainer.append(statusFilterHtmlContent);
 
-            // 3. Buat elemen dropdown Status secara manual
-            const $statusFilterHtml = `
-                <div class="status-filter-wrapper d-flex align-items-center ms-2">
-                    <label class="form-label mb-0 me-2">Status:</label>
-                    <select id="filterDetailStatus" class="form-select form-select-sm" style="width: auto;">
-                        <option value="">All</option>
-                        <option value="1">Active</option>
-                        <option value="0">Inactive</option>
-                    </select>
-                </div>
-            `;
-            const $statusFilter = $($statusFilterHtml);
-
-            // 4. Masukkan kedua elemen ke dalam kontainer kustom di sisi kiri
-            $customLeftControls.append($lengthDropdown);
-            $customLeftControls.append($statusFilter);
-
-            // 5. Sambungkan event listener untuk "Show entries" yang baru kita buat
-            $lengthDropdown.find('select').on('change', function() {
-                api.page.len($(this).val()).draw();
-            });
-
-            // 6. Sambungkan event listener untuk dropdown Status
-            $statusFilter.find('#filterDetailStatus').on('change', function() {
+            // 4. Sambungkan event listener untuk dropdown Status
+            $('#filterDetailStatus').on('change', function() {
                 const statusValue = $(this).val();
                 // Kolom 'smd_status' adalah kolom ke-8 (index 7).
                 if (statusValue === "") {
-                    api.column(7).search('').draw(); // Tampilkan semua jika "All" dipilih (akan mencakup 0 dan 1)
+                    api.column(7).search('').draw();
                 } else {
-                    api.column(7).search(`^${statusValue}$`, true, false).draw(); // Filter exact match untuk 1 atau 0
+                    // Gunakan regex untuk mencari nilai yang tepat (1 atau 0) di kolom status
+                    api.column(7).search(`^${statusValue}$`, true, false).draw();
                 }
             });
-
+            
             // Opsional: Atur nilai awal Show Entries sesuai pageLength yang dikonfigurasi
-            $lengthDropdown.find('select').val(api.page.len());
+            // DataTables secara otomatis akan mengatur ini karena kita menggunakan 'l' di DOM string.
+            // Namun, jika Anda ingin memastikannya, Anda bisa mengakses selectnya.
+            // const $lengthSelect = $(this).closest('.dataTables_wrapper').find('.dataTables_length select').first();
+            // $lengthSelect.val(api.page.len());
         }
     });
 

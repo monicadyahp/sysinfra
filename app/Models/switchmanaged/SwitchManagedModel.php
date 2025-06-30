@@ -246,7 +246,7 @@ class SwitchManagedModel extends Model
                         ->update($updateData); // Lakukan operasi update
     }
 
-/**
+    /**
      * Changes the status of a port detail record to 25 (deleted/inactive) instead of permanently deleting it.
      */
     public function deleteSwitchDetailPort(int $smd_id)
@@ -267,7 +267,7 @@ class SwitchManagedModel extends Model
                         ->update($updateData); // Lakukan operasi update
     }
 
-/**
+    /**
      * Changes the status of all port details for a specific switch to 25 (deleted/inactive).
      */
     public function deleteSwitchDetailPortsByHeaderId(int $sm_id_switch)
