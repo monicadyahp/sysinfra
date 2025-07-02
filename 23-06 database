@@ -927,3 +927,135 @@ ALTER TABLE IF EXISTS public.tbtfa_equipmentacceptance
 GRANT ALL ON TABLE public.tbtfa_equipmentacceptance TO postgres;
 
 //////////////////////
+
+01-07
+
+CREATE TABLE m_ipaddress (
+	mip_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	mip_vlanid int4 NULL,
+	mip_vlanname varchar(100) NULL,
+	mip_ipadd varchar(50) NOT NULL,
+	mip_status int4 NOT NULL,
+	mip_lastuser int4 NULL,
+	mip_lastupdate timestamp NULL,
+	CONSTRAINT pk_m_ipaddress PRIMARY KEY (mip_id)
+);
+
+CREATE TABLE m_vlan (
+	mv_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	mv_vlanid NOT int4 NULL,
+	mv_name varchar(100) NOT NULL,
+	mv_status int4 NOT NULL,
+	mv_lastuser int4 NULL,
+	mv_lastupdate timestamp NULL,
+	CONSTRAINT pk_m_vlan PRIMARY KEY (mv_id),
+);
+
+CREATE TABLE m_pclocation (
+	mpl_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	mpl_name varchar(100) NOT NULL,
+	mpl_status int4 NOT NULL,
+	mpl_lastuser int4 NULL,
+	mpl_lastupdate timestamp NULL,
+	CONSTRAINT pk_m_pclocation PRIMARY KEY (mpl_id)
+);
+
+CREATE TABLE m_pcos (
+	mpo_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	mpo_osname varchar(100) NOT NULL,
+	mpo_status int4 NOT NULL,
+	mpo_lastuser int4 NULL,
+	mpo_lastupdate timestamp NULL,
+	CONSTRAINT pk_m_pcos PRIMARY KEY (mpo_id)
+);
+
+CREATE TABLE t_pc (
+	tpc_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	tpc_type int4 NOT NULL,
+	tpc_name varchar(100) NULL,
+	tpc_assetno int4 NULL,
+	tpc_pcreceivedate date NULL,
+	tpc_osname varchar(100) NULL,
+	tpc_ipaddress varchar(50) NULL,
+	tpc_user varchar(255) NULL,
+	tpc_location varchar(100) NULL,
+	tpc_status int4 NOT NULL,
+	tpc_lastuser int4 NULL,
+	tpc_lastupdate timestamp NULL,
+	CONSTRAINT pk_t_pc PRIMARY KEY (tpc_id)
+);
+
+CREATE TABLE t_pcspec (
+	tps_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	tpc_id int4 NULL,
+	tps_processor varchar(100) NULL,
+	tps_ram varchar(50) NULL,
+	tps_storage varchar(100) NULL,
+	tps_vga varchar(100) NULL,
+	tps_ethernet varchar(100) NULL,
+	tps_lastuser int4 NULL,
+	tps_lastupdate timestamp NULL,
+	CONSTRAINT pk_t_pcspec PRIMARY KEY (tps_id),
+	CONSTRAINT fk_pcspec FOREIGN KEY (tpc_id) REFERENCES public.t_pc(tpc_id) ON DELETE SET NULL
+);
+
+CREATE TABLE t_pcservervm (
+	tpv_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	tpc_id int4 NOT NULL,
+	tpv_name varchar(255) NULL,
+	tpv_processor varchar(100) NULL,
+	tpv_ram varchar(50) NULL,
+	tpv_storage varchar(100) NULL,
+	tpv_vga varchar(100) NULL,
+	tpv_ethernet varchar(100) NULL,
+	tpv_ipaddress varchar(50) NULL,
+	tpv_services text NULL,
+	tpv_remark text NULL,
+	tpv_status int4 NOT NULL,
+	tpv_lastuser int4 NULL,
+	tpv_lastupdate timestamp NULL,
+	CONSTRAINT pk_t_pcservervm PRIMARY KEY (tpv_id),
+	CONSTRAINT fk_pcservervm FOREIGN KEY (tpc_id) REFERENCES public.t_pc(tpc_id) ON DELETE SET NULL
+);
+
+CREATE TABLE pcitequipment (
+	tpi_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	tpi_type int4 NOT NULL,
+	tpc_id int4 NULL,
+	tpi_assetno int4 NULL,
+	tpi_receivedate date NULL,
+	tpi_status int4 NOT NULL,
+	tpi_lastuser int4 NULL,
+	tpi_lastupdate timestamp NULL,
+	CONSTRAINT pk_t_pcitequipment PRIMARY KEY (tpi_id),
+	CONSTRAINT fk_pcequipment FOREIGN KEY (tpc_id) REFERENCES public.t_pc(tpc_id) ON DELETE SET NULL
+);
+
+CREATE TABLE t_switchmanaged (
+	tsm_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	tsm_assetno int4 NULL,
+	tsm_assetname varchar(100) NULL,
+	tsm_receivedate date NULL,
+	tsm_ipaddress varchar(50) NULL,
+	tsm_location varchar(100) NULL,
+	tsm_status int4 NULL,
+	tsm_port int4 NULL,
+	tsm_lastuser int4 NULL,
+	tsm_lastupdate timestamp NULL,
+	CONSTRAINT pk_t_switchmanaged PRIMARY KEY (tsm_id)
+);
+
+CREATE TABLE t_switchmanageddetail (
+	tsd_id int4 GENERATED ALWAYS AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	tsm_id int4 NOT NULL,
+	mv_id int4 NOT NULL,
+	tsd_port int4 NULL,
+	tsd_type varchar(20) NULL,
+	tsd_vlanname varchar(255) NULL,
+	tsd_status int4 DEFAULT 1 NOT NULL,
+	tsd_lastupdate timestamp NULL,
+	tsd_lastuser int4 NULL,
+	CONSTRAINT pk_t_switchmanageddetail PRIMARY KEY (tsd_id),
+	CONSTRAINT fk_t_switchmanaged FOREIGN KEY (tsm_id) REFERENCES public.t_switchmanaged(tsm_id) ON DELETE SET NULL,
+	CONSTRAINT fk_m_vlan FOREIGN KEY (mv_id) REFERENCES public.m_vlan(mv_id) ON DELETE SET NULL
+);
