@@ -10,7 +10,7 @@ class MstPCOSModel extends Model
 
     public function __construct()
     {
-        $this->db_sysinfra = db_connect('db_sysinfra');
+        $this->db_sysinfra = db_connect('jinsystem');
     }
 
     public function getData()
@@ -48,6 +48,9 @@ class MstPCOSModel extends Model
             ->get()
             ->getRowArray();
 
+        // Get the user ID safely
+        $lastUser = session()->get('user_info')['em_emplcode'] ?? null;
+
         if ($existingOS) {
             // Jika OS sudah ada dan masih aktif
             if ($existingOS['mpo_status'] == 1) {
@@ -64,7 +67,7 @@ class MstPCOSModel extends Model
                         'mpo_osname' => $osName, // Timpa dengan data baru dari input
                         'mpo_status' => 1,
                         'mpo_lastupdate' => date("Y-m-d H:i:s"),
-                        'mpo_lastuser' => session()->get('user_info')['em_emplcode'],
+                        'mpo_lastuser' => $lastUser, // Use the safely retrieved user ID
                     ];
 
                     $this->db_sysinfra->table('m_pcos')
@@ -90,7 +93,7 @@ class MstPCOSModel extends Model
                 'mpo_osname'    => $osName,
                 'mpo_status'    => 1,
                 'mpo_lastupdate' => date("Y-m-d H:i:s"),
-                'mpo_lastuser'   => session()->get('user_info')['em_emplcode'],
+                'mpo_lastuser'   => $lastUser, // Use the safely retrieved user ID
             ];
 
             $this->db_sysinfra->table('m_pcos')->insert($insertData);
@@ -124,6 +127,9 @@ class MstPCOSModel extends Model
             ->get()
             ->getRowArray();
 
+        // Get the user ID safely
+        $lastUser = session()->get('user_info')['em_emplcode'] ?? null;
+
         // Jika OS baru sudah ada dan itu bukan OS yang sedang diedit
         if ($existingOS && strtolower($existingOS['mpo_osname']) !== strtolower($oldOSName)) {
             if ($existingOS['mpo_status'] == 1) {
@@ -150,7 +156,7 @@ class MstPCOSModel extends Model
                 $updateData = [
                     'mpo_osname'    => $osName,
                     'mpo_lastupdate' => date('Y-m-d H:i:s'),
-                    'mpo_lastuser'   => session()->get('user_info')['em_emplcode'],
+                    'mpo_lastuser'   => $lastUser, // Use the safely retrieved user ID
                 ];
 
                 $this->db_sysinfra->table('m_pcos')
@@ -191,13 +197,16 @@ class MstPCOSModel extends Model
                 ];
             }
 
+            // Get the user ID safely
+            $lastUser = session()->get('user_info')['em_emplcode'] ?? null;
+
             $this->db_sysinfra->table('m_pcos')
                 ->where('LOWER(mpo_osname)', strtolower($osName))
                 ->where('mpo_status', 1)
                 ->update([
                     'mpo_status'     => 25,
                     'mpo_lastupdate' => date("Y-m-d H:i:s"),
-                    'mpo_lastuser'   => session()->get('user_info')['em_emplcode'],
+                    'mpo_lastuser'   => $lastUser, // Use the safely retrieved user ID
                 ]);
                 
             return [

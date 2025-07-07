@@ -1,6 +1,9 @@
 <?= $this->extend("main/template") ?> 
 <?= $this->section("content") ?> 
-<div class="card">     
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title">Master PC OS</h4>
+    </div>  
     <p class="demo" style="padding-left: 30px; padding-top: 12px;">         
         <!-- Button trigger modal -->         
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOSModal">             
