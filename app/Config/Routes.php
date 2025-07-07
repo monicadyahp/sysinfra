@@ -170,32 +170,20 @@ $routes->group('TransHandover', ['namespace' => 'App\Controllers\TransHandover']
     $routes->post('storeHandover', 'TransHandoverController::storeHandover');
     $routes->post('updateHandover', 'TransHandoverController::updateHandover');
     $routes->post('deleteHandover', 'TransHandoverController::deleteHandover');
-    
-    // Perubahan: Mengganti VerifyRecordNo menjadi checkRecordNoExists agar sesuai dengan nama fungsi di controller lama
     $routes->get('checkRecordNoExists', 'TransHandoverController::checkRecordNoExists'); 
-
     $routes->get('getHandoverDetailData', 'TransHandoverController::getHandoverDetailData');
     $routes->get('getHandoverDetailById', 'TransHandoverController::getHandoverDetailById');
     $routes->post('storeHandoverDetail', 'TransHandoverController::storeHandoverDetail');
     $routes->post('updateHandoverDetail', 'TransHandoverController::updateHandoverDetail');
     $routes->post('deleteHandoverDetail', 'TransHandoverController::deleteHandoverDetail');
-    
-    // Menggunakan getEmployeeDetails agar konsisten dengan penamaan di controller lama
     $routes->get('getEmployeeDetails', 'TransHandoverController::getEmployeeDetails'); 
     $routes->get('searchEmployees', 'TransHandoverController::searchEmployees');
-    // Menggunakan searchSystemEmployees agar konsisten dengan penamaan di controller lama
     $routes->get('searchSystemEmployees', 'TransHandoverController::searchSystemEmployees'); 
-
-    // Menggunakan searchAssets agar konsisten dengan penamaan di controller lama
     $routes->get('searchAssets', 'TransHandoverController::searchAssets'); 
     $routes->get('getEquipmentByAssetNo', 'TransHandoverController::getEquipmentByAssetNo');
     $routes->get('searchEquipmentBySerialNumber', 'TransHandoverController::searchEquipmentBySerialNumber');
     $routes->get('getEquipmentBySerialNumber', 'TransHandoverController::getEquipmentBySerialNumber');
-    
-    // Menggunakan getEquipmentCategories agar konsisten dengan penamaan di controller lama
     $routes->get('getEquipmentCategories', 'TransHandoverController::getEquipmentCategories'); 
-
-    // Menambahkan kembali rute untuk export PDF
     $routes->get('export_pdf', 'TransHandoverController::export_pdf');
 });
 
@@ -238,11 +226,12 @@ $routes->group('MstPCClient', ['namespace' => 'App\Controllers\PCClient'], funct
 // });
 
 
-// --- Rute untuk Master IP (MstIP) ---
-$routes->get('/MstIP', 'MstIP\MstIPController::index');
-$routes->get('/MstIP/getData', 'MstIP\MstIPController::getData');
-$routes->post('/MstIP/getDetail', 'MstIP\MstIPController::getDetail');
-$routes->post('/MstIP/toggleStatus', 'MstIP\MstIPController::toggleStatus'); // Rute baru untuk toggle status
+// IP Address Master
+$routes->group('MstIPAdd', ['namespace' => 'App\Controllers\MstIPAdd'], function ($routes) {
+    $routes->get('/', 'MstIPAddController::index');
+    $routes->get('getData', 'MstIPAddController::getData');;
+    $routes->post('toggleStatus', 'MstIPAddController::toggleStatus');
+});
 
 // --- Rute untuk PC Server (Aligned with usermenu "MstPCServer") ---
 $routes->get('/MstPCServer', 'PCServer\PCServerController::index'); // Main page route
@@ -293,12 +282,6 @@ $routes->post('/MstSwitchManaged/updateSwitchDetailPort', 'SwitchManaged\SwitchM
 $routes->post('/MstSwitchManaged/deleteSwitchDetailPort', 'SwitchManaged\SwitchManagedController::deleteSwitchDetailPort');
 $routes->get('/MstSwitchManaged/getVlanData', 'SwitchManaged\SwitchManagedController::getVlanData');
 
-//1 juli IP Address Master
-$routes->group('MstIPAdd', ['namespace' => 'App\Controllers\MstIPAdd'], function ($routes) {
-    $routes->get('/', 'MstIPAddController::index');
-    $routes->get('getData', 'MstIPAddController::getData');;
-    $routes->post('toggleStatus', 'MstIPAddController::toggleStatus');
-    });
     
     $routes->group('MstVLAN', ['namespace' => 'App\Controllers\MstVLAN'], function ($routes) {
         $routes->get('/', 'MstVLANController::index');
