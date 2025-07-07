@@ -283,14 +283,15 @@ $routes->post('/MstSwitchManaged/deleteSwitchDetailPort', 'SwitchManaged\SwitchM
 $routes->get('/MstSwitchManaged/getVlanData', 'SwitchManaged\SwitchManagedController::getVlanData');
 
     
-    $routes->group('MstVLAN', ['namespace' => 'App\Controllers\MstVLAN'], function ($routes) {
-        $routes->get('/', 'MstVLANController::index');
-        $routes->get('getData', 'MstVLANController::getData');
-        $routes->post('getVLANById', 'MstVLANController::getVLANById');
-        $routes->post('store', 'MstVLANController::store');
-        $routes->post('update', 'MstVLANController::update');
-        $routes->post('delete', 'MstVLANController::delete');
-    });
+// VLAN Master
+$routes->group('MstVLAN', ['namespace' => 'App\Controllers\MstVLAN'], function ($routes) {
+    $routes->get('/', 'MstVLANController::index');
+    $routes->get('getData', 'MstVLANController::getData');
+    $routes->post('getVLANById', 'MstVLANController::getVLANById');
+    $routes->post('store', 'MstVLANController::store');
+    $routes->post('update', 'MstVLANController::update');
+    $routes->post('delete', 'MstVLANController::delete');
+});
     
     // 1 juli PC Location
     $routes->group('MstPCLocation', ['namespace' => 'App\Controllers\MstPCLocation'], function ($routes) {
