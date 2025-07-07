@@ -293,57 +293,58 @@ $routes->group('MstVLAN', ['namespace' => 'App\Controllers\MstVLAN'], function (
     $routes->post('delete', 'MstVLANController::delete');
 });
     
-    // 1 juli PC Location
-    $routes->group('MstPCLocation', ['namespace' => 'App\Controllers\MstPCLocation'], function ($routes) {
-        $routes->get('/', 'MstPCLocationController::index');
-        $routes->get('getData', 'MstPCLocationController::getData');
-        $routes->post('getLocationById', 'MstPCLocationController::getLocationById');
-        $routes->post('store', 'MstPCLocationController::store');
-        $routes->post('update', 'MstPCLocationController::update');
-        $routes->post('delete', 'MstPCLocationController::delete');
-    });
+// PC Location Master
+$routes->group('MstPCLocation', ['namespace' => 'App\Controllers\MstPCLocation'], function ($routes) {
+    $routes->get('/', 'MstPCLocationController::index');
+    $routes->get('getData', 'MstPCLocationController::getData');
+    $routes->post('getLocationById', 'MstPCLocationController::getLocationById');
+    $routes->post('store', 'MstPCLocationController::store');
+    $routes->post('update', 'MstPCLocationController::update');
+    $routes->post('delete', 'MstPCLocationController::delete');
+});
     
-    // 1 juli PC OS Master
-    $routes->group('MstPCOS', ['namespace' => 'App\Controllers\MstPCOS'], function ($routes) {
-        $routes->get('/', 'MstPCOSController::index');
-        $routes->get('getData', 'MstPCOSController::getData');
-        $routes->post('getOSById', 'MstPCOSController::getOSById');
-        $routes->post('store', 'MstPCOSController::store');
-        $routes->post('update', 'MstPCOSController::update');
-        $routes->post('delete', 'MstPCOSController::delete');
-    });
-    
-    // 1 juli PC Transaction
-    $routes->group('TransPC', ['namespace' => 'App\Controllers\TransPC'], function ($routes) {
-        $routes->get('/', 'TransPCController::index');
-        $routes->get('getData', 'TransPCController::getData');
-        $routes->get('getPCById', 'TransPCController::getPCById');
-        $routes->get('getPCDetails', 'TransPCController::getPCDetails');
-        $routes->post('store', 'TransPCController::store');
-        $routes->post('update', 'TransPCController::update');
-        $routes->post('delete', 'TransPCController::delete');
-        $routes->get('getAssetNo', 'TransPCController::getAssetNo');
-        $routes->get('searchAssetNo', 'TransPCController::searchAssetNo');
-        $routes->get('getIPAddresses', 'TransPCController::getIPAddresses');
-        $routes->get('searchIPAddresses', 'TransPCController::searchIPAddresses');
-        $routes->post('updateIPStatus', 'TransPCController::updateIPStatus');
-        $routes->get('getEmployees', 'TransPCController::getEmployees');
-        $routes->get('searchEmployees', 'TransPCController::searchEmployees');
-        $routes->get('getLocations', 'TransPCController::getLocations');
-        $routes->get('getOSList', 'TransPCController::getOSList');
-        $routes->get('exportCSV', 'TransPCController::exportCSV');
-        $routes->get('exportODS', 'TransPCController::exportODS');
-        $routes->get('exportXLSX', 'TransPCController::exportXLSX');
-        $routes->post('exportSelectedCSV', 'TransPCController::exportSelectedCSV');
-        $routes->post('exportSelectedODS', 'TransPCController::exportSelectedODS');
-        $routes->post('exportSelectedXLSX', 'TransPCController::exportSelectedXLSX');
-        $routes->post('updatePCSpecs', 'TransPCController::updatePCSpecs');
-        $routes->get('getPCEquipmentById', 'TransPCController::getPCEquipmentById');
-        $routes->post('storePCEquipment', 'TransPCController::storePCEquipment');
-        $routes->post('updatePCEquipment', 'TransPCController::updatePCEquipment');
-        $routes->post('deletePCEquipment', 'TransPCController::deletePCEquipment');
-        $routes->get('getPCServerVMById', 'TransPCController::getPCServerVMById');
-        $routes->post('storePCServerVM', 'TransPCController::storePCServerVM');
-        $routes->post('updatePCServerVM', 'TransPCController::updatePCServerVM');
-        $routes->post('deletePCServerVM', 'TransPCController::deletePCServerVM');
-    });
+// PC OS Master
+$routes->group('MstPCOS', ['namespace' => 'App\Controllers\MstPCOS'], function ($routes) {
+    $routes->get('/', 'MstPCOSController::index');
+    $routes->get('getData', 'MstPCOSController::getData');
+    $routes->post('getOSById', 'MstPCOSController::getOSById');
+    $routes->post('store', 'MstPCOSController::store');
+    $routes->post('update', 'MstPCOSController::update');
+    $routes->post('delete', 'MstPCOSController::delete');
+});
+
+
+// PC Transaction
+$routes->group('TransPC', ['namespace' => 'App\Controllers\TransPC'], function ($routes) {
+    $routes->get('/', 'TransPCController::index');
+    $routes->get('getData', 'TransPCController::getData');
+    $routes->get('getPCById', 'TransPCController::getPCById');
+    $routes->get('getPCDetails', 'TransPCController::getPCDetails');
+    $routes->post('store', 'TransPCController::store');
+    $routes->post('update', 'TransPCController::update');
+    $routes->post('delete', 'TransPCController::delete');
+    $routes->get('getAssetNo', 'TransPCController::getAssetNo');
+    $routes->get('searchAssetNo', 'TransPCController::searchAssetNo');
+    $routes->get('getIPAddresses', 'TransPCController::getIPAddresses');
+    $routes->get('searchIPAddresses', 'TransPCController::searchIPAddresses');
+    $routes->post('updateIPStatus', 'TransPCController::updateIPStatus');
+    $routes->get('getEmployees', 'TransPCController::getEmployees');
+    $routes->get('searchEmployees', 'TransPCController::searchEmployees');
+    $routes->get('getLocations', 'TransPCController::getLocations');
+    $routes->get('getOSList', 'TransPCController::getOSList');
+    $routes->get('exportCSV', 'TransPCController::exportCSV');
+    $routes->get('exportODS', 'TransPCController::exportODS');
+    $routes->get('exportXLSX', 'TransPCController::exportXLSX');
+    $routes->post('exportSelectedCSV', 'TransPCController::exportSelectedCSV');
+    $routes->post('exportSelectedODS', 'TransPCController::exportSelectedODS');
+    $routes->post('exportSelectedXLSX', 'TransPCController::exportSelectedXLSX');
+    $routes->post('updatePCSpecs', 'TransPCController::updatePCSpecs');
+    $routes->get('getPCEquipmentById', 'TransPCController::getPCEquipmentById');
+    $routes->post('storePCEquipment', 'TransPCController::storePCEquipment');
+    $routes->post('updatePCEquipment', 'TransPCController::updatePCEquipment');
+    $routes->post('deletePCEquipment', 'TransPCController::deletePCEquipment');
+    $routes->get('getPCServerVMById', 'TransPCController::getPCServerVMById');
+    $routes->post('storePCServerVM', 'TransPCController::storePCServerVM');
+    $routes->post('updatePCServerVM', 'TransPCController::updatePCServerVM');
+    $routes->post('deletePCServerVM', 'TransPCController::deletePCServerVM');
+});
