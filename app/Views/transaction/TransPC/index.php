@@ -2,6 +2,9 @@
 <?= $this->section('content') ?>
 
 <div class="card">
+    <div class="card-header">
+        <h4 class="card-title">Transaction PC</h4>
+    </div>  
     <p class="demo" style="padding-left: 30px; padding-top: 12px;">
         <!-- Button trigger modal for adding new PC -->
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPCModal">
@@ -417,11 +420,10 @@
                                 <th style="width: 15%;">VLAN ID</th>
                                 <th style="width: 25%;">VLAN Name</th>
                                 <th style="width: 25%;">IP Address</th>
-                            </tr>
+                                <th style="width: 15%;">Status</th> </tr>
                         </thead>
                         <tbody>
-                            <!-- Data will be dynamically added here -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -747,6 +749,7 @@
                     font-size: 0.875rem;
                     line-height: 1.25;
                 }
+
             </style>
         `);
 
@@ -806,7 +809,8 @@
             return types[type] || 'Unknown';
         }
         
-        // Function to save form data before opening search modal
+        // Pastikan fungsi restoreFormData dan saveFormData memegang nilai IP
+        // Fungsi saveFormData()
         function saveFormData() {
             const formData = {};
             
@@ -818,7 +822,7 @@
                 formData.pc_receive_date = $('#pc_receive_date').val();
                 formData.pc_status = $('#pc_status').val();
                 formData.os_name = $('#os_name').val();
-                formData.ip_address = $('#ip_address').val();
+                formData.ip_address = $('#ip_address').val(); // PASTIKAN INI TERMASUK
                 formData.user = $('#user').val();
                 formData.location = $('#location').val();
             } else if (previousModal === '#editPCModal') {
@@ -830,13 +834,14 @@
                 formData.edit_pc_assetno = $('#edit_pc_assetno').val();
                 formData.edit_pc_receive_date = $('#edit_pc_receive_date').val();
                 formData.edit_os_name = $('#edit_os_name').val();
-                formData.edit_ip_address = $('#edit_ip_address').val();
+                formData.edit_ip_address = $('#edit_ip_address').val(); // PASTIKAN INI TERMASUK
                 formData.edit_user = $('#edit_user').val();
                 formData.edit_location = $('#edit_location').val();
             }
             
             return formData;
         }
+
 
         // Function to restore form data after closing search modal
         function restoreFormData(formData) {
@@ -1033,6 +1038,7 @@
         }
 
         // Function to update selected IDs array
+        // Function to update selected IDs array
         function updateSelectedIds() {
             selectedPCIds = [];
             $('.pc-checkbox:checked').each(function() {
@@ -1043,7 +1049,6 @@
 
         // Function to update selected count display
         function updateSelectedCount() {
-            // Enable/disable export selected buttons based on selection
             const hasSelection = selectedPCIds.length > 0;
             $('#exportSelectedCSV, #exportSelectedODS, #exportSelectedXLSX').toggleClass('disabled', !hasSelection);
         }
@@ -1060,7 +1065,6 @@
                 return;
             }
 
-            // Show confirmation dialog
             Swal.fire({
                 title: 'Confirm Export',
                 html: `Are you sure you want to export <strong>${selectedPCIds.length}</strong> selected PC record(s) to ${format} format?`,
@@ -1072,13 +1076,11 @@
                 cancelButtonText: 'Cancel'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Create a form to submit selected IDs
                     const form = $('<form>', {
                         method: 'POST',
                         action: base_url + `TransPC/exportSelected${format}`
                     });
 
-                    // Add selected IDs as hidden inputs
                     selectedPCIds.forEach(id => {
                         form.append($('<input>', {
                             type: 'hidden',
@@ -1087,12 +1089,10 @@
                         }));
                     });
 
-                    // Submit form
                     $('body').append(form);
                     form.submit();
                     form.remove();
 
-                    // Show success message
                     Swal.fire({
                         icon: 'success',
                         title: 'Export Started',
@@ -1106,7 +1106,6 @@
         
         // Initialize DataTable with filters
         function initializePCDataTable(statusFilter = 'All', typeFilter = 'All') {
-            // Use stored filter values if available
             if (window.currentStatusFilter !== undefined) {
                 statusFilter = window.currentStatusFilter;
             }
@@ -1116,9 +1115,7 @@
             
             if ($.fn.DataTable.isDataTable('#tabelPC')) {
                 tabelPC.destroy();
-                // Reset the filters initialization flag
                 window.pcFiltersInitialized = false;
-                // Remove existing filter elements
                 $('#statusFilterWrapper, #typeFilterWrapper, #exportButtonsWrapper').remove();
             }
 
@@ -1126,7 +1123,7 @@
                 scrollX: true,
                 pageLength: 10,
                 lengthMenu: [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]], 
-                order: [[2, 'desc']], // Order by ID descending (column index berubah karena ada checkbox)
+                order: [[2, 'desc']], 
                 autoWidth: false,
                 ajax: {
                     url: base_url + "TransPC/getData",
@@ -1135,6 +1132,15 @@
                         d.type = typeFilter;
                     },
                     dataSrc: function(json) {
+                        if (json && json.error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error Loading Data',
+                                text: json.error,
+                                showConfirmButton: true
+                            });
+                            return [];
+                        }
                         return json;
                     },
                     beforeSend: function() {
@@ -1145,13 +1151,21 @@
                         $('#tabelPC tbody').html(`<tr><td colspan="12">${spinner}</td></tr>`);
                     },
                     error: function(xhr, error, thrown) {
-                        console.error('DataTables AJAX error:', error, thrown);
-                        $('#tabelPC tbody').html('<tr><td colspan="12" class="text-center">Error loading data. Please try again.</td></tr>');
+                        console.error('DataTables AJAX error:', error, thrown, xhr.responseText);
+                        let errorMessage = 'Error loading data. Please try again.';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response && response.error) {
+                                errorMessage = response.error;
+                            } else if (response && response.message) {
+                                errorMessage = response.message;
+                            }
+                        } catch (e) { }
+                        $('#tabelPC tbody').html(`<tr><td colspan="12" class="text-center">${errorMessage}</td></tr>`);
                     }
                 },
                 columns: [
                     {
-                        // Checkbox column
                         data: null,
                         className: 'text-center',
                         orderable: false,
@@ -1214,14 +1228,11 @@
                     },
                 ],
                 drawCallback: function() {
-                    // Initialize filters only once after first draw
                     if (!window.pcFiltersInitialized) {
                         window.pcFiltersInitialized = true;
                         
-                        // Find the DataTables length control element
                         const lengthControl = $('#tabelPC_length');
                         
-                        // Create the status filter dropdown HTML
                         const statusFilterHtml = `
                             <div class="filter-wrapper" id="statusFilterWrapper" style="display: inline-block; margin-left: 20px;">
                                 <label style="font-weight: normal;">
@@ -1235,7 +1246,6 @@
                             </div>
                         `;
                         
-                        // Create the type filter dropdown HTML
                         const typeFilterHtml = `
                             <div class="filter-wrapper" id="typeFilterWrapper" style="display: inline-block; margin-left: 20px;">
                                 <label style="font-weight: normal;">
@@ -1249,7 +1259,6 @@
                             </div>
                         `;
                         
-                        // Create export buttons with enhanced functionality
                         const exportButtons = `
                             <div class="export-buttons" id="exportButtonsWrapper" style="display: inline-flex; gap: 0.5rem; margin-left: 1rem;">
                                 <div class="dropdown">
@@ -1283,18 +1292,15 @@
                             </div>
                         `;
                         
-                        // Insert all controls
                         lengthControl.append(statusFilterHtml);
                         lengthControl.append(typeFilterHtml);
                         lengthControl.append(exportButtons);
                         
-                        // Bind change events for filters
                         $('#statusFilter').on('change', function() {
                             const selectedStatus = $(this).val();
                             const selectedType = $('#typeFilter').val();
-                            selectedPCIds = []; // Reset selected items when filter changes
+                            selectedPCIds = []; 
                             updateSelectedCount();
-                            // Store current filter values
                             window.currentStatusFilter = selectedStatus;
                             window.currentTypeFilter = selectedType;
                             initializePCDataTable(selectedStatus, selectedType);
@@ -1303,15 +1309,13 @@
                         $('#typeFilter').on('change', function() {
                             const selectedType = $(this).val();
                             const selectedStatus = $('#statusFilter').val();
-                            selectedPCIds = []; // Reset selected items when filter changes
+                            selectedPCIds = []; 
                             updateSelectedCount();
-                            // Store current filter values
                             window.currentStatusFilter = selectedStatus;
                             window.currentTypeFilter = selectedType;
                             initializePCDataTable(selectedStatus, selectedType);
                         });
 
-                        // Export All event handlers (original functionality)
                         $('#exportAllCSV').on('click', function(e) {
                             e.preventDefault();
                             const originalHtml = $(this).html();
@@ -1345,7 +1349,6 @@
                             }, 2000);
                         });
 
-                        // Export Selected event handlers (new functionality)
                         $('#exportSelectedCSV').on('click', function(e) {
                             e.preventDefault();
                             exportSelectedData('CSV');
@@ -1362,22 +1365,20 @@
                         });
                     }
                     
-                    // Always set filter values after draw
                     setTimeout(function() {
                         $('#statusFilter').val(statusFilter);
                         $('#typeFilter').val(typeFilter);
-                        // Store current values globally
                         window.currentStatusFilter = statusFilter;
                         window.currentTypeFilter = typeFilter;
                     }, 100);
                 }
             });
 
-            // Handle individual checkbox changes
             $('#tabelPC').on('change', '.pc-checkbox', function() {
                 updateSelectedIds();
             });
         }
+
 
         // Handle header checkbox for select/deselect all
         $('#selectAllHeader').on('change', function() {
@@ -1386,11 +1387,10 @@
             updateSelectedIds();
         });
 
-        // Update header checkbox state when individual checkboxes change
+
         $(document).on('change', '.pc-checkbox', function() {
             updateSelectedIds();
             
-            // Update header checkbox state
             const totalCheckboxes = $('.pc-checkbox').length;
             const checkedCheckboxes = $('.pc-checkbox:checked').length;
             
@@ -1416,16 +1416,15 @@
                 assetNoDataTable.destroy();
             }
             
-            // Create new DataTable with default search
             assetNoDataTable = $('#assetNoTable').DataTable({
                 processing: true,
                 serverSide: false,
                 paging: true,
                 pageLength: 5,
                 lengthMenu: [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]],
-                searching: true, // Enable default DataTable search
+                searching: true,
                 ordering: true,
-                order: [[0, 'asc']], // Default sort by asset no
+                order: [[0, 'asc']],
                 ajax: {
                     url: base_url + 'TransPC/searchAssetNo',
                     type: 'GET',
@@ -1467,22 +1466,22 @@
             });
         }
 
+
         // Initialize DataTable for employee search (simplified)
         function initEmployeeDataTable() {
             if (employeeDataTable) {
                 employeeDataTable.destroy();
             }
             
-            // Create new DataTable with default search
             employeeDataTable = $('#employeeTable').DataTable({
                 processing: true,
                 serverSide: false,
                 paging: true,
                 pageLength: 5,
                 lengthMenu: [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]],
-                searching: true, // Enable default DataTable search
+                searching: true,
                 ordering: true,
-                order: [[1, 'asc']], // Default sort by name
+                order: [[1, 'asc']],
                 ajax: {
                     url: base_url + 'TransPC/searchEmployees',
                     type: 'GET',
@@ -1505,58 +1504,109 @@
             });
         }
 
-        // Initialize DataTable for IP Address search (simplified)
+        // Initialize DataTable for IP Address search (modified to show status and allow filtering)
         function initIPAddressDataTable() {
             if (ipAddressDataTable) {
                 ipAddressDataTable.destroy();
+                $('#ipAddressTable tbody').html(''); // Clear previous table body content
+                // Hapus juga elemen filter kustom yang mungkin ada dari inisialisasi sebelumnya
+                $('#ipStatusFilterWrapper').remove(); 
             }
             
-            // Create new DataTable with default search
             ipAddressDataTable = $('#ipAddressTable').DataTable({
                 processing: true,
                 serverSide: false,
                 paging: true,
                 pageLength: 5,
                 lengthMenu: [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]],
-                searching: true, // Enable default DataTable search
+                searching: true, 
                 ordering: true,
-                order: [[0, 'asc']], // Default sort by VLAN ID
+                order: [[2, 'asc']], // Default sort by IP Address (column index 2)
                 ajax: {
                     url: base_url + 'TransPC/searchIPAddresses',
                     type: 'GET',
                     dataSrc: function(json) {
+                        if (json && json.error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error Loading IP Data',
+                                text: json.error,
+                                showConfirmButton: true
+                            });
+                            return [];
+                        }
                         return json || [];
+                    },
+                    error: function(xhr, error, thrown) {
+                        console.error('DataTables IP AJAX error:', error, thrown, xhr.responseText);
+                        let errorMessage = 'Error loading IP data. Please try again.';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response && response.error) {
+                                errorMessage = response.error;
+                            } else if (response && response.message) {
+                                errorMessage = response.message;
+                            }
+                        } catch (e) { }
+                        $('#ipAddressTable tbody').html(`<tr><td colspan="4" class="text-center text-danger">${errorMessage}</td></tr>`);
                     }
                 },
                 columns: [
-                    { data: 'mip_vlanid', width: '15%', render: function(data) { return data ? data : '-'; } },
-                    { data: 'mip_vlanname', width: '25%', render: function(data) { return data ? data : '-'; } },
-                    { data: 'mip_ipaddress', width: '25%' },
+                    { data: 'mip_vlanid', width: '15%', defaultContent: '-' },
+                    { data: 'mip_vlanname', width: '25%', defaultContent: '-' },
+                    { data: 'mip_ipadd', width: '25%', defaultContent: '-' }, 
+                    { 
+                        data: 'mip_status', 
+                        width: '15%', 
+                        className: 'text-center',
+                        render: function(data, type, row) {
+                            const statusText = data == 1 ? 'Used' : 'Unused';
+                            const badgeClass = data == 1 ? 'bg-danger text-white' : 'bg-success text-white';
+                            return `<span class="badge ${badgeClass}">${statusText}</span>`;
+                        }
+                    },
                 ],
                 columnDefs: [
-                    {
-                        targets: '_all',
-                        defaultContent: '-'
-                    }
-                ]
+                    { targets: '_all', defaultContent: '-' }
+                ],
+                initComplete: function() {
+                    const api = this.api();
+                    const filterColumn = api.column(3); 
+
+                    // Cari elemen filter bawaan DataTables
+                    let filterContainer = $(this).closest('.dataTables_wrapper').find('.dataTables_filter');
+                    
+                    // Buat elemen filter kustom baru dan tambahkan ke dalam filter container bawaan
+                    let customFilterHtml = `
+                        <div id="ipStatusFilterWrapper" class="d-inline-flex align-items-center ms-2">
+                            <label style="font-weight: normal; margin-bottom: 0;">Status:</label>
+                            <select id="ipStatusFilter" class="form-select form-select-sm ms-1" style="width: auto;">
+                                <option value="">Show All</option>
+                                <option value="0">Unused</option>
+                                <option value="1">Used</option>
+                            </select>
+                        </div>
+                    `;
+                    filterContainer.append(customFilterHtml);
+                    
+                    // Bind event listener ke filter kustom
+                    $('#ipStatusFilter').on('change', function() {
+                        const val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        filterColumn.search(val ? '^' + val + '$' : '', true, false).draw();
+                    });
+                }
             });
         }
 
         // Function to load Server VM data into DataTable
+        // Function to load Server VM data into DataTable
         function loadServerVMData(serverVMData) {
-            
-            // Destroy existing DataTable if it exists
-            if (serverVMDataTable) {
-                try {
-                    serverVMDataTable.destroy();
-                } catch (e) {
-                    console.log('VM DataTable destroy error:', e.message);
-                }
-                serverVMDataTable = null;
-            }
-
-            // Clear table content and reset structure completely
             const tableContainer = $('#server_vm_content');
+
+            // Clear any previous error messages or content
+            tableContainer.empty();
+
+            // Re-create the table structure every time to ensure a clean slate
             tableContainer.html(`
                 <div class="table-responsive">
                     <table class="table table-sm table-hover table-bordered" id="serverVMTable">
@@ -1579,10 +1629,13 @@
                 </div>
             `);
 
+            // Destroy existing DataTable instance if it exists on the newly created table
+            if ($.fn.DataTable.isDataTable('#serverVMTable')) {
+                $('#serverVMTable').DataTable().destroy();
+            }
+
             if (serverVMData && Array.isArray(serverVMData) && serverVMData.length > 0) {
-                
                 try {
-                    // Initialize DataTable with explicit configuration
                     serverVMDataTable = $('#serverVMTable').DataTable({
                         data: serverVMData,
                         pageLength: 5,
@@ -1594,9 +1647,9 @@
                         scrollX: true,
                         autoWidth: false,
                         responsive: false,
-                        destroy: true,
+                        destroy: true, // Allow reinitialization
                         processing: false,
-                        deferRender: false, // Changed to false for immediate rendering
+                        deferRender: false,
                         language: {
                             processing: "Processing...",
                             emptyTable: "No VM data available",
@@ -1605,33 +1658,12 @@
                             lengthMenu: "Show _MENU_ entries"
                         },
                         columnDefs: [
-                            {
-                                targets: 0,
-                                width: '80px',
-                                orderable: false,
-                                className: 'text-center'
-                            },
-                            {
-                                targets: 1,
-                                width: '40px',
-                                className: 'text-center'
-                            },
-                            {
-                                targets: 2,
-                                width: '120px'
-                            },
-                            {
-                                targets: [3, 4, 5, 6, 7],
-                                width: '90px'
-                            },
-                            {
-                                targets: 8,
-                                width: '100px'
-                            },
-                            {
-                                targets: 9,
-                                width: '150px'
-                            }
+                            { targets: 0, width: '80px', orderable: false, className: 'text-center' },
+                            { targets: 1, width: '40px', className: 'text-center' },
+                            { targets: 2, width: '120px' },
+                            { targets: [3, 4, 5, 6, 7], width: '90px' },
+                            { targets: 8, width: '100px' },
+                            { targets: 9, width: '150px' }
                         ],
                         columns: [
                             {
@@ -1649,111 +1681,23 @@
                                     `;
                                 }
                             },
-                            { 
-                                data: 'tpv_id',
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_name', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_processor', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_ram', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_storage', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_vga', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_ethernet', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_ipaddress', 
-                                render: function(data) { return data || '-'; }
-                            },
-                            { 
-                                data: 'tpv_services', 
-                                render: function(data) { return data || '-'; }
-                            }
+                            { data: 'tpv_id', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_name', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_processor', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_ram', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_storage', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_vga', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_ethernet', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_ipaddress', render: function(data) { return data || '-'; } },
+                            { data: 'tpv_services', render: function(data) { return data || '-'; } }
                         ],
                         initComplete: function() {
-                            
-                            // Force multiple draws to ensure data appears
-                            const api = this.api();
-                            
-                            // Clear and add data again
-                            api.clear();
-                            api.rows.add(serverVMData);
-                            
-                            // Force draw multiple times with delays
-                            api.draw();
-                            
-                            setTimeout(function() {
-                                api.draw();
-                            }, 50);
-                            
-                            setTimeout(function() {
-                                api.columns.adjust().draw();
-                            }, 100);
-                            
-                            setTimeout(function() {
-                                // Final verification
-                                const rowCount = api.rows().count();
-                                
-                                if (rowCount === 0) {
-                                    // Force reload data one more time
-                                    api.clear();
-                                    api.rows.add(serverVMData);
-                                    api.draw();
-                                }
-                            }, 200);
-                        },
-                        drawCallback: function() {
-                            const api = this.api();
-                            const info = api.page.info();
-                        },
-                        createdRow: function(row, data, dataIndex) {
-                            console.log('VM DataTable created row:', dataIndex, data);
-                        },
-                        error: function(xhr, error, thrown) {
-                            console.error('VM DataTable error:', error, thrown);
+                            // Adjust columns after data is loaded
+                            this.api().columns.adjust().draw();
                         }
                     });
-                    
-                    
-                    // Additional forced operations after creation
-                    setTimeout(function() {
-                        if (serverVMDataTable) {
-                            
-                            // Force refresh
-                            serverVMDataTable.clear();
-                            serverVMDataTable.rows.add(serverVMData);
-                            serverVMDataTable.draw();
-                            
-                            // Check if data is actually in the table
-                            const currentData = serverVMDataTable.data().toArray();
-                            
-                            // Force column adjustment
-                            serverVMDataTable.columns.adjust();
-                            
-                            // Final status check
-                            const tableInfo = serverVMDataTable.page.info();
-                        }
-                    }, 300);
-                    
                 } catch (error) {
                     console.error('Error initializing VM DataTable:', error);
-                    
                     // Fallback: Show manual table if DataTable fails
                     let manualTableHtml = `
                         <div class="table-responsive">
@@ -1774,7 +1718,7 @@
                                 </thead>
                                 <tbody>
                     `;
-                    
+
                     serverVMData.forEach(item => {
                         manualTableHtml += `
                             <tr>
@@ -1800,7 +1744,7 @@
                             </tr>
                         `;
                     });
-                    
+
                     manualTableHtml += `
                                 </tbody>
                             </table>
@@ -1809,13 +1753,12 @@
                             <i class="fa fa-exclamation-triangle me-2"></i>DataTable initialization failed, showing static table. Some features may be limited.
                         </div>
                     `;
-                    
+
                     $('#server_vm_content').html(manualTableHtml);
                 }
             } else {
-                
                 // Show empty message with proper table structure
-                $('#server_vm_content').html(`
+                tableContainer.html(`
                     <div class="table-responsive">
                         <table class="table table-sm table-hover table-bordered" id="serverVMTable">
                             <thead class="table-light">
@@ -3846,58 +3789,75 @@
         $('#ipAddressTable tbody').off('click', 'tr').on('click', 'tr', function() {
             if (ipAddressDataTable) {
                 const data = ipAddressDataTable.row(this).data();
-                if (!data) return;
-                
-                if (previousModal === '#pcServerVMModal') {
-                    // VM IP selection
-                    savedFormData.vm.vm_ip_address = data.mip_ipaddress;
-                    
-                    // Hide IP modal and show VM modal
-                    $('#ipAddressModal').modal('hide');
-                    
-                    $('#ipAddressModal').one('hidden.bs.modal', function() {
-                        $('#pcServerVMModal').modal('show');
+
+                console.log("Data IP yang diklik:", data); // Tetap biarkan ini untuk debugging
+                console.log("Status IP (mip_status):", data.mip_status, "Tipe:", typeof data.mip_status); // Tetap biarkan ini untuk debugging
+
+                if (!data || data.mip_status === undefined || data.mip_ipadd === undefined) {
+                    console.error("Data baris IP tidak lengkap:", data);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Data Error',
+                        text: 'Terjadi masalah saat mengambil data IP. Mohon coba lagi.',
+                        showConfirmButton: true
+                    });
+                    return;
+                }
+
+                // Validasi status IP address
+                if (parseInt(data.mip_status) !== 0) { // HANYA izinkan memilih yang statusnya 0 (Unused)
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'IP Not Available',
+                        text: `Alamat IP yang dipilih (${data.mip_ipadd}) saat ini berstatus ${parseInt(data.mip_status) == 1 ? 'Used' : 'Tidak Tersedia'}. Mohon pilih IP yang belum terpakai (Unused).`,
+                        showConfirmButton: true
+                    });
+                    return; // Hentikan proses jika IP tidak tersedia
+                }
+
+                // --- BAGIAN YANG DIPERBAIKI: MEMASTIKAN NILAI IP DISET KE INPUT YANG TEPAT ---
+
+                // Simpan nilai IP yang dipilih ke savedFormData untuk skenario PC dan VM
+                // Ini memastikan data tersedia saat restoreFormData dipanggil atau saat langsung mengisi
+                if (previousModal === '#addPCModal') {
+                    savedFormData.ip_address = data.mip_ipadd;
+                } else if (previousModal === '#editPCModal') {
+                    savedFormData.edit_ip_address = data.mip_ipadd;
+                } else if (previousModal === '#pcServerVMModal') {
+                    // Untuk VM, kita sudah punya savedFormData.vm, jadi langsung update properti vm_ip_address
+                    savedFormData.vm.vm_ip_address = data.mip_ipadd;
+                }
+
+                // Sembunyikan modal IP Address
+                $('#ipAddressModal').modal('hide');
+
+                // Setelah modal IP Address tersembunyi, tampilkan kembali modal sebelumnya
+                $('#ipAddressModal').one('hidden.bs.modal', function() {
+                    if (previousModal) {
+                        $(previousModal).modal('show');
                         
-                        // Restore VM form data after modal is shown
+                        // Setelah modal sebelumnya ditampilkan, baru isi nilai input IP-nya
+                        // Gunakan setTimeout untuk memastikan elemen input sudah dirender dan siap diisi
                         setTimeout(function() {
-                            $('#vm_pc_id').val(savedFormData.vm.pc_id || '');
-                            $('#vm_id').val(savedFormData.vm.vm_id || '');
-                            $('#vm_type').val(savedFormData.vm.vm_type || '');
-                            $('#vm_ip_address').val(savedFormData.vm.vm_ip_address || '');
-                            $('#vm_services').val(savedFormData.vm.vm_services || '');
-                            $('#vm_remark').val(savedFormData.vm.vm_remark || '');
-                            
+                            if (previousModal === '#addPCModal') {
+                                $('#ip_address').val(savedFormData.ip_address || ''); // Isi nilai IP Address
+                                $('#ip_address').trigger('blur'); // Pemicu event blur untuk validasi
+                            } else if (previousModal === '#editPCModal') {
+                                $('#edit_ip_address').val(savedFormData.edit_ip_address || ''); // Isi nilai IP Address
+                                $('#edit_ip_address').trigger('blur'); // Pemicu event blur untuk validasi
+                            } else if (previousModal === '#pcServerVMModal') {
+                                restoreVMFormData(savedFormData.vm); // restoreVMFormData akan mengisi vm_ip_address
+                                $('#vm_ip_address').trigger('blur'); // Pemicu event blur
+                            }
+
+                            // Reset flag dan variabel setelah operasi selesai
                             isSearchModalOpen = false;
                             previousModal = null;
-                            savedFormData = {};
-                        }, 100);
-                    });
-                } else {
-                    // Update saved form data with selected IP
-                    if (isEditMode) {
-                        savedFormData.edit_ip_address = data.mip_ipaddress;
-                    } else {
-                        savedFormData.ip_address = data.mip_ipaddress;
+                            savedFormData = {}; // Bersihkan savedFormData setelah digunakan
+                        }, 100); // Sedikit delay untuk memastikan modal siap
                     }
-                    
-                    // Hide IP modal and show previous modal
-                    $('#ipAddressModal').modal('hide');
-                    
-                    // Show the previous modal after IP modal is hidden
-                    if (previousModal) {
-                        $('#ipAddressModal').one('hidden.bs.modal', function() {
-                            $(previousModal).modal('show');
-                            
-                            // Restore form data after modal is shown
-                            setTimeout(function() {
-                                restoreFormData(savedFormData);
-                                isSearchModalOpen = false;
-                                previousModal = null;
-                                savedFormData = {};
-                            }, 100);
-                        });
-                    }
-                }
+                });
+                // --- AKHIR BAGIAN YANG DIPERBAIKI ---
             }
         });
 
@@ -3949,8 +3909,12 @@
             
             // Reset VM type filter when modal is closed
             if (serverVMDataTable) {
-                $('#vmTypeFilter').val('All');
-                serverVMDataTable.column(2).search('').draw();
+                try {
+                    $('#vmTypeFilter').val('All');
+                    serverVMDataTable.column(2).search('').draw();
+                } catch (e) {
+                    console.log('VM DataTable filter reset error (expected if table was destroyed):', e.message);
+                }
             }
             
             // Don't clear currentPCId immediately - only clear if we're not returning to it
@@ -3964,8 +3928,14 @@
             
             // Destroy VM DataTable to ensure clean state
             if (serverVMDataTable) {
-                serverVMDataTable.destroy();
-                serverVMDataTable = null;
+                try {
+                    serverVMDataTable.destroy();
+                    serverVMDataTable = null;
+                    console.log('VM DataTable destroyed successfully');
+                } catch (e) {
+                    console.log('VM DataTable destroy error (may already be destroyed):', e.message);
+                    serverVMDataTable = null;
+                }
             }
         });
 
@@ -4018,7 +3988,7 @@
             };
         }
 
-        // Update restore VM form data function
+        // Fungsi restoreVMFormData() (ini sudah benar)
         function restoreVMFormData(formData) {
             $('#vm_pc_id').val(formData.pc_id || '');
             $('#vm_id').val(formData.vm_id || '');
@@ -4028,10 +3998,11 @@
             $('#vm_storage').val(formData.vm_storage || '');
             $('#vm_vga').val(formData.vm_vga || '');
             $('#vm_ethernet').val(formData.vm_ethernet || '');
-            $('#vm_ip_address').val(formData.vm_ip_address || '');
+            $('#vm_ip_address').val(formData.vm_ip_address || ''); // Ini sudah mengisi dengan benar
             $('#vm_services').val(formData.vm_services || '');
             $('#vm_remark').val(formData.vm_remark || '');
         }
+
 
         // Reset asset search when modal is hidden
         $('#assetNoModal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
@@ -4130,7 +4101,11 @@
 
         $('#ipAddressModal').off('show.bs.modal').on('show.bs.modal', function() {
             $('#searchIPAddress').val('');
-            if (ipAddressDataTable && !isSearchModalOpen) {
+            // **PENTING:** Memastikan filter dropdown IP disetel ulang ke "Show All" setiap kali modal dibuka
+            // dan DataTables dimuat ulang untuk menampilkan semua opsi IP
+            if ($('#ipStatusFilter').length) {
+                $('#ipStatusFilter').val('').trigger('change'); 
+            } else if (ipAddressDataTable && !isSearchModalOpen) {
                 ipAddressDataTable.ajax.reload();
             }
         });
@@ -4239,7 +4214,6 @@
             const currentModal = $(this).closest('.modal');
             const modalId = currentModal.attr('id');
             
-            // Get PC ID from appropriate form field
             let pcId;
             if (modalId === 'pcSpecsModal') {
                 pcId = $('#specs_pc_id').val() || currentPCId;
