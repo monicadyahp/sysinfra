@@ -636,7 +636,7 @@
     </div>
 </div>
 
-    <script>
+<script>
     $(document).ready(function () {
         document.head.insertAdjacentHTML('beforeend', `
             <style>
@@ -1296,73 +1296,12 @@
                         lengthControl.append(typeFilterHtml);
                         lengthControl.append(exportButtons);
                         
-                        $('#statusFilter').on('change', function() {
-                            const selectedStatus = $(this).val();
-                            const selectedType = $('#typeFilter').val();
-                            selectedPCIds = []; 
-                            updateSelectedCount();
-                            window.currentStatusFilter = selectedStatus;
-                            window.currentTypeFilter = selectedType;
-                            initializePCDataTable(selectedStatus, selectedType);
-                        });
-                        
-                        $('#typeFilter').on('change', function() {
-                            const selectedType = $(this).val();
-                            const selectedStatus = $('#statusFilter').val();
-                            selectedPCIds = []; 
-                            updateSelectedCount();
-                            window.currentStatusFilter = selectedStatus;
-                            window.currentTypeFilter = selectedType;
-                            initializePCDataTable(selectedStatus, selectedType);
-                        });
-
-                        $('#exportAllCSV').on('click', function(e) {
-                            e.preventDefault();
-                            const originalHtml = $(this).html();
-                            $(this).html('<i class="fa fa-spinner fa-spin me-2"></i>Exporting...');
-                            window.location.href = base_url + 'TransPC/exportCSV';
-                            const self = this;
-                            setTimeout(() => {
-                                $(self).html(originalHtml);
-                            }, 2000);
-                        });
-
-                        $('#exportAllODS').on('click', function(e) {
-                            e.preventDefault();
-                            const originalHtml = $(this).html();
-                            $(this).html('<i class="fa fa-spinner fa-spin me-2"></i>Exporting...');
-                            window.location.href = base_url + 'TransPC/exportODS';
-                            const self = this;
-                            setTimeout(() => {
-                                $(self).html(originalHtml);
-                            }, 2000);
-                        });
-
-                        $('#exportAllXLSX').on('click', function(e) {
-                            e.preventDefault();
-                            const originalHtml = $(this).html();
-                            $(this).html('<i class="fa fa-spinner fa-spin me-2"></i>Exporting...');
-                            window.location.href = base_url + 'TransPC/exportXLSX';
-                            const self = this;
-                            setTimeout(() => {
-                                $(self).html(originalHtml);
-                            }, 2000);
-                        });
-
-                        $('#exportSelectedCSV').on('click', function(e) {
-                            e.preventDefault();
-                            exportSelectedData('CSV');
-                        });
-
-                        $('#exportSelectedODS').on('click', function(e) {
-                            e.preventDefault();
-                            exportSelectedData('ODS');
-                        });
-
-                        $('#exportSelectedXLSX').on('click', function(e) {
-                            e.preventDefault();
-                            exportSelectedData('XLSX');
-                        });
+                        setTimeout(function() {
+                            $('#statusFilter').val(statusFilter);
+                            $('#typeFilter').val(typeFilter);
+                            window.currentStatusFilter = statusFilter;
+                            window.currentTypeFilter = typeFilter;
+                        }, 100);
                     }
                     
                     setTimeout(function() {
@@ -1790,7 +1729,7 @@
         // Load locations 
         function loadLocations(targetSelector, selectedLocation = null) {
             $(targetSelector).html('<option value="">Loading Locations...</option>');
-                            
+                                        
             $.ajax({
                 url: base_url + 'TransPC/getLocations',
                 type: 'GET',
@@ -1798,7 +1737,7 @@
                 success: function(response) {
                     $(targetSelector).empty();
                     $(targetSelector).append('<option value="">--Select Location--</option>');
-                                            
+                                                
                     if (response && response.length > 0) {
                         response.forEach(location => {
                             const selected = (selectedLocation && location.mpl_name === selectedLocation) ? 'selected' : '';
@@ -1806,7 +1745,7 @@
                                 `<option value="${location.mpl_name}" ${selected}>${location.mpl_name}</option>`
                             );
                         });
-                                                            
+                                                
                         if (selectedLocation) {
                             $(targetSelector).val(selectedLocation);
                         }
@@ -1824,7 +1763,7 @@
         // Load OS list
         function loadOSList(targetSelector, selectedOS = null) {
             $(targetSelector).html('<option value="">Loading OS...</option>');
-                            
+                                        
             $.ajax({
                 url: base_url + 'TransPC/getOSList',
                 type: 'GET',
@@ -1832,7 +1771,7 @@
                 success: function(response) {
                     $(targetSelector).empty();
                     $(targetSelector).append('<option value="">--Select OS--</option>');
-                                            
+                                                
                     if (response && response.length > 0) {
                         response.forEach(os => {
                             const selected = (selectedOS && os.mpo_osname === selectedOS) ? 'selected' : '';
@@ -1840,7 +1779,7 @@
                                 `<option value="${os.mpo_osname}" ${selected}>${os.mpo_osname}</option>`
                             );
                         });
-                                                            
+                                                
                         if (selectedOS) {
                             $(targetSelector).val(selectedOS);
                         }
@@ -2074,21 +2013,23 @@
                         if ($('#server_vm_section').is(':visible')) {
                             $('#server_vm_content').html(`
                                 <div class="alert alert-danger text-center">
-                                    <i class="fa fa-exclamation-triangle me-2"></i>Error: ${errorMessage}
+                                    <i class="fa fa-exclamation-triangle me-2"></i>Network Error: ${errorMessage}
                                 </div>
                             `);
                         }
                         
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Data Processing Error',
-                            html: `
-                                <p>Failed to process PC details data.</p>
-                                <p><strong>Error:</strong> ${errorMessage}</p>
-                                <p><small>Please check the console for more details.</small></p>
-                            `,
-                            showConfirmButton: true
-                        });
+                        if (xhr.status !== 0) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Network Error',
+                                html: `
+                                    <p>${errorMessage}</p>
+                                    <p><strong>Status:</strong> ${xhr.status}</p>
+                                    <p><small>Please try again or contact support if the problem persists.</small></p>
+                                `,
+                                showConfirmButton: true
+                            });
+                        }
                     }
                 },
                 error: function(xhr, status, error) {
@@ -2148,10 +2089,10 @@
         function validateForm(formId) {
             let isValid = true;
             const form = document.getElementById(formId);
-                    
+                        
             form.querySelectorAll('.error-message').forEach(el => el.textContent = '');
             form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-                    
+                        
             const prefix = formId === 'editPCForm' ? 'edit_' : '';
             
             // Validate PC Type (required)
@@ -2161,7 +2102,7 @@
                 pcTypeField.classList.add('is-invalid');
                 isValid = false;
             }
-                    
+                        
             // Validate PC Receive Date (required)
             const pcReceiveDateField = form.querySelector(`#${prefix}pc_receive_date`);
             if (pcReceiveDateField && !pcReceiveDateField.value.trim()) {
@@ -2187,7 +2128,7 @@
                 ipField.classList.add('is-invalid');
                 isValid = false;
             }
-                    
+                        
             return isValid;
         }
 
@@ -2404,15 +2345,18 @@
                         if (response.status && response.data) {
                             // Use correct field name from API response
                             const receiveDate = response.data.receive_date || '';
+                            const equipmentName = response.data.asset_name || ''; // Get equipment name
                             
                             if (isEditMode) {
                                 $('#edit_pc_receive_date').val(receiveDate);
+                                $('#edit_pc_name').val(equipmentName); // Set PC Name
                                 // Trigger age calculation for edit mode
                                 if (receiveDate) {
                                     $('#edit_pc_receive_date').trigger('change');
                                 }
                             } else {
                                 $('#pc_receive_date').val(receiveDate);
+                                $('#pc_name').val(equipmentName); // Set PC Name
                                 // Trigger age calculation for add mode
                                 if (receiveDate) {
                                     $('#pc_receive_date').trigger('change');
@@ -2429,6 +2373,13 @@
                             const ageDisplayId = isEditMode ? 'edit_pc_age_display' : 'pc_age_display';
                             $(`#${ageDisplayId}`).remove();
                             
+                            // Clear PC Name field if asset not found/available
+                            if (isEditMode) {
+                                $('#edit_pc_name').val('');
+                            } else {
+                                $('#pc_name').val('');
+                            }
+
                             // Show error message
                             Swal.fire({
                                 icon: 'warning',
@@ -2459,6 +2410,13 @@
                 // Clear age display if asset no is empty
                 const ageDisplayId = isEditMode ? 'edit_pc_age_display' : 'pc_age_display';
                 $(`#${ageDisplayId}`).remove();
+
+                // Clear PC Name field if asset no is empty
+                if (isEditMode) {
+                    $('#edit_pc_name').val('');
+                } else {
+                    $('#pc_name').val('');
+                }
             }
         });
 
@@ -2520,7 +2478,7 @@
                 $('#equipment_age_display').remove();
             }
         });
-
+        
         // Handle manual employee input for user field
         $('#user, #edit_user').on('blur', function() {
             const userInput = $(this).val().trim();
@@ -2802,7 +2760,7 @@
         // Delete button click handler
         $('#tabelPC').on('click', '.delete-btn', function() {
             const id = $(this).data('id');
-                            
+                                        
             Swal.fire({
                 title: 'Are you sure?',
                 text: "This PC will be marked as deleted!",
@@ -2827,7 +2785,7 @@
                                     showConfirmButton: false,
                                     timer: 1500
                                 });
-                                                                                
+                                                            
                                 tabelPC.ajax.reload();
                             } else {
                                 Swal.fire({
@@ -2874,11 +2832,11 @@
             if (!validateForm('addPCForm')) {
                 return;
             }
-                            
+                                        
             const formData = new FormData(document.getElementById('addPCForm'));
-                            
+                                        
             $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...');
-                            
+                                        
             $.ajax({
                 url: base_url + 'TransPC/store',
                 type: 'POST',
@@ -2893,10 +2851,10 @@
                             showConfirmButton: false,
                             timer: 1500
                         });
-                                                                        
+                                                    
                         document.getElementById('addPCForm').reset();
                         $('#addPCModal').modal('hide');
-                                                                        
+                                                    
                         tabelPC.ajax.reload();
                     } else {
                         Swal.fire({
@@ -2905,7 +2863,7 @@
                             text: response.message || 'Failed to create PC'
                         });
                     }
-                                                            
+                                                    
                     $('#submit-btn').prop('disabled', false).text('Submit PC');
                 },
                 error: function(xhr, status, error) {
@@ -2915,7 +2873,7 @@
                         title: 'Error',
                         text: 'An error occurred while creating the PC. Please try again.'
                     });
-                                                            
+                                                    
                     $('#submit-btn').prop('disabled', false).text('Submit PC');
                 }
             });
@@ -2926,11 +2884,11 @@
             if (!validateForm('editPCForm')) {
                 return;
             }
-                            
+                                        
             const formData = new FormData(document.getElementById('editPCForm'));
-                            
+                                        
             $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...');
-                            
+                                        
             $.ajax({
                 url: base_url + 'TransPC/update',
                 type: 'POST',
@@ -2945,9 +2903,9 @@
                             showConfirmButton: false,
                             timer: 1500
                         });
-                                                                        
+                                                    
                         $('#editPCModal').modal('hide');
-                                                                        
+                                                    
                         tabelPC.ajax.reload();
                     } else {
                         Swal.fire({
@@ -2956,7 +2914,7 @@
                             text: response.message || 'Failed to update PC'
                         });
                     }
-                                                            
+                                                    
                     $('#update-btn').prop('disabled', false).text('Update PC');
                 },
                 error: function(xhr, status, error) {
@@ -2966,7 +2924,7 @@
                         title: 'Error',
                         text: 'An error occurred while updating the PC. Please try again.'
                     });
-                                                            
+                                                    
                     $('#update-btn').prop('disabled', false).text('Update PC');
                 }
             });
@@ -3709,10 +3667,16 @@
                         savedFormData.edit_pc_assetno = selectedAssetNo;
                         savedFormData.edit_pc_receive_date = data.e_receivedate ? 
                             data.e_receivedate.split(' ')[0] : '';
+                        // --- NEW: Populate PC Name for Edit Modal ---
+                        savedFormData.edit_pc_name = data.e_equipmentname || ''; 
+                        // --- END NEW ---
                     } else {
                         savedFormData.pc_assetno = selectedAssetNo;
                         savedFormData.pc_receive_date = data.e_receivedate ? 
                             data.e_receivedate.split(' ')[0] : '';
+                        // --- NEW: Populate PC Name for Add Modal ---
+                        savedFormData.pc_name = data.e_equipmentname || '';
+                        // --- END NEW ---
                     }
                     
                     // Hide asset modal and show previous modal
@@ -3872,6 +3836,8 @@
                 $('#pc_age_display').remove();
                 // Clear equipment ID display
                 $('#equipment_id_display').remove();
+                // Clear PC Name field
+                $('#pc_name').val('');
             }
         });
 
@@ -3898,6 +3864,8 @@
                 $('#edit_pc_age_display').remove();
                 // Clear equipment ID display
                 $('#edit_equipment_id_display').remove();
+                // Clear PC Name field
+                $('#edit_pc_name').val('');
                 
                 // Reset loading flag
                 isLoadingSections = false;
@@ -4053,52 +4021,6 @@
         });
 
         // Reset IP address search when modal is hidden
-        $('#ipAddressModal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
-            $('#searchIPAddress').val('');
-            if (ipAddressDataTable) {
-                ipAddressDataTable.destroy();
-                ipAddressDataTable = null;
-            }
-            
-            // If modal was closed without selection and there was a previous modal, show it and restore data
-            if (previousModal && isSearchModalOpen) {
-                $(previousModal).modal('show');
-                
-                // Restore form data after modal is shown
-                setTimeout(function() {
-                    if (previousModal === '#pcServerVMModal') {
-                        // Restore VM form data
-                        $('#vm_pc_id').val(savedFormData.vm.pc_id || '');
-                        $('#vm_id').val(savedFormData.vm.vm_id || '');
-                        $('#vm_type').val(savedFormData.vm.vm_type || '');
-                        $('#vm_ip_address').val(savedFormData.vm.vm_ip_address || '');
-                        $('#vm_services').val(savedFormData.vm.vm_services || '');
-                        $('#vm_remark').val(savedFormData.vm.vm_remark || '');
-                    } else {
-                        restoreFormData(savedFormData);
-                    }
-                    isSearchModalOpen = false;
-                    previousModal = null;
-                    savedFormData = {};
-                }, 100);
-            }
-        });
-
-        // Initialize search modals when they appear
-        $('#assetNoModal').off('show.bs.modal').on('show.bs.modal', function() {
-            $('#searchAssetNo').val('');
-            if (assetNoDataTable && !isSearchModalOpen) {
-                assetNoDataTable.ajax.reload();
-            }
-        });
-
-        $('#employeeModal').off('show.bs.modal').on('show.bs.modal', function() {
-            $('#searchEmployee').val('');
-            if (employeeDataTable && !isSearchModalOpen) {
-                employeeDataTable.ajax.reload();
-            }
-        });
-
         $('#ipAddressModal').off('show.bs.modal').on('show.bs.modal', function() {
             $('#searchIPAddress').val('');
             // **PENTING:** Memastikan filter dropdown IP disetel ulang ke "Show All" setiap kali modal dibuka
@@ -4340,5 +4262,6 @@
         });
     });
     </script>
+
 
 <?= $this->endSection() ?>
