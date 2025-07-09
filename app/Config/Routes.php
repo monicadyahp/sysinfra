@@ -48,15 +48,29 @@ $routes->post('/MstCategory/edit', 'MstCategory\MstCategoryController::edit');
 $routes->post('/MstCategory/update', 'MstCategory\MstCategoryController::update');
 $routes->post('/MstCategory/delete', 'MstCategory\MstCategoryController::delete');
 
-// 09-04 tambahan transaksi sparepart
-$routes->get('/TransSparepart', 'TransSparepart\TransSparepartController::index');
-$routes->get('/TransSparepart/getData', 'TransSparepart\TransSparepartController::getData');
-$routes->get('/TransSparepart/getAvailableAssets', 'TransSparepart\TransSparepartController::getAvailableAssets');
-$routes->get('/TransSparepart/searchEmployees', 'TransSparepart\TransSparepartController::searchEmployees');
-$routes->post('/TransSparepart/add', 'TransSparepart\TransSparepartController::store');
-$routes->post('/TransSparepart/edit', 'TransSparepart\TransSparepartController::edit');
-$routes->post('/TransSparepart/update', 'TransSparepart\TransSparepartController::update');
-$routes->post('/TransSparepart/delete', 'TransSparepart\TransSparepartController::delete');
+// // 09-04 tambahan transaksi sparepart
+// $routes->get('/TransSparepart', 'TransSparepart\TransSparepartController::index');
+// $routes->get('/TransSparepart/getData', 'TransSparepart\TransSparepartController::getData');
+// $routes->get('/TransSparepart/getAvailableAssets', 'TransSparepart\TransSparepartController::getAvailableAssets');
+// $routes->get('/TransSparepart/searchEmployees', 'TransSparepart\TransSparepartController::searchEmployees');
+// $routes->post('/TransSparepart/add', 'TransSparepart\TransSparepartController::store');
+// $routes->post('/TransSparepart/edit', 'TransSparepart\TransSparepartController::edit');
+// $routes->post('/TransSparepart/update', 'TransSparepart\TransSparepartController::update');
+// $routes->post('/TransSparepart/delete', 'TransSparepart\TransSparepartController::delete');
+
+$routes->group('TransSparepart', ['namespace' => 'App\Controllers\TransSparepart'], function ($routes) {
+    $routes->get('/', 'TransSparepartController::index');
+    $routes->get('getData', 'TransSparepartController::getData');
+    $routes->post('getSparepartById', 'TransSparepartController::getSparepartById');
+    $routes->post('store', 'TransSparepartController::store');
+    $routes->post('update', 'TransSparepartController::update');
+    $routes->post('delete', 'TransSparepartController::delete');
+    $routes->get('getAssetNo', 'TransSparepartController::getAssetNo');
+    $routes->get('searchAssetNo', 'TransSparepartController::searchAssetNo');
+    $routes->get('getEmployees', 'TransSparepartController::getEmployees');
+    $routes->get('searchEmployees', 'TransSparepartController::searchEmployees');
+});
+
 
 $routes->group('MstAdjustAssy', ['namespace' => 'App\Controllers\master_assy'], function ($routes) {
     $routes->get('/', 'MstAdjustAssy::index');
@@ -248,41 +262,72 @@ $routes->get('/MstPCServer/exportExcel', 'PCServer\PCServerController::exportExc
 // Rute untuk finder m_itequipment
 $routes->get('/MstPCServer/getEquipmentData', 'PCServer\PCServerController::getEquipmentData');
 
-/////////////////////////////
-// --- Routes for Master VLAN (Aligned with usermenu "MstVlan") ---
-// 'id' in these routes refers to the auto-increment primary key (tv_id)
-$routes->get('/MstVlan', 'MstVlan\MstVlanController::index'); // Main page route
-$routes->get('/MstVlan/getDataVlan', 'MstVlan\MstVlanController::getDataVlan'); // AJAX route for DataTable
-$routes->post('/MstVlan/add', 'MstVlan\MstVlanController::add'); // Add data
-$routes->post('/MstVlan/edit', 'MstVlan\MstVlanController::edit'); // Fetch data for editing
-$routes->post('/MstVlan/update', 'MstVlan\MstVlanController::update'); // Update data
-$routes->post('/MstVlan/delete', 'MstVlan\MstVlanController::delete'); // Delete data
-$routes->post('/MstVlan/checkDuplicateName', 'MstVlan\MstVlanController::checkDuplicateName'); // Check for duplicate VLAN Name
-$routes->post('/MstVlan/checkDuplicateVlanId', 'MstVlan\MstVlanController::checkDuplicateVlanId'); // Check for duplicate User-Input VLAN ID
-$routes->get('/MstVlan/exportExcel', 'MstVlan\MstVlanController::exportExcel'); // New route for exporting all to Excel
+// /////////////////////////////
+// // --- Routes for Master VLAN (Aligned with usermenu "MstVlan") ---
+// // 'id' in these routes refers to the auto-increment primary key (tv_id)
+// $routes->get('/MstVlan', 'MstVlan\MstVlanController::index'); // Main page route
+// $routes->get('/MstVlan/getDataVlan', 'MstVlan\MstVlanController::getDataVlan'); // AJAX route for DataTable
+// $routes->post('/MstVlan/add', 'MstVlan\MstVlanController::add'); // Add data
+// $routes->post('/MstVlan/edit', 'MstVlan\MstVlanController::edit'); // Fetch data for editing
+// $routes->post('/MstVlan/update', 'MstVlan\MstVlanController::update'); // Update data
+// $routes->post('/MstVlan/delete', 'MstVlan\MstVlanController::delete'); // Delete data
+// $routes->post('/MstVlan/checkDuplicateName', 'MstVlan\MstVlanController::checkDuplicateName'); // Check for duplicate VLAN Name
+// $routes->post('/MstVlan/checkDuplicateVlanId', 'MstVlan\MstVlanController::checkDuplicateVlanId'); // Check for duplicate User-Input VLAN ID
+// $routes->get('/MstVlan/exportExcel', 'MstVlan\MstVlanController::exportExcel'); // New route for exporting all to Excel
 
 /////////////////////////////
 
 // --- Rute untuk Master Switch Managed (Aligned with usermenu "MstSwitchManaged") ---
-$routes->get('/MstSwitchManaged', 'SwitchManaged\SwitchManagedController::index'); // Main page route
-$routes->get('/MstSwitchManaged/getDataSwitchManaged', 'SwitchManaged\SwitchManagedController::getDataSwitchManaged'); // AJAX route for DataTable
-$routes->post('/MstSwitchManaged/add', 'SwitchManaged\SwitchManagedController::add');
-$routes->post('/MstSwitchManaged/edit', 'SwitchManaged\SwitchManagedController::edit');
-$routes->post('/MstSwitchManaged/update', 'SwitchManaged\SwitchManagedController::update');
-$routes->post('/MstSwitchManaged/delete', 'SwitchManaged\SwitchManagedController::delete');
-$routes->post('/MstSwitchManaged/checkDuplicate', 'SwitchManaged\SwitchManagedController::checkDuplicate');
-$routes->get('/MstSwitchManaged/exportExcel', 'SwitchManaged\SwitchManagedController::exportExcel'); // Existing route for exporting all to Excel
-$routes->get('/MstSwitchManaged/exportExcelById/(:num)', 'SwitchManaged\SwitchManagedController::exportExcelById/$1'); // New route for exporting Excel by ID
-$routes->get('/MstSwitchManaged/getEquipmentData', 'SwitchManaged\SwitchManagedController::getEquipmentData');
-$routes->get('/MstSwitchManaged/getSwitchDetailPorts/(:num)', 'SwitchManaged\SwitchManagedController::getSwitchDetailPorts/$1'); // Get details for a specific switch (by sm_id_switch)
-$routes->get('/MstSwitchManaged/countSwitchDetailPorts/(:num)', 'SwitchManaged\SwitchManagedController::countSwitchDetailPorts/$1'); // Count details for a specific switch
-$routes->post('/MstSwitchManaged/addSwitchDetailPort', 'SwitchManaged\SwitchManagedController::addSwitchDetailPort');
-$routes->post('/MstSwitchManaged/editSwitchDetailPort', 'SwitchManaged\SwitchManagedController::editSwitchDetailPort');
-$routes->post('/MstSwitchManaged/updateSwitchDetailPort', 'SwitchManaged\SwitchManagedController::updateSwitchDetailPort');
-$routes->post('/MstSwitchManaged/deleteSwitchDetailPort', 'SwitchManaged\SwitchManagedController::deleteSwitchDetailPort');
-$routes->get('/MstSwitchManaged/getVlanData', 'SwitchManaged\SwitchManagedController::getVlanData');
+// $routes->get('/MstSwitchManaged', 'SwitchManaged\SwitchManagedController::index'); // Main page route
+// $routes->get('/MstSwitchManaged/getDataSwitchManaged', 'SwitchManaged\SwitchManagedController::getDataSwitchManaged'); // AJAX route for DataTable
+// $routes->post('/MstSwitchManaged/add', 'SwitchManaged\SwitchManagedController::add');
+// $routes->post('/MstSwitchManaged/edit', 'SwitchManaged\SwitchManagedController::edit');
+// $routes->post('/MstSwitchManaged/update', 'SwitchManaged\SwitchManagedController::update');
+// $routes->post('/MstSwitchManaged/delete', 'SwitchManaged\SwitchManagedController::delete');
+// $routes->post('/MstSwitchManaged/checkDuplicate', 'SwitchManaged\SwitchManagedController::checkDuplicate');
+// $routes->get('/MstSwitchManaged/exportExcel', 'SwitchManaged\SwitchManagedController::exportExcel'); // Existing route for exporting all to Excel
+// $routes->get('/MstSwitchManaged/exportExcelById/(:num)', 'SwitchManaged\SwitchManagedController::exportExcelById/$1'); // New route for exporting Excel by ID
+// $routes->get('/MstSwitchManaged/getEquipmentData', 'SwitchManaged\SwitchManagedController::getEquipmentData');
+// $routes->get('/MstSwitchManaged/getSwitchDetailPorts/(:num)', 'SwitchManaged\SwitchManagedController::getSwitchDetailPorts/$1'); // Get details for a specific switch (by sm_id_switch)
+// $routes->get('/MstSwitchManaged/countSwitchDetailPorts/(:num)', 'SwitchManaged\SwitchManagedController::countSwitchDetailPorts/$1'); // Count details for a specific switch
+// $routes->post('/MstSwitchManaged/addSwitchDetailPort', 'SwitchManaged\SwitchManagedController::addSwitchDetailPort');
+// $routes->post('/MstSwitchManaged/editSwitchDetailPort', 'SwitchManaged\SwitchManagedController::editSwitchDetailPort');
+// $routes->post('/MstSwitchManaged/updateSwitchDetailPort', 'SwitchManaged\SwitchManagedController::updateSwitchDetailPort');
+// $routes->post('/MstSwitchManaged/deleteSwitchDetailPort', 'SwitchManaged\SwitchManagedController::deleteSwitchDetailPort');
+// $routes->get('/MstSwitchManaged/getVlanData', 'SwitchManaged\SwitchManagedController::getVlanData');
 
-    
+// --- Rute untuk Master Switch Managed (Aligned with usermenu "MstSwitchManaged") ---
+$routes->group('TransSwitchManaged', ['namespace' => 'App\Controllers\TransSwitchManaged'], function ($routes) {
+    $routes->get('/', 'TransSwitchManagedController::index');
+    $routes->get('getData', 'TransSwitchManagedController::getData');
+    $routes->get('getSwitchManagedById', 'TransSwitchManagedController::getSwitchManagedById');
+    $routes->get('getSwitchDetails', 'TransSwitchManagedController::getSwitchDetails');
+    $routes->post('store', 'TransSwitchManagedController::store');
+    $routes->post('update', 'TransSwitchManagedController::update');
+    $routes->post('delete', 'TransSwitchManagedController::delete');
+    $routes->get('getAssetNo', 'TransSwitchManagedController::getAssetNo');
+    $routes->get('searchAssetNo', 'TransSwitchManagedController::searchAssetNo');
+    $routes->get('getIPAddresses', 'TransSwitchManagedController::getIPAddresses');
+    $routes->get('searchIPAddresses', 'TransSwitchManagedController::searchIPAddresses');
+    $routes->get('getLocations', 'TransSwitchManagedController::getLocations');
+    $routes->get('getSwitchDetailPortData', 'TransSwitchManagedController::getSwitchDetailPortData');
+    $routes->post('getSwitchDetailPortById', 'TransSwitchManagedController::getSwitchDetailPortById');
+    $routes->get('countSwitchDetailPorts', 'TransSwitchManagedController::countSwitchDetailPorts');
+    $routes->get('getAvailablePorts', 'TransSwitchManagedController::getAvailablePorts');
+    $routes->post('storeSwitchDetailPort', 'TransSwitchManagedController::storeSwitchDetailPort');
+    $routes->post('updateSwitchDetailPort', 'TransSwitchManagedController::updateSwitchDetailPort');
+    $routes->post('deleteSwitchDetailPort', 'TransSwitchManagedController::deleteSwitchDetailPort');
+    $routes->get('getVlanData', 'TransSwitchManagedController::getVlanData');
+    $routes->get('getVlanById', 'TransSwitchManagedController::getVlanById');
+    $routes->get('exportCSV', 'TransSwitchManagedController::exportCSV');
+    $routes->get('exportODS', 'TransSwitchManagedController::exportODS');
+    $routes->get('exportXLSX', 'TransSwitchManagedController::exportXLSX');
+    $routes->post('exportSelectedCSV', 'TransSwitchManagedController::exportSelectedCSV');
+    $routes->post('exportSelectedODS', 'TransSwitchManagedController::exportSelectedODS');
+    $routes->post('exportSelectedXLSX', 'TransSwitchManagedController::exportSelectedXLSX');
+});
+
+
 // VLAN Master
 $routes->group('MstVLAN', ['namespace' => 'App\Controllers\MstVLAN'], function ($routes) {
     $routes->get('/', 'MstVLANController::index');
