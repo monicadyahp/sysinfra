@@ -394,3 +394,13 @@ $routes->group('TransPC', ['namespace' => 'App\Controllers\TransPC'], function (
     $routes->post('updatePCServerVM', 'TransPCController::updatePCServerVM');
     $routes->post('deletePCServerVM', 'TransPCController::deletePCServerVM');
 });
+
+// 10-07 Printer Location Master
+$routes->group('MstPrinterLocation', ['namespace' => 'App\Controllers\MstPrinterLocation'], function ($routes) {
+    $routes->get('/', 'MstPrinterLocationController::index');
+    $routes->get('getData', 'MstPrinterLocationController::getData');
+    $routes->post('getPrinterLocationById', 'MstPrinterLocationController::getPrinterLocationById');
+    $routes->post('store', 'MstPrinterLocationController::store');
+    $routes->post('update', 'MstPrinterLocationController::update');
+    $routes->post('delete', 'MstPrinterLocationController::delete');
+});
