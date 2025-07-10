@@ -58,6 +58,7 @@ $routes->post('/MstCategory/delete', 'MstCategory\MstCategoryController::delete'
 // $routes->post('/TransSparepart/update', 'TransSparepart\TransSparepartController::update');
 // $routes->post('/TransSparepart/delete', 'TransSparepart\TransSparepartController::delete');
 
+// 09-07
 $routes->group('TransSparepart', ['namespace' => 'App\Controllers\TransSparepart'], function ($routes) {
     $routes->get('/', 'TransSparepartController::index');
     $routes->get('getData', 'TransSparepartController::getData');
